@@ -841,7 +841,7 @@ function Detail({ label, value, highlight }) {
 function CaseForm({ machines, products, initial, onCancel, onSave }) {
   const [form, setForm] = useState(initial || {
     patientName: "", patientMobile: "", doctorName: "", dresserName: "", protocolDays: 5,
-    machineSerial: "", product: products[0] ? products[0].name : "",
+       machineSerial: "", products: products[0] ? [products[0].name] : [],
     applicationDate: todayISO(), applicationTime: nowTimeHM(), status: "active", endDate: "",
     billTo: "Patient", hospitalName: "", totalAmount: "", notes: "",
   });
