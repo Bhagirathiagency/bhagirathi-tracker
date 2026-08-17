@@ -561,7 +561,7 @@ function DresserCaseRow({ c, dresserName, onAddDressingChange, onCapturePhoto })
       <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.cardTitle}>{c.patientName}</div>
-          <div style={styles.cardMeta}>Dr. {c.doctorName} · {c.product}</div>
+          <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProducts(c).join(", ")}</div>
           <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {c.protocolDays || 5}-day protocol</div>
           <div style={styles.mutedSmall}>{doneCount}/3 photos captured</div>
         </div>
@@ -737,7 +737,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
       <div style={styles.cardTop} onClick={() => !compact && setOpen((o) => !o)}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.cardTitle}>{c.patientName}</div>
-          <div style={styles.cardMeta}>Dr. {c.doctorName} · {c.product} · {c.protocolDays || 5}-day protocol</div>
+          <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProducts(c).join(", ")} · {c.protocolDays || 5}-day protocol</div>
           <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {fmtDate(c.applicationDate)}{c.applicationTime ? ` ${fmtTime(c.applicationTime)}` : ""} · {days}d</div>
           {c.dresserName && <div style={styles.cardMeta}>Dresser: {c.dresserName} · Bill to: {c.billTo || "Patient"}{c.billTo === "Hospital" && c.hospitalName ? ` (${c.hospitalName})` : ""}</div>}
         </div>
