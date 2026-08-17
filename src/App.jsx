@@ -204,16 +204,18 @@ export default function App() {
     }
     const initialEntry = { id: uid(), date: data.applicationDate, dresserName: data.dresserName, protocolDays: data.protocolDays, note: "Initial application" };
     setCases((prev) => [...prev, { id: uid(), payments: [], dressingChanges: [initialEntry], photoFlags: {}, ...data }]);
-    if (data.product) {
-      setProducts((prev) => prev.map((p) => p.name === data.product ? { ...p, available: Math.max(0, (p.available || 0) - 1), used: (p.used || 0) + 1 } : p));
+     const usedNames = getCaseProducts(data);
+    if (usedNames.length) {
+      setProducts((prev) => prev.map((p) => usedNames.includes(p.name) ? { ...p, available: Math.max(0, (p.available || 0) - 1), used: (p.used || 0) + 1 } : p));
     }
   };
 
-  const deleteCase = (id) => {
+   const deleteCase = (id) => {
     const target = cases.find((c) => c.id === id);
     setCases((prev) => prev.filter((c) => c.id !== id));
-    if (target && target.product) {
-      setProducts((prev) => prev.map((p) => p.name === target.product ? { ...p, available: (p.available || 0) + 1, used: Math.max(0, (p.used || 0) - 1) } : p));
+    const usedNames = target ? getCaseProducts(target) : [];
+    if (usedNames.length) {
+      setProducts((prev) => prev.map((p) => usedNames.includes(p.name) ? { ...p, available: (p.available || 0) + 1, used: Math.max(0, (p.used || 0) - 1) } : p));
     }
   };
 
