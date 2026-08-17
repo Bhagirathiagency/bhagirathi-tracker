@@ -87,10 +87,18 @@ function normalizeProducts(raw) {
       : { available: 0, used: 0, costPrice: 0, receipts: [], ...p }
   );
 }
+function getCaseProducts(c) {
+  if (Array.isArray(c.products) && c.products.length) return c.products;
+  return c.product ? [c.product] : [];
+}
 function estimateProfit(c, products) {
-  const prod = products.find((p) => p.name === c.product);
-  const cost = prod ? Number(prod.costPrice || 0) : 0;
-  return Number(c.totalAmount || 0) - cost;
+  const names = getCaseProducts(c);
+  const cost = names.reduce((sum, name) => {
+    const prod = products.find((p) => p.name === name);
+    return sum + (prod ? Number(prod.costPrice || 0) : 0);
+  }, 0);
+
+    return Number(c.totalAmount || 0) - cost;
 }
 function photoKey(caseId, stage) { return `photo-${caseId}-${stage}`; }
 function locKey(name) { return `wca-loc-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`; }
