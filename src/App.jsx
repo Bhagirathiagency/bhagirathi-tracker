@@ -874,8 +874,26 @@ function CaseForm({ machines, products, initial, onCancel, onSave }) {
             </div>
           )}
         </Field>
-        <Field label="Product">
-          <select style={styles.input} value={form.product} onChange={(e) => set("product", e.target.value)}>
+                <Field label="Product(s)">
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #ccc", borderRadius: 6, padding: 8, maxHeight: 160, overflowY: "auto" }}>
+            {products.map((p) => (
+              <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={(form.products || []).includes(p.name)}
+                  onChange={(e) => {
+                    const current = form.products || [];
+                    const next = e.target.checked
+                      ? [...current, p.name]
+                      : current.filter((n) => n !== p.name);
+                    set("products", next);
+                  }}
+                />
+                {p.name}
+              </label>
+            ))}
+          </div>
+           <select style={styles.input} value={form.product} onChange={(e) => set("product", e.target.value)}>
             {products.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
           </select>
         </Field>
