@@ -455,7 +455,7 @@ function ChangePinForm({ pin, onChangePin, onDone }) {
 }
 
 // ================= DRESSER SHELL =================
-function DresserShell({ name, cases, addDressingChange, capturePhoto, updateDresserLocation, onLogout }) {
+function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, onLogout }) { onLogout 
   const [sending, setSending] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
@@ -838,9 +838,9 @@ function Detail({ label, value, highlight }) {
   return <div><div style={styles.detailLabel}>{label}</div><div style={{ ...styles.detailValue, color: highlight ? "#B3542F" : "#1F2421" }}>{value}</div></div>;
 }
 
-function CaseForm({ machines, products, initial, onCancel, onSave }) {
+function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName }) {
   const [form, setForm] = useState(initial || {
-    patientName: "", patientMobile: "", doctorName: "", dresserName: "", protocolDays: 5,
+    patientName: "", patientMobile: "", doctorName: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: products[0] ? [products[0].name] : [],
     applicationDate: todayISO(), applicationTime: nowTimeHM(), status: "active", endDate: "",
     billTo: "Patient", hospitalName: "", totalAmount: "", notes: "",
