@@ -457,6 +457,7 @@ function ChangePinForm({ pin, onChangePin, onDone }) {
 // ================= DRESSER SHELL =================
 function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, onLogout }) { onLogout 
   const [sending, setSending] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
   useEffect(() => {
@@ -485,6 +486,14 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
     setSending(false);
   };
 
+  if (showForm) {
+    return (
+      <CaseForm machines={machines} products={products} presetDresserName={name}
+        onCancel={() => setShowForm(false)}
+        onSave={(data) => { saveCase(data, null); setShowForm(false); }} />
+    );
+  }
+
   return (
     <>
       <header style={styles.header}>
@@ -502,6 +511,8 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
         <button style={styles.safetyBtn} onClick={sendSafetyAlert} disabled={sending}>
           {sending ? "Getting location…" : "🚨 Send Safety Alert"}
         </button>
+
+        <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
 
         <SectionTitle>Cases on Therapy</SectionTitle>
         {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
