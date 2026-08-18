@@ -1161,6 +1161,18 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     return Object.entries(tally).map(([company, qty]) => ({ company, qty })).sort((a, b) => b.qty - a.qty);
   }, [allReceipts]);
 
+  const doctorMonthlyStats = useMemo(() => {
+    const tally = {};
+    cases.forEach((c) => {
+      const doctor = (c.doctorName || "Unknown").trim();
+      const month = c.applicationDate ? new Date(c.applicationDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "Unknown";
+      const key = doctor + "||" + month;
+      if (tally[key] === undefined) tally[key] = { doctor, month, count: 0, sortDate: c.applicationDate || "" };
+      tally[key].count += 1;
+    });
+    return Object.values(tally).sort((a, b) => a.doctor.localeCompare(b.doctor) || new Date(b.sortDate) - new Date(a.sortDate));
+  }, [cases]);
+
   const sendSummary = () => {
     let msg = `Bhagirathi Agency — Daily Summary\n`;
     msg += `Overdue changes: ${overdueCount}\nOutstanding: ${fmtMoney(outstandingTotal)}\n`;
@@ -1212,6 +1224,19 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         <div style={styles.card}>
           {dresserStats.map((d, i) => (
             <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span><span style={styles.mutedSmall}>{d.count} dressings</span></div>
+          ))}
+        </div>
+      )}
+
+      <SectionTitle>Doctor-wise Monthly Cases</SectionTitle>
+      {doctorMonthlyStats.length === 0 ? <EmptyState text="No cases yet." /> : (
+        <div style={styles.card}>
+          {doctorMonthlyStats.map((d, i) => (
+            <div key={i} style={styles.dresserLine}>
+              <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
+              <span style={styles.mutedSmall}>{d.month}</span>
+              <span style={styles.mutedSmall}>{d.count} case{d.count > 1 ? "s" : ""}</span>
+            </div>
           ))}
         </div>
       )}
