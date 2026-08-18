@@ -283,7 +283,7 @@ export default function App() {
       )}
       {role && role.type === "dresser" && (
         <DresserShell
-          name={role.name} cases={cases}
+          name={role.name} cases={cases} machines={machines} products={products} saveCase={saveCase}
           addDressingChange={addDressingChange} capturePhoto={capturePhoto}
           updateDresserLocation={updateDresserLocation}
           onLogout={() => setRole(null)}
