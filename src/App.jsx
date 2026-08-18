@@ -203,7 +203,11 @@ export default function App() {
       return;
     }
     const initialEntry = { id: uid(), date: data.applicationDate, dresserName: data.dresserName, protocolDays: data.protocolDays, note: "Initial application" };
-    setCases((prev) => [...prev, { id: uid(), payments: [], dressingChanges: [initialEntry], photoFlags: {}, ...data }]);
+    const initialAmountReceived = Number(data.amountReceived) || 0;
+    const initialPayments = initialAmountReceived > 0
+      ? [{ id: uid(), amount: initialAmountReceived, mode: "Cash", note: "Initial payment", date: data.applicationDate }]
+      : [];
+    setCases((prev) => [...prev, { id: uid(), payments: initialPayments, dressingChanges: [initialEntry], photoFlags: {}, ...data }]);
      const usedNames = getCaseProducts(data);
     if (usedNames.length) {
       setProducts((prev) => prev.map((p) => usedNames.includes(p.name) ? { ...p, available: Math.max(0, (p.available || 0) - 1), used: (p.used || 0) + 1 } : p));
@@ -854,7 +858,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
     patientName: "", patientMobile: "", doctorName: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: products[0] ? [products[0].name] : [],
     applicationDate: todayISO(), applicationTime: nowTimeHM(), status: "active", endDate: "",
-    billTo: "Patient", hospitalName: "", totalAmount: "", notes: "",
+    billTo: "Patient", hospitalName: "", totalAmount: "", amountReceived: "", notes: "",
   });
   const [customProtocol, setCustomProtocol] = useState(!PROTOCOLS.includes(Number(form.protocolDays)));
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -938,6 +942,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
           <Field label="Hospital Name"><input style={styles.input} value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)} /></Field>
         )}
         <Field label="Total Amount (₹)"><input type="number" style={styles.input} value={form.totalAmount} onChange={(e) => set("totalAmount", e.target.value)} /></Field>
+        <Field label="Amount Received (₹)"><input type="number" style={styles.input} value={form.amountReceived} onChange={(e) => set("amountReceived", e.target.value)} placeholder="0 if none yet" /></Field>
         <Field label="Notes"><textarea style={{ ...styles.input, minHeight: 60 }} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
       </div>
       <div style={styles.formActions}>
