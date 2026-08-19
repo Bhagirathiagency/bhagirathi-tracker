@@ -1187,6 +1187,35 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     return Object.values(tally).sort((a, b) => a.doctor.localeCompare(b.doctor) || new Date(b.sortDate) - new Date(a.sortDate));
   }, [cases]);
 
+  const outstandingByPatient = useMemo(() => {
+    return cases
+      .map((c) => {
+        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        const balance = Math.max(0, Number(c.totalAmount || 0) - paid);
+        return { ...c, balance };
+      })
+      .filter((c) => c.balance > 0)
+      .sort((a, b) => b.balance - a.balance);
+  }, [cases]);
+
+  const monthlyRevenueTrend = useMemo(() => {
+    const tally = {};
+    cases.forEach((c) => {
+      const month = c.applicationDate ? new Date(c.applicationDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "Unknown";
+      if (!tally[month]) tally[month] = { month, billed: 0, collected: 0, sortDate: c.applicationDate || "" };
+      tally[month].billed += Number(c.totalAmount || 0);
+      tally[month].collected += (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    });
+    return Object.values(tally).sort((a, b) => new Date(b.sortDate) - new Date(a.sortDate));
+  }, [cases]);
+
+  const overdueCasesList = useMemo(() => {
+    return cases
+      .filter((c) => c.status === "active" && overdueDays(c) > 0)
+      .map((c) => ({ ...c, daysOverdue: overdueDays(c) }))
+      .sort((a, b) => b.daysOverdue - a.daysOverdue);
+  }, [cases]);
+
   const sendSummary = () => {
     let msg = `Bhagirathi Agency — Daily Summary\n`;
     msg += `Overdue changes: ${overdueCount}\nOutstanding: ${fmtMoney(outstandingTotal)}\n`;
@@ -1250,6 +1279,45 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
               <span style={styles.mutedSmall}>{d.month}</span>
               <span style={styles.mutedSmall}>{d.count} case{d.count > 1 ? "s" : ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <SectionTitle>Outstanding Payments by Patient</SectionTitle>
+      {outstandingByPatient.length === 0 ? <EmptyState text="No outstanding balances. All caught up!" /> : (
+        <div style={styles.card}>
+          {outstandingByPatient.map((c) => (
+            <div key={c.id} style={styles.dresserLine}>
+              <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
+              <span style={styles.mutedSmall}>{fmtDate(c.applicationDate)}</span>
+              <span style={{ ...styles.mutedSmall, color: "#B3542F", fontWeight: 600 }}>{fmtMoney(c.balance)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <SectionTitle>Monthly Revenue Trend</SectionTitle>
+      {monthlyRevenueTrend.length === 0 ? <EmptyState text="No cases yet." /> : (
+        <div style={styles.card}>
+          {monthlyRevenueTrend.map((m) => (
+            <div key={m.month} style={styles.dresserLine}>
+              <span style={{ flex: 1, fontWeight: 600 }}>{m.month}</span>
+              <span style={styles.mutedSmall}>Billed {fmtMoney(m.billed)}</span>
+              <span style={{ ...styles.mutedSmall, color: "#1B6B63" }}>Collected {fmtMoney(m.collected)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <SectionTitle>Overdue Dressing Changes</SectionTitle>
+      {overdueCasesList.length === 0 ? <EmptyState text="No overdue cases right now." /> : (
+        <div style={styles.card}>
+          {overdueCasesList.map((c) => (
+            <div key={c.id} style={styles.dresserLine}>
+              <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
+              <span style={styles.mutedSmall}>{c.dresserName || "Unassigned"}</span>
+              <span style={{ ...styles.mutedSmall, color: "#B3542F", fontWeight: 600 }}>{c.daysOverdue}d overdue</span>
             </div>
           ))}
         </div>
