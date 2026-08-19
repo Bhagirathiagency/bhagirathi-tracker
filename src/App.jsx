@@ -1,17 +1,31 @@
 import React, { useState, useEffect, useMemo } from "react";
 
 // ---------- storage helpers ----------
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
 async function loadKey(key, fallback) {
   try {
-    const raw = window.localStorage.getItem(key);
-    return raw !== null ? JSON.parse(raw) : fallback;
+    const { data, error } = await supabase
+      .from("app_kv")
+      .select("value")
+      .eq("key", key)
+      .maybeSingle();
+    if (error || !data) return fallback;
+    return data.value;
   } catch (e) {
     return fallback;
   }
 }
 async function saveKey(key, value) {
   try {
-    window.localStorage.setItem(key, JSON.stringify(value));
+    await supabase
+      .from("app_kv")
+      .upsert({ key, value, updated_at: new Date().toISOString() });
   } catch (e) {
     console.error("save failed", key, e);
   }
