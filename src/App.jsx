@@ -3,15 +3,15 @@ import React, { useState, useEffect, useMemo } from "react";
 // ---------- storage helpers ----------
 async function loadKey(key, fallback) {
   try {
-    const res = await window.storage.get(key, true);
-    return res ? JSON.parse(res.value) : fallback;
+    const raw = window.localStorage.getItem(key);
+    return raw !== null ? JSON.parse(raw) : fallback;
   } catch (e) {
     return fallback;
   }
 }
 async function saveKey(key, value) {
   try {
-    await window.storage.set(key, JSON.stringify(value), true);
+    window.localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
     console.error("save failed", key, e);
   }
