@@ -689,14 +689,14 @@ function EmptyState({ text }) { return <div style={styles.emptyState}>{text}</di
 function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("all"); const [search, setSearch] = useState("");
 
   const filtered = cases.filter((c) => {
     if (filter === "all") return true;
     if (filter === "overdue") return overdueDays(c) > 0;
     return c.status === filter;
   });
-  const sorted = [...filtered].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate));
+  const searched = search.trim() ? filtered.filter((c) => (c.patientName||"").toLowerCase().includes(search.trim().toLowerCase()) || (c.doctorName||"").toLowerCase().includes(search.trim().toLowerCase())) : filtered; const sorted = [...searched].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate));
 
   if (showForm) {
     return (
@@ -708,7 +708,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
 
   return (
     <div>
-      <div style={styles.filterRow}>
+      <input style={{...styles.input, marginBottom: 10}} placeholder="Search by patient or doctor name..." value={search} onChange={(e) => setSearch(e.target.value)} /><div style={styles.filterRow}>
         {["all", "active", "overdue", "stopped", "reapplied"].map((f) => (
           <button key={f} onClick={() => setFilter(f)} style={{ ...styles.filterChip, ...(filter === f ? styles.filterChipActive : {}) }}>
             {f === "all" ? "All" : f === "overdue" ? "Change Due" : STATUS[f].label}
