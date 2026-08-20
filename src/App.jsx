@@ -280,6 +280,7 @@ export default function App() {
   return (
     <div style={styles.app}>
       <style>{fontImport}</style>
+      <style>{printStyles}</style>
       {!role && (
         <RoleGate
           pin={pin}
@@ -1225,6 +1226,10 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
   return (
     <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <button style={{ ...styles.smallBtn, background: "#3B5BA5" }} onClick={() => window.print()}>Download as PDF</button>
+      </div>
+
       <SectionTitle>Revenue</SectionTitle>
       <div style={styles.cardGrid}>
         <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(totalBilled)}</div><div style={styles.statLabel}>Total Billed</div></div>
@@ -1366,6 +1371,14 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 }
 
 // ---------------- styles ----------------
+const printStyles = `
+@media print {
+  header, nav, .no-print { display: none !important; }
+  body, .app-root { background: #fff !important; }
+  main { max-width: 100% !important; padding: 0 !important; }
+}
+`;
+
 const fontImport = `
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
 `;
