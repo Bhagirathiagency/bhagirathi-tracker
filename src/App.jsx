@@ -164,17 +164,7 @@ export default function App() {
   useEffect(() => {
     document.title = "Bhagirathi Agency";
     try {
-      const canvas = document.createElement("canvas");
-      canvas.width = 180; canvas.height = 180;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#1B6B63";
-      ctx.fillRect(0, 0, 180, 180);
-      ctx.fillStyle = "#F6F5F0";
-      ctx.font = "bold 100px 'Space Grotesk', sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("B", 90, 98);
-      const dataUrl = canvas.toDataURL("image/png");
+      const dataUrl = "/bhagirathi-logo.png";
       [
         { rel: "icon", sizes: "180x180" },
         { rel: "apple-touch-icon", sizes: "180x180" },
@@ -338,7 +328,7 @@ function RoleGate({ pin, dressers, onSetPin, onOwnerLogin, onDresserLogin }) {
 
   return (
     <div style={styles.gateWrap}>
-      <div style={styles.brandMarkLg} onClick={handleLogoTap}>B</div>
+      <img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={styles.brandMarkLg} onClick={handleLogoTap} />
       <div style={styles.gateBrand}>Bhagirathi Agency</div>
       <div style={styles.brandSub}>Wound Care Tracker</div>
 
@@ -404,7 +394,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
     <>
       <header style={styles.header}>
         <div style={styles.headerInner}>
-          <div style={styles.brandMark}>B</div>
+          <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={styles.brandMarkImg} /></div>
           <div style={{ flex: 1 }}>
             <div style={styles.brandName}>Bhagirathi Agency</div>
             <div style={styles.brandSub}>Owner view</div>
@@ -517,7 +507,7 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
     <>
       <header style={styles.header}>
         <div style={styles.headerInner}>
-          <div style={styles.brandMark}>B</div>
+          <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={styles.brandMarkImg} /></div>
           <div style={{ flex: 1 }}>
             <div style={styles.brandName}>Bhagirathi Agency</div>
             <div style={styles.brandSub}>Hi, {name}</div>
@@ -1389,8 +1379,9 @@ const styles = {
   loadingText: { fontFamily: "monospace", color: "#5A6560" },
   header: { background: "linear-gradient(135deg, #16302E 0%, #1B4B45 100%)", padding: "18px 16px", boxShadow: "0 2px 12px rgba(22,48,46,0.18)" },
   headerInner: { display: "flex", alignItems: "center", gap: 12, maxWidth: 640, margin: "0 auto" },
-  brandMark: { width: 38, height: 38, borderRadius: 10, background: "#1B6B63", color: "#F6F5F0", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 18 },
-  brandMarkLg: { width: 60, height: 60, borderRadius: 16, background: "linear-gradient(135deg, #1B6B63 0%, #16302E 100%)", color: "#F6F5F0", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 26, margin: "60px auto 14px" },
+  brandMark: { width: 38, height: 38, borderRadius: 10, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  brandMarkImg: { width: "82%", height: "82%", objectFit: "contain" },
+  brandMarkLg: { width: 64, height: 64, borderRadius: 14, objectFit: "contain", margin: "60px auto 14px", cursor: "pointer" },
   gateBrand: { textAlign: "center", color: "#16302E", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 18 },
   brandName: { color: "#F6F5F0", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 },
   brandSub: { color: "#9FC2BC", fontSize: 12, letterSpacing: 0.3, textAlign: "center" },
