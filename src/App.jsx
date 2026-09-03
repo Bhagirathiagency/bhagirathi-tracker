@@ -2383,6 +2383,16 @@ const PRICE_LIST_IMPORT = [
   { company: "Solventum", name: "Prevena Plus 150ml Canister", ref: "PRE4095", mrp: 5650 },
 ];
 
+const IWAC_PRICE_LIST = [
+  { company: "Iwac", name: "Iwac Small Airfoam", costPrice: 2400, mrp: 6000, qty: 0 },
+  { company: "Iwac", name: "Iwac Medium Airfoam", costPrice: 2800, mrp: 7000, qty: 7 },
+  { company: "Iwac", name: "Iwac Large Airfoam", costPrice: 3200, mrp: 8000, qty: 9 },
+  { company: "Iwac", name: "Iwac 500ml Canister Pro", costPrice: 1200, mrp: 3000, qty: 6 },
+  { company: "Iwac", name: "Iwac Small Gigafoam", costPrice: 3200, mrp: 8000, qty: 2 },
+  { company: "Iwac", name: "Iwac Medium Gigafoam", costPrice: 3800, mrp: 9500, qty: 2 },
+  { company: "Iwac", name: "Iwac Large Gigafoam", costPrice: 4400, mrp: 11500, qty: 5 },
+];
+
 // Old pack-labeled names (from an earlier import) -> new per-unit name, so duplicates like
 // "...10 Pack" and "...5 Pack" merge into a single per-unit product.
 const PACK_NAME_CLEANUP = {
@@ -2703,6 +2713,26 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) 
   };
   const newImportCount = PRICE_LIST_IMPORT.filter((item) => !products.some((p) => p.name.toLowerCase() === item.name.toLowerCase())).length;
 
+  const [iwacImportDone, setIwacImportDone] = useState(false);
+  const importIwacList = () => {
+    const existingNames = new Set(products.map((p) => p.name.toLowerCase()));
+    const toAdd = IWAC_PRICE_LIST.filter((item) => !existingNames.has(item.name.toLowerCase()));
+    if (toAdd.length === 0) { setIwacImportDone(true); return; }
+    const newProducts = toAdd.map((item) => ({
+      id: uid(),
+      name: item.name,
+      available: item.qty || 0,
+      used: 0,
+      costPrice: item.costPrice,
+      mrp: item.mrp,
+      variants: [],
+      receipts: item.qty > 0 ? [{ id: uid(), date: todayISO(), qty: item.qty, company: item.company }] : [],
+    }));
+    setProducts((prev) => [...prev, ...newProducts]);
+    setIwacImportDone(true);
+  };
+  const newIwacCount = IWAC_PRICE_LIST.filter((item) => !products.some((p) => p.name.toLowerCase() === item.name.toLowerCase())).length;
+
   const packDupCount = products.filter((p) => PACK_NAME_CLEANUP[p.name.toLowerCase()]).length;
   const cleanupPackDuplicates = () => {
     const merged = {}; // target name (lowercase) -> merged product
@@ -2749,6 +2779,17 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) 
       )}
       {importDone && newImportCount === 0 && (
         <div style={{ ...styles.emptyState2, marginBottom: 10, color: "#128577" }}>All MedSkin Solutions &amp; Solventum items are imported.</div>
+      )}
+      {newIwacCount > 0 && (
+        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FBEAD3" }}>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            <strong>{newIwacCount} Iwac product{newIwacCount > 1 ? "s" : ""}</strong> (Airfoam, Gigafoam, Canister Pro) ready to import with cost price, MRP, and opening stock already filled in.
+          </div>
+          <button style={styles.primaryBtn} onClick={importIwacList}>Import Iwac Price List ({newIwacCount})</button>
+        </div>
+      )}
+      {iwacImportDone && newIwacCount === 0 && (
+        <div style={{ ...styles.emptyState2, marginBottom: 10, color: "#128577" }}>All Iwac items are imported.</div>
       )}
       <SectionTitle>Add Product</SectionTitle>
       <div style={styles.formGrid}>
