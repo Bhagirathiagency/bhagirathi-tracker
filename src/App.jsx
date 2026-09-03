@@ -137,6 +137,15 @@ function productCompany(p) {
   const latest = [...receipts].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
   return (latest.company || "Unspecified").trim() || "Unspecified";
 }
+function groupProductsByCompany(products) {
+  const groups = {};
+  products.forEach((p) => {
+    const co = productCompany(p);
+    if (!groups[co]) groups[co] = [];
+    groups[co].push(p);
+  });
+  return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+}
 function getCaseProducts(c) {
   if (Array.isArray(c.products) && c.products.length) return c.products;
   return c.product ? [c.product] : [];
@@ -764,6 +773,7 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall }) {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [date, setDate] = useState(todayISO());
   const [notes, setNotes] = useState("");
+  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
 
   const myCalls = useMemo(
     () => doctorCalls.filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
@@ -791,12 +801,17 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall }) {
         <Field label="Doctor Mobile Number"><input type="tel" style={styles.input} value={doctorMobile} onChange={(e) => setDoctorMobile(e.target.value)} placeholder="10-digit number" /></Field>
         <Field label="Speciality"><input style={styles.input} value={speciality} onChange={(e) => setSpeciality(e.target.value)} placeholder="e.g. General Surgeon, Orthopedician" /></Field>
         <Field label="Product(s) Discussed">
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 160, overflowY: "auto" }}>
-            {products.length === 0 ? <span style={styles.mutedSmall}>No products in stock yet.</span> : products.map((p) => (
-              <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, padding: "3px 0" }}>
-                <input type="checkbox" checked={selectedProducts.includes(p.name)} onChange={() => toggleProduct(p.name)} />
-                {p.name}
-              </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 220, overflowY: "auto" }}>
+            {products.length === 0 ? <span style={styles.mutedSmall}>No products in stock yet.</span> : productsByCompany.map(([company, prods]) => (
+              <div key={company}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9A96", margin: "6px 0 2px" }}>{company}</div>
+                {prods.map((p) => (
+                  <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, padding: "3px 0" }}>
+                    <input type="checkbox" checked={selectedProducts.includes(p.name)} onChange={() => toggleProduct(p.name)} />
+                    {p.name}
+                  </label>
+                ))}
+              </div>
             ))}
           </div>
         </Field>
@@ -830,6 +845,7 @@ function AdditionalItemsBlock({ c, products, onAddAdditionalItem }) {
   const [extraCharge, setExtraCharge] = useState("");
   const [note, setNote] = useState("");
   const items = c.additionalItems || [];
+  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
 
   const submit = () => {
     if (!name) return;
@@ -854,7 +870,11 @@ function AdditionalItemsBlock({ c, products, onAddAdditionalItem }) {
       <div style={styles.addPaymentRow}>
         <select style={{ ...styles.smallInput, flex: 2 }} value={name} onChange={(e) => setName(e.target.value)}>
           <option value="">Select item…</option>
-          {products.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+          {productsByCompany.map(([company, prods]) => (
+            <optgroup key={company} label={company}>
+              {prods.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </optgroup>
+          ))}
         </select>
         <input type="number" min="1" style={{ ...styles.smallInput, width: 55 }} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Qty" />
         <input type="number" style={{ ...styles.smallInput, width: 90 }} value={extraCharge} onChange={(e) => setExtraCharge(e.target.value)} placeholder="Extra ₹" />
@@ -1182,15 +1202,7 @@ function Detail({ label, value, highlight }) {
 }
 
 function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName }) {
-  const productsByCompany = useMemo(() => {
-    const groups = {};
-    products.forEach((p) => {
-      const co = productCompany(p);
-      if (!groups[co]) groups[co] = [];
-      groups[co].push(p);
-    });
-    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [products]);
+  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
   const [form, setForm] = useState(initial || {
     patientName: "", patientMobile: "", doctorName: "", doctorCommission: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: products[0] ? [products[0].name] : [],
@@ -1409,6 +1421,7 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
 }
 
 function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
+  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
   const [form, setForm] = useState(initial || {
     quoteNo: nextQuoteNumber(quotations),
     date: todayISO(),
@@ -1480,11 +1493,13 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
                 <select style={{ ...styles.input, flex: 3, minWidth: 160 }} value={it.productName || ""}
                   onChange={(e) => e.target.value === "__new__" ? setItem(it.id, "custom", true) : pickFromStock(it.id, e.target.value)}>
                   <option value="" disabled>Select item…</option>
-                  <optgroup label="From Stock">
-                    {products.map((p) => (
-                      <option key={p.id} value={p.name}>{p.name} ({p.available || 0} in stock)</option>
-                    ))}
-                  </optgroup>
+                  {productsByCompany.map(([company, prods]) => (
+                    <optgroup key={company} label={company}>
+                      {prods.map((p) => (
+                        <option key={p.id} value={p.name}>{p.name} ({p.available || 0} in stock)</option>
+                      ))}
+                    </optgroup>
+                  ))}
                   <option value="__new__">+ New item (not in stock)</option>
                 </select>
               )}
