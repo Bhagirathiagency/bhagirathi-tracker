@@ -1785,6 +1785,35 @@ function CollapsibleSection({ title, defaultOpen, right, children }) {
   );
 }
 
+function weekStartLabel(dateStr) {
+  const d = new Date(dateStr);
+  const day = d.getDay(); // 0 = Sunday
+  const diff = d.getDate() - day; // back to Sunday
+  const start = new Date(d);
+  start.setDate(diff);
+  return start;
+}
+function pnlPeriodKey(dateStr, granularity) {
+  const d = new Date(dateStr);
+  if (granularity === "daily") return dateStr;
+  if (granularity === "weekly") return weekStartLabel(dateStr).toISOString().slice(0, 10);
+  if (granularity === "monthly") return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return `${d.getFullYear()}`;
+}
+function pnlPeriodLabel(key, granularity) {
+  if (granularity === "daily") return fmtDate(key);
+  if (granularity === "weekly") {
+    const start = new Date(key);
+    const end = new Date(start); end.setDate(end.getDate() + 6);
+    return `${fmtDate(start.toISOString().slice(0, 10))} – ${fmtDate(end.toISOString().slice(0, 10))}`;
+  }
+  if (granularity === "monthly") {
+    const [y, m] = key.split("-");
+    return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+  }
+  return key;
+}
+
 function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
@@ -1815,6 +1844,31 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     return tally;
   }, [cases]);
   const totalProfit = cases.reduce((s, c) => s + estimateProfit(c, products), 0);
+
+  const [pnlGranularity, setPnlGranularity] = useState("monthly");
+  const pnlRows = useMemo(() => {
+    const tally = {};
+    cases.forEach((c) => {
+      if (!c.applicationDate) return;
+      const key = pnlPeriodKey(c.applicationDate, pnlGranularity);
+      if (!tally[key]) tally[key] = { key, revenue: 0, rental: 0, cost: 0, cases: 0 };
+      const names = getCaseProducts(c);
+      const cost = names.reduce((s, name) => {
+        const prod = products.find((p) => p.name === name);
+        return s + (prod ? Number(prod.costPrice || 0) : 0);
+      }, 0);
+      tally[key].revenue += Number(c.totalAmount || 0);
+      tally[key].rental += Number(c.machineRentalAmount || 0);
+      tally[key].cost += cost;
+      tally[key].cases += 1;
+    });
+    return Object.values(tally)
+      .map((r) => ({ ...r, profit: r.revenue + r.rental - r.cost }))
+      .sort((a, b) => (a.key < b.key ? 1 : -1));
+  }, [cases, products, pnlGranularity]);
+  const pnlTotals = useMemo(() => pnlRows.reduce((acc, r) => ({
+    revenue: acc.revenue + r.revenue, rental: acc.rental + r.rental, cost: acc.cost + r.cost, profit: acc.profit + r.profit,
+  }), { revenue: 0, rental: 0, cost: 0, profit: 0 }), [pnlRows]);
 
   const allReceipts = useMemo(() => {
     const list = [];
@@ -1949,6 +2003,42 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       </div>
 
       <button style={styles.primaryBtn} onClick={sendSummary}>Send Summary on WhatsApp</button>
+
+      <CollapsibleSection title="Profit & Loss Statement" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</span>}>
+        <div style={styles.filterRow}>
+          {[["daily", "Daily"], ["weekly", "Weekly"], ["monthly", "Monthly"], ["yearly", "Yearly"]].map(([key, label]) => (
+            <button key={key} onClick={() => setPnlGranularity(key)}
+              style={{ ...styles.filterChip, ...(pnlGranularity === key ? styles.filterChipActive : {}) }}>{label}</button>
+          ))}
+        </div>
+        {pnlRows.length === 0 ? <EmptyState text="No cases yet to calculate profit & loss." /> : (
+          <>
+            <div style={styles.cardGrid}>
+              <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(pnlTotals.revenue + pnlTotals.rental)}</div><div style={styles.statLabel}>Total Revenue</div></div>
+              <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(pnlTotals.cost)}</div><div style={styles.statLabel}>Total Cost</div></div>
+              <div style={{ ...styles.reportCard, gridColumn: "1 / -1" }}>
+                <div style={{ ...styles.statValue, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</div>
+                <div style={styles.statLabel}>Net Profit / Loss</div>
+              </div>
+            </div>
+            <div style={styles.card}>
+              {pnlRows.map((r) => (
+                <div key={r.key} style={styles.cardExpanded}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontWeight: 700 }}>{pnlPeriodLabel(r.key, pnlGranularity)}</span>
+                    <span style={{ fontWeight: 700, color: r.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(r.profit)}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5B6864" }}>
+                    <span>{r.cases} case{r.cases > 1 ? "s" : ""}</span>
+                    <span>Revenue {fmtMoney(r.revenue + r.rental)}</span>
+                    <span>Cost {fmtMoney(r.cost)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CollapsibleSection>
 
       <CollapsibleSection title="Stock Overview">
         <div style={styles.card}>
