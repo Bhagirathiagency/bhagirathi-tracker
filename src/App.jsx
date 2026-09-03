@@ -64,9 +64,9 @@ const fmtRelative = (iso) => {
 };
 
 const STATUS = {
-  active: { label: "On Therapy", color: "#D9720A", bg: "#FBEAD3" },
-  stopped: { label: "Stopped", color: "#8A5A2B", bg: "#F5EBDC" },
-  reapplied: { label: "Reapplied", color: "#3B5BA5", bg: "#E7ECF7" },
+  active: { label: "VAC Therapy Applied", color: "#D9720A", bg: "#FBEAD3" },
+  stopped: { label: "VAC Therapy Stop", color: "#8A5A2B", bg: "#F5EBDC" },
+  reapplied: { label: "VAC Therapy Continue", color: "#3B5BA5", bg: "#E7ECF7" },
 };
 const PROTOCOLS = [5, 7];
 const PAY_MODES = ["Cash", "Online", "Credit"];
@@ -1281,9 +1281,9 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         <Field label="Application Time"><input type="time" style={styles.input} value={form.applicationTime} onChange={(e) => set("applicationTime", e.target.value)} /></Field>
         <Field label="Status">
           <select style={styles.input} value={form.status} onChange={(e) => set("status", e.target.value)}>
-            <option value="active">On Therapy</option>
-            <option value="stopped">Stopped</option>
-            <option value="reapplied">Reapplied</option>
+            <option value="active">VAC Therapy Applied</option>
+            <option value="stopped">VAC Therapy Stop</option>
+            <option value="reapplied">VAC Therapy Continue</option>
           </select>
         </Field>
         {form.status !== "active" && (
@@ -2148,6 +2148,21 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     [doctorCalls]
   );
 
+  const patientRevenue = useMemo(() => {
+    const tally = {};
+    cases.forEach((c) => {
+      const patient = (c.patientName || "Unknown").trim() || "Unknown";
+      const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      if (!tally[patient]) tally[patient] = { patient, revenue: 0, paid: 0, cases: 0 };
+      tally[patient].revenue += Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0);
+      tally[patient].paid += paid;
+      tally[patient].cases += 1;
+    });
+    return Object.values(tally)
+      .map((r) => ({ ...r, outstanding: Math.max(0, r.revenue - r.paid) }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [cases]);
+
   const outstandingByPatient = useMemo(() => {
     return cases
       .map((c) => {
@@ -2436,6 +2451,39 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                     <div style={styles.cardMeta}>{c.speciality || "—"} · {c.doctorMobile || "no number"} · by {c.dresserName || "Unassigned"}</div>
                     {(c.products || []).length > 0 && <div style={{ ...styles.mutedSmall, marginTop: 6 }}>Discussed: {c.products.join(", ")}</div>}
                     {c.notes && <div style={{ ...styles.notesText, marginTop: 6 }}>{c.notes}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Patient-wise Revenue Report">
+        {patientRevenue.length === 0 ? <EmptyState text="No cases yet." /> : (
+          <>
+            <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
+              <ResponsiveContainer width="100%" height={Math.max(160, Math.min(patientRevenue.length, 10) * 34)}>
+                <BarChart data={patientRevenue.slice(0, 10)} layout="vertical" margin={{ left: 10, right: 20 }}>
+                  <CartesianGrid stroke="#EEF1EC" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} />
+                  <YAxis type="category" dataKey="patient" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
+                  <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                  <Bar dataKey="revenue" name="Revenue" fill="#D9720A" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={styles.card}>
+              {patientRevenue.map((p) => (
+                <div key={p.patient} style={styles.cardExpanded}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontWeight: 700 }}>{p.patient}</span>
+                    <span style={{ fontWeight: 700, color: "#D9720A" }}>{fmtMoney(p.revenue)}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5B6864", flexWrap: "wrap" }}>
+                    <span>{p.cases} case{p.cases > 1 ? "s" : ""}</span>
+                    <span>Paid {fmtMoney(p.paid)}</span>
+                    {p.outstanding > 0 && <span style={{ color: "#E1483C", fontWeight: 600 }}>Outstanding {fmtMoney(p.outstanding)}</span>}
                   </div>
                 </div>
               ))}
