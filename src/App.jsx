@@ -637,9 +637,12 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
     return list.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [cases, name]);
 
-  const myRentalTotal = useMemo(() => cases
+  const myOutstandingTotal = useMemo(() => cases
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
-    .reduce((s, c) => s + Number(c.machineRentalAmount || 0), 0), [cases, name]);
+    .reduce((s, c) => {
+      const paid = (c.payments || []).reduce((a, p) => a + Number(p.amount || 0), 0);
+      return s + Math.max(0, Number(c.totalAmount || 0) - paid);
+    }, 0), [cases, name]);
 
   const sendSafetyAlert = async () => {
     setSending(true);
@@ -696,9 +699,9 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
             <div style={{ ...styles.statValue, color: "#128577" }}>{myChanges.length}</div>
             <div style={styles.statLabel}>Total dressings logged</div>
           </div>
-          <div style={{ ...styles.statCard, cursor: "default", borderColor: "#12857733" }}>
-            <div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(myRentalTotal)}</div>
-            <div style={styles.statLabel}>Machine rental collected</div>
+          <div style={{ ...styles.statCard, cursor: "default", borderColor: myOutstandingTotal > 0 ? "#E1483C33" : "#12857733" }}>
+            <div style={{ ...styles.statValue, color: myOutstandingTotal > 0 ? "#E1483C" : "#128577" }}>{fmtMoney(myOutstandingTotal)}</div>
+            <div style={styles.statLabel}>Outstanding on your cases</div>
           </div>
         </div>
         {myChanges.length === 0 ? <EmptyState text="Your dressing changes will show up here." /> : (
