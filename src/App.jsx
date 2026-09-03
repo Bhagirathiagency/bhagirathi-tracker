@@ -898,7 +898,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} businessName={business.name} />
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
-        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
+        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} />}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} machines={machines} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
@@ -1277,7 +1277,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
 
         {canManageStock && (
           <CollapsibleSection title="Stock">
-            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} />
+            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} businessId={businessId} />
           </CollapsibleSection>
         )}
         {canManageStock && (
@@ -2650,7 +2650,7 @@ function ChallanPdfView({ ch, onBack, businessName }) {
   );
 }
 
-function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) {
+function StockTab({ products, setProducts, receiveStock, actorName = "Owner", businessId }) {
   const [name, setName] = useState("");
   const [initQty, setInitQty] = useState("");
   const [initCost, setInitCost] = useState("");
@@ -2731,7 +2731,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) 
     setProducts((prev) => [...prev, ...newProducts]);
     setIwacImportDone(true);
   };
-  const newIwacCount = IWAC_PRICE_LIST.filter((item) => !products.some((p) => p.name.toLowerCase() === item.name.toLowerCase())).length;
+  const newIwacCount = businessId === "leelavac" ? IWAC_PRICE_LIST.filter((item) => !products.some((p) => p.name.toLowerCase() === item.name.toLowerCase())).length : 0;
 
   const packDupCount = products.filter((p) => PACK_NAME_CLEANUP[p.name.toLowerCase()]).length;
   const cleanupPackDuplicates = () => {
@@ -2788,7 +2788,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) 
           <button style={styles.primaryBtn} onClick={importIwacList}>Import Iwac Price List ({newIwacCount})</button>
         </div>
       )}
-      {iwacImportDone && newIwacCount === 0 && (
+      {iwacImportDone && newIwacCount === 0 && businessId === "leelavac" && (
         <div style={{ ...styles.emptyState2, marginBottom: 10, color: "#128577" }}>All Iwac items are imported.</div>
       )}
       <SectionTitle>Add Product</SectionTitle>
