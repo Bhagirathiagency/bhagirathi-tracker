@@ -611,7 +611,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 
   return (
     <div style={styles.gateWrap}>
-      {businesses && businesses.length > 1 && (
+      {mode === "owner" && businesses && businesses.length > 1 && (
         <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 24, flexWrap: "wrap" }}>
           {businesses.map((b) => (
             <button key={b.id} onClick={() => onSwitchBusiness(b.id)}
