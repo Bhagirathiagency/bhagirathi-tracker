@@ -1827,6 +1827,28 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     return Object.entries(tally).map(([company, qty]) => ({ company, qty })).sort((a, b) => b.qty - a.qty);
   }, [allReceipts]);
 
+  const companyStockSales = useMemo(() => {
+    const map = {};
+    products.forEach((p) => {
+      (p.receipts || []).forEach((r) => {
+        const co = (r.company || "Unspecified").trim() || "Unspecified";
+        if (!map[co]) map[co] = { company: co, totalReceived: 0, products: {} };
+        map[co].totalReceived += Number(r.qty || 0);
+        if (!map[co].products[p.name]) {
+          map[co].products[p.name] = { name: p.name, received: 0, available: p.available || 0, used: p.used || 0, mrp: p.mrp || 0 };
+        }
+        map[co].products[p.name].received += Number(r.qty || 0);
+      });
+    });
+    return Object.values(map)
+      .map((co) => ({
+        ...co,
+        estSales: Object.values(co.products).reduce((s, pr) => s + pr.used * pr.mrp, 0),
+        productList: Object.values(co.products).sort((a, b) => b.received - a.received),
+      }))
+      .sort((a, b) => b.totalReceived - a.totalReceived);
+  }, [products]);
+
   const doctorMonthlyStats = useMemo(() => {
     const tally = {};
     cases.forEach((c) => {
@@ -1946,6 +1968,28 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               <div key={c.company} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{c.company}</span><span style={styles.mutedSmall}>{c.qty} units</span></div>
             ))}
           </div>
+        </CollapsibleSection>
+      )}
+
+      {companyStockSales.length > 0 && (
+        <CollapsibleSection title="Company-wise Stock & Sales Statement">
+          <div style={{ ...styles.emptyState2, marginBottom: 8 }}>Available &amp; used are current stock-wide figures (stock isn't tracked per supplier batch once received). Est. sales = units used × MRP.</div>
+          {companyStockSales.map((co) => (
+            <div key={co.company} style={{ ...styles.card, marginBottom: 10 }}>
+              <div style={{ padding: "12px 14px", borderBottom: "1px solid #EEF1EC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700 }}>{co.company}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#128577" }}>Est. sales {fmtMoney(co.estSales)}</span>
+              </div>
+              {co.productList.map((p) => (
+                <div key={p.name} style={styles.dresserLine}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{p.name}</span>
+                  <span style={styles.mutedSmall}>Recd {p.received}</span>
+                  <span style={styles.mutedSmall}>Avail {p.available}</span>
+                  <span style={styles.mutedSmall}>Used {p.used}</span>
+                </div>
+              ))}
+            </div>
+          ))}
         </CollapsibleSection>
       )}
 
