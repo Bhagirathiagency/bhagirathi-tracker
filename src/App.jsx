@@ -650,7 +650,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       </header>
 
       <nav style={styles.nav}>
-        {[["dashboard", "Overview", "overview"], ["cases", "Cases", "cases"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["reports", "Reports", "reports"]].map(([key, label, icon]) => (
+        {[["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["reports", "Reports", "reports"]].map(([key, label, icon]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
             <Icon name={icon} size={16} />{label}
           </button>
