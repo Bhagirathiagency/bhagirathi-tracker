@@ -302,6 +302,7 @@ export default function App() {
   const [products, setProducts] = useState(DEFAULT_PRODUCTS);
   const [dressers, setDressers] = useState([]);
   const [dresserPins, setDresserPins] = useState({});
+  const [ownerLogins, setOwnerLogins] = useState([]);
   const [quotations, setQuotations] = useState([]);
   const [doctorCalls, setDoctorCalls] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -325,7 +326,7 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog] = await Promise.all([
         loadKey("wca-cases", []),
         loadKey("wca-machines", []),
         loadKey("wca-products", DEFAULT_PRODUCTS),
@@ -334,6 +335,7 @@ export default function App() {
         loadKey("wca-quotations", []),
         loadKey("wca-dresser-pins", {}),
         loadKey("wca-doctor-calls", []),
+        loadKey("wca-owner-logins", []),
       ]);
       setCases(c);
       setMachines(m);
@@ -343,6 +345,7 @@ export default function App() {
       setQuotations(qts);
       setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
       setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
+      setOwnerLogins(Array.isArray(olog) ? olog : []);
       setLoaded(true);
     })();
   }, []);
@@ -354,6 +357,7 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey("wca-quotations", quotations); }, [quotations, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-dresser-pins", dresserPins); }, [dresserPins, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-doctor-calls", doctorCalls); }, [doctorCalls, loaded]);
+  useEffect(() => { if (loaded) saveKey("wca-owner-logins", ownerLogins); }, [ownerLogins, loaded]);
 
   const saveCase = (data, editingId) => {
     if (editingId) {
@@ -447,6 +451,16 @@ export default function App() {
     } : p));
   };
   const resetTestData = () => { setCases([]); setProducts([]); };
+  const logOwnerLogin = () => {
+    const ua = navigator.userAgent || "";
+    let device = "Unknown device";
+    if (/iPhone|iPad/.test(ua)) device = "iPhone/iPad";
+    else if (/Android/.test(ua)) device = "Android device";
+    else if (/Windows/.test(ua)) device = "Windows PC";
+    else if (/Macintosh/.test(ua)) device = "Mac";
+    const browser = /Chrome/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : /Firefox/.test(ua) ? "Firefox" : "Browser";
+    setOwnerLogins((prev) => [...prev.slice(-49), { id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), device: `${device} · ${browser}` }]);
+  };
   const clearAllOutstanding = () => {
     setCases((prev) => prev.map((c) => {
       const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -474,7 +488,7 @@ export default function App() {
           dressers={dressers}
           dresserPins={dresserPins}
           onSetPin={setOwnerPin}
-          onOwnerLogin={() => setRole({ type: "owner" })}
+          onOwnerLogin={() => { logOwnerLogin(); setRole({ type: "owner" }); }}
           onDresserLogin={(name) => { setRole({ type: "dresser", name }); updateDresserLocation(name); }}
         />
       )}
@@ -487,6 +501,7 @@ export default function App() {
           saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding}
+          ownerLogins={ownerLogins}
           doctorCalls={doctorCalls}
           pin={pin} onChangePin={setOwnerPin}
           onLogout={() => setRole(null)}
@@ -600,7 +615,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, ownerLogins, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -674,7 +689,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} />}
       </main>
     </>
   );
@@ -2193,7 +2208,7 @@ function DoctorCommissionCard({ d }) {
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
 
@@ -2898,6 +2913,20 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
           })}
         </div>
       )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Owner Login Activity" right={ownerLogins && ownerLogins.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#5B6864" }}>{ownerLogins.length}</span> : null}>
+        <div style={{ ...styles.emptyState2, marginBottom: 8 }}>Every time the owner PIN is entered successfully, it's logged here — date, time, and device/browser used — so you can spot any access you don't recognize.</div>
+        {(!ownerLogins || ownerLogins.length === 0) ? <EmptyState text="No login activity recorded yet." /> : (
+          <div style={styles.card}>
+            {[...ownerLogins].reverse().map((l) => (
+              <div key={l.id} style={styles.dresserLine}>
+                <span style={{ flex: 1 }}>{fmtDate(l.date)} · {l.time}</span>
+                <span style={styles.mutedSmall}>{l.device}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </CollapsibleSection>
 
       <SectionTitle>Danger Zone</SectionTitle>
