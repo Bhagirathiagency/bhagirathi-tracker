@@ -1146,6 +1146,7 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [search, setSearch] = useState("");
+  const [openId, setOpenId] = useState(null);
 
   const sorted = [...quotations].sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
   const filtered = sorted.filter((q) => {
@@ -1182,9 +1183,10 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
             {filtered.map((q) => {
               const { total } = quoteTotals(q);
               const st = QUOTE_STATUS[q.status] || QUOTE_STATUS.draft;
+              const open = openId === q.id;
               return (
                 <div key={q.id} style={styles.card}>
-                  <div style={styles.cardTop} onClick={() => setViewing(q)}>
+                  <div style={styles.cardTop} onClick={() => setOpenId(open ? null : q.id)}>
                     <div style={{ flex: 1 }}>
                       <div style={styles.cardTitle}>{q.customerName || "Untitled"}</div>
                       <div style={styles.cardMeta}>{q.quoteNo} · {fmtDate(q.date)}</div>
@@ -1194,12 +1196,14 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
                       <span style={{ ...styles.badge, color: st.color, background: st.bg }}>{st.label}</span>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 16, padding: "0 14px 12px" }}>
-                    <button style={styles.linkBtn} onClick={() => setViewing(q)}>View / Print</button>
-                    <button style={styles.linkBtn} onClick={() => { setEditing(q); setShowForm(true); }}>Edit</button>
-                    <button style={{ ...styles.linkBtn, color: "#E1483C" }}
-                      onClick={() => { if (window.confirm("Delete this quotation?")) deleteQuotation(q.id); }}>Delete</button>
-                  </div>
+                  {open && (
+                    <div style={{ display: "flex", gap: 16, padding: "0 14px 12px" }}>
+                      <button style={styles.linkBtn} onClick={() => setViewing(q)}>View / Print</button>
+                      <button style={styles.linkBtn} onClick={() => { setEditing(q); setShowForm(true); }}>Edit</button>
+                      <button style={{ ...styles.linkBtn, color: "#E1483C" }}
+                        onClick={() => { if (window.confirm("Delete this quotation?")) deleteQuotation(q.id); }}>Delete</button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1664,6 +1668,7 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
   const [name, setName] = useState("");
   const [newPin, setNewPin] = useState("");
   const [pinEdits, setPinEdits] = useState({});
+  const [openId, setOpenId] = useState(null);
   const countFor = (n) => (dresserStats.find((d) => d.name.toLowerCase() === n.toLowerCase()) || {}).count || 0;
 
   const submitAdd = () => {
@@ -1706,31 +1711,42 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
         <EmptyState text="No dressers added yet." />
       ) : (
         <div style={styles.list}>
-          {dressers.map((d) => (
+          {dressers.map((d) => {
+            const open = openId === d;
+            return (
             <div key={d} style={styles.card}>
-              <div style={styles.cardTop}>
+              <div style={styles.cardTop} onClick={() => setOpenId(open ? null : d)}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.cardTitle}>{d}</div>
                   <div style={styles.cardMeta}>{countFor(d)} dressing{countFor(d) === 1 ? "" : "s"} logged</div>
                 </div>
-                <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => removeDresser(d)}>Remove</button>
-              </div>
-              <div style={{ padding: "0 14px 14px" }}>
-                {dresserPins[d] ? (
-                  <span style={{ ...styles.badge, color: "#128577", background: "#E3F3EF" }}>PIN protected</span>
-                ) : (
-                  <span style={{ ...styles.badge, color: "#E1483C", background: "#FCE7E4" }}>No PIN — anyone can log in as {d}</span>
-                )}
-                <div style={{ ...styles.addPaymentRow, marginTop: 8 }}>
-                  <input type="text" inputMode="numeric" placeholder={dresserPins[d] ? "New PIN (4+ digits)" : "Set PIN (4+ digits)"}
-                    style={styles.smallInput} value={pinEdits[d] || ""}
-                    onChange={(e) => setPinEdits((prev) => ({ ...prev, [d]: e.target.value }))} />
-                  <button style={styles.smallBtn} onClick={() => savePinEdit(d)}>Save PIN</button>
-                  {dresserPins[d] && <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => setDresserPin(d, undefined)}>Clear</button>}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                  {dresserPins[d] ? (
+                    <span style={{ ...styles.badge, color: "#128577", background: "#E3F3EF" }}>PIN protected</span>
+                  ) : (
+                    <span style={{ ...styles.badge, color: "#E1483C", background: "#FCE7E4" }}>No PIN</span>
+                  )}
+                  <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
                 </div>
               </div>
+              {open && (
+                <div style={{ padding: "0 14px 14px" }}>
+                  {!dresserPins[d] && (
+                    <div style={{ ...styles.mutedSmall, color: "#E1483C", marginBottom: 6 }}>Anyone can log in as {d} until a PIN is set.</div>
+                  )}
+                  <div style={styles.addPaymentRow}>
+                    <input type="text" inputMode="numeric" placeholder={dresserPins[d] ? "New PIN (4+ digits)" : "Set PIN (4+ digits)"}
+                      style={styles.smallInput} value={pinEdits[d] || ""}
+                      onChange={(e) => setPinEdits((prev) => ({ ...prev, [d]: e.target.value }))} />
+                    <button style={styles.smallBtn} onClick={() => savePinEdit(d)}>Save PIN</button>
+                    {dresserPins[d] && <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => setDresserPin(d, undefined)}>Clear</button>}
+                  </div>
+                  <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => removeDresser(d)}>Remove Dresser</button>
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
