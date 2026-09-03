@@ -337,7 +337,12 @@ export default function App() {
   useEffect(() => {
     (async () => {
       const raw = await loadKey("wca-dresser-business-access", {});
-      setDresserBusinessAccessState(raw && typeof raw === "object" ? raw : {});
+      const access = raw && typeof raw === "object" ? { ...raw } : {};
+      const allBusinessIds = BUSINESSES.map((b) => b.id);
+      if (access["jayesh"] === undefined) access["jayesh"] = allBusinessIds;
+      if (access["devashish"] === undefined) access["devashish"] = allBusinessIds;
+      if (access["pratik"] === undefined) access["pratik"] = ["bhagirathi"];
+      setDresserBusinessAccessState(access);
       setBusinessAccessLoaded(true);
     })();
   }, []);
