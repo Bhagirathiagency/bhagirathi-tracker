@@ -418,6 +418,7 @@ export default function App() {
           name={role.name} cases={cases} machines={machines} products={products} saveCase={saveCase}
           addDressingChange={addDressingChange} capturePhoto={capturePhoto}
           updateDresserLocation={updateDresserLocation}
+          quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           onLogout={() => setRole(null)}
         />
       )}
@@ -624,7 +625,7 @@ function ChangePinForm({ pin, onChangePin, onDone }) {
 }
 
 // ================= DRESSER SHELL =================
-function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, onLogout }) {
+function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
@@ -708,6 +709,12 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
               ))}
             </div>
           )}
+        </CollapsibleSection>
+
+        <CollapsibleSection title="My Quotations">
+          <QuotationsTab quotations={quotations} products={products} saveQuotation={saveQuotation}
+            deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
+            creatorName={name} restrictToCreator />
         </CollapsibleSection>
       </main>
     </>
@@ -1170,14 +1177,17 @@ function Field({ label, children }) {
 
 // ---------------- Machines ----------------
 // ================= QUOTATIONS =================
-function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, setQuotationStatus }) {
+function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, setQuotationStatus, creatorName = "Owner", restrictToCreator = false }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState(null);
 
-  const sorted = [...quotations].sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+  const visible = restrictToCreator
+    ? quotations.filter((q) => (q.createdBy || "Owner").trim().toLowerCase() === creatorName.trim().toLowerCase())
+    : quotations;
+  const sorted = [...visible].sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
   const filtered = sorted.filter((q) => {
     const t = search.trim().toLowerCase();
     if (!t) return true;
@@ -1204,10 +1214,13 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
       {showForm && (
         <QuotationForm products={products} initial={editing} quotations={quotations}
           onCancel={() => { setShowForm(false); setEditing(null); }}
-          onSave={(data) => { saveQuotation(data, editing?.id); setShowForm(false); setEditing(null); }} />
+          onSave={(data) => {
+            saveQuotation({ ...data, createdBy: editing ? (editing.createdBy || creatorName) : creatorName }, editing?.id);
+            setShowForm(false); setEditing(null);
+          }} />
       )}
       {!showForm && (
-        filtered.length === 0 ? <EmptyState text="No quotations yet" /> : (
+        filtered.length === 0 ? <EmptyState text={restrictToCreator ? "You haven't created any quotations yet." : "No quotations yet"} /> : (
           <div style={styles.list}>
             {filtered.map((q) => {
               const { total } = quoteTotals(q);
@@ -1218,7 +1231,7 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
                   <div style={styles.cardTop} onClick={() => setOpenId(open ? null : q.id)}>
                     <div style={{ flex: 1 }}>
                       <div style={styles.cardTitle}>{q.customerName || "Untitled"}</div>
-                      <div style={styles.cardMeta}>{q.quoteNo} · {fmtDate(q.date)}</div>
+                      <div style={styles.cardMeta}>{q.quoteNo} · {fmtDate(q.date)}{!restrictToCreator ? ` · by ${q.createdBy || "Owner"}` : ""}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>{fmtMoney(total)}</div>
