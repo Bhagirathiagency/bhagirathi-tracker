@@ -216,6 +216,7 @@ export default function App() {
   const [machines, setMachines] = useState([]);
   const [products, setProducts] = useState(DEFAULT_PRODUCTS);
   const [dressers, setDressers] = useState([]);
+  const [dresserPins, setDresserPins] = useState({});
   const [quotations, setQuotations] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -238,13 +239,14 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [c, m, p, ownerPin, drs, qts] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins] = await Promise.all([
         loadKey("wca-cases", []),
         loadKey("wca-machines", []),
         loadKey("wca-products", DEFAULT_PRODUCTS),
         loadKey("wca-owner-pin", null),
         loadKey("wca-dressers", []),
         loadKey("wca-quotations", []),
+        loadKey("wca-dresser-pins", {}),
       ]);
       setCases(c);
       setMachines(m);
@@ -252,6 +254,7 @@ export default function App() {
       setPin(ownerPin);
       setDressers(drs);
       setQuotations(qts);
+      setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
       setLoaded(true);
     })();
   }, []);
@@ -261,6 +264,7 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey("wca-products", products); }, [products, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-dressers", dressers); }, [dressers, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-quotations", quotations); }, [quotations, loaded]);
+  useEffect(() => { if (loaded) saveKey("wca-dresser-pins", dresserPins); }, [dresserPins, loaded]);
 
   const saveCase = (data, editingId) => {
     if (editingId) {
@@ -299,12 +303,17 @@ export default function App() {
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, photoFlags: { ...(c.photoFlags || {}), [stage]: true } } : c));
   };
   const setOwnerPin = (newPin) => { setPin(newPin); saveKey("wca-owner-pin", newPin); };
-  const addDresser = (name) => {
+  const addDresser = (name, dresserPin) => {
     const trimmed = name.trim();
     if (!trimmed || dressers.some((d) => d.toLowerCase() === trimmed.toLowerCase())) return;
     setDressers((prev) => [...prev, trimmed]);
+    if (dresserPin) setDresserPins((prev) => ({ ...prev, [trimmed]: String(dresserPin) }));
   };
-  const removeDresser = (name) => setDressers((prev) => prev.filter((d) => d !== name));
+  const removeDresser = (name) => {
+    setDressers((prev) => prev.filter((d) => d !== name));
+    setDresserPins((prev) => { const next = { ...prev }; delete next[name]; return next; });
+  };
+  const setDresserPin = (name, newPin) => setDresserPins((prev) => ({ ...prev, [name]: newPin ? String(newPin) : undefined }));
   const updateDresserLocation = async (name) => {
     const loc = await getLocation();
     if (loc) {
@@ -348,6 +357,7 @@ export default function App() {
         <RoleGate
           pin={pin}
           dressers={dressers}
+          dresserPins={dresserPins}
           onSetPin={setOwnerPin}
           onOwnerLogin={() => setRole({ type: "owner" })}
           onDresserLogin={(name) => { setRole({ type: "dresser", name }); updateDresserLocation(name); }}
@@ -358,6 +368,7 @@ export default function App() {
           cases={cases} machines={machines} setMachines={setMachines}
           products={products} setProducts={setProducts} receiveStock={receiveStock}
           dressers={dressers} addDresser={addDresser} removeDresser={removeDresser}
+          dresserPins={dresserPins} setDresserPin={setDresserPin}
           saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           pin={pin} onChangePin={setOwnerPin}
@@ -377,12 +388,15 @@ export default function App() {
 }
 
 // ================= ROLE GATE =================
-function RoleGate({ pin, dressers, onSetPin, onOwnerLogin, onDresserLogin }) {
+function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresserLogin }) {
   const [mode, setMode] = useState("dresser");
   const [input, setInput] = useState("");
   const [confirmInput, setConfirmInput] = useState("");
   const [error, setError] = useState("");
   const [tapCount, setTapCount] = useState(0);
+  const [pendingDresser, setPendingDresser] = useState(null);
+  const [dresserPinInput, setDresserPinInput] = useState("");
+  const [dresserError, setDresserError] = useState("");
 
   const submitOwner = () => {
     if (!pin) {
@@ -398,6 +412,21 @@ function RoleGate({ pin, dressers, onSetPin, onOwnerLogin, onDresserLogin }) {
     const next = tapCount + 1;
     if (next >= 5) { setMode("owner"); setError(""); setTapCount(0); }
     else setTapCount(next);
+  };
+
+  const selectDresser = (d) => {
+    if (!dresserPins[d]) { onDresserLogin(d); return; } // no PIN set yet — allow in, but owner should set one
+    setPendingDresser(d);
+    setDresserPinInput("");
+    setDresserError("");
+  };
+  const submitDresserPin = () => {
+    if (dresserPinInput === dresserPins[pendingDresser]) {
+      onDresserLogin(pendingDresser);
+    } else {
+      setDresserError("Incorrect PIN");
+      setDresserPinInput("");
+    }
   };
 
   return (
@@ -417,7 +446,7 @@ function RoleGate({ pin, dressers, onSetPin, onOwnerLogin, onDresserLogin }) {
         </div>
       )}
 
-      {mode === "dresser" && (
+      {mode === "dresser" && !pendingDresser && (
         <div style={styles.gateForm}>
           <div style={styles.gateHint}>You'll only see your own cases and dressing log — no billing details. Your location is recorded when you log in, log a change, and periodically while this app is open, for safety and record-keeping.</div>
           {dressers.length === 0 ? (
@@ -425,10 +454,23 @@ function RoleGate({ pin, dressers, onSetPin, onOwnerLogin, onDresserLogin }) {
           ) : (
             <div style={{ ...styles.gateOptions, marginTop: 4 }}>
               {dressers.map((d) => (
-                <button key={d} style={{ ...styles.gateBtn, ...styles.gateBtnAlt }} onClick={() => onDresserLogin(d)}>{d}</button>
+                <button key={d} style={{ ...styles.gateBtn, ...styles.gateBtnAlt }} onClick={() => selectDresser(d)}>{d}</button>
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {mode === "dresser" && pendingDresser && (
+        <div style={styles.gateForm}>
+          <div style={styles.gateHint}>Enter {pendingDresser}'s PIN</div>
+          <input type="password" inputMode="numeric" placeholder="PIN" autoFocus value={dresserPinInput}
+            onChange={(e) => setDresserPinInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submitDresserPin(); }}
+            style={styles.gateInput} />
+          {dresserError && <div style={styles.gateError}>{dresserError}</div>}
+          <button style={styles.primaryBtn} onClick={submitDresserPin}>Unlock</button>
+          <button style={styles.linkBtn} onClick={() => setPendingDresser(null)}>Back</button>
         </div>
       )}
     </div>
@@ -436,7 +478,7 @@ function RoleGate({ pin, dressers, onSetPin, onOwnerLogin, onDresserLogin }) {
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -507,7 +549,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
-        {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserStats={dresserStats} />}
+        {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} />}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} />}
       </main>
     </>
@@ -1545,9 +1587,23 @@ function StockTab({ products, setProducts, receiveStock }) {
 }
 
 // ---------------- Dressers (Owner) ----------------
-function DressersTab({ dressers, addDresser, removeDresser, dresserStats }) {
+function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserStats }) {
   const [name, setName] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [pinEdits, setPinEdits] = useState({});
   const countFor = (n) => (dresserStats.find((d) => d.name.toLowerCase() === n.toLowerCase()) || {}).count || 0;
+
+  const submitAdd = () => {
+    if (!name.trim()) return;
+    addDresser(name, newPin.trim());
+    setName(""); setNewPin("");
+  };
+  const savePinEdit = (d) => {
+    const val = (pinEdits[d] || "").trim();
+    if (val && val.length < 4) { alert("PIN should be at least 4 digits"); return; }
+    setDresserPin(d, val || undefined);
+    setPinEdits((prev) => ({ ...prev, [d]: "" }));
+  };
 
   return (
     <div>
@@ -1558,11 +1614,19 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserStats }) {
           placeholder="Dresser's name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { addDresser(name); setName(""); } }}
+          onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); }}
         />
-        <button style={styles.smallBtn} onClick={() => { addDresser(name); setName(""); }}>Add</button>
+        <input
+          style={{ ...styles.smallInput, width: 90 }}
+          placeholder="PIN (4+ digits)"
+          inputMode="numeric"
+          value={newPin}
+          onChange={(e) => setNewPin(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); }}
+        />
+        <button style={styles.smallBtn} onClick={submitAdd}>Add</button>
       </div>
-      <div style={styles.emptyState2}>Only names added here can log in as a dresser. Employees who aren't listed can't access any case data.</div>
+      <div style={styles.emptyState2}>Only names added here can log in as a dresser. Give each dresser their own PIN so they can't log in under someone else's name.</div>
 
       <SectionTitle>Team</SectionTitle>
       {dressers.length === 0 ? (
@@ -1577,6 +1641,20 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserStats }) {
                   <div style={styles.cardMeta}>{countFor(d)} dressing{countFor(d) === 1 ? "" : "s"} logged</div>
                 </div>
                 <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => removeDresser(d)}>Remove</button>
+              </div>
+              <div style={{ padding: "0 14px 14px" }}>
+                {dresserPins[d] ? (
+                  <span style={{ ...styles.badge, color: "#1B6B63", background: "#E4F1EE" }}>PIN protected</span>
+                ) : (
+                  <span style={{ ...styles.badge, color: "#B3542F", background: "#F5E4DC" }}>No PIN — anyone can log in as {d}</span>
+                )}
+                <div style={{ ...styles.addPaymentRow, marginTop: 8 }}>
+                  <input type="text" inputMode="numeric" placeholder={dresserPins[d] ? "New PIN (4+ digits)" : "Set PIN (4+ digits)"}
+                    style={styles.smallInput} value={pinEdits[d] || ""}
+                    onChange={(e) => setPinEdits((prev) => ({ ...prev, [d]: e.target.value }))} />
+                  <button style={styles.smallBtn} onClick={() => savePinEdit(d)}>Save PIN</button>
+                  {dresserPins[d] && <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => setDresserPin(d, undefined)}>Clear</button>}
+                </div>
               </div>
             </div>
           ))}
