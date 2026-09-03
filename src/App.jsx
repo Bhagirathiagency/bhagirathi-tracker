@@ -338,6 +338,19 @@ export default function App() {
   const addDressingChange = (caseId, entry) => {
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, dressingChanges: [...(c.dressingChanges || []), { id: uid(), ...entry }] } : c));
   };
+  const addAdditionalItem = (caseId, entry) => {
+    const qty = Number(entry.qty) || 1;
+    setCases((prev) => prev.map((c) => c.id === caseId ? {
+      ...c,
+      additionalItems: [...(c.additionalItems || []), { id: uid(), date: todayISO(), ...entry, qty }],
+      totalAmount: Number(c.totalAmount || 0) + (Number(entry.extraCharge) || 0),
+    } : c));
+    if (entry.name) {
+      setProducts((prev) => prev.map((p) => p.name === entry.name
+        ? { ...p, available: Math.max(0, (p.available || 0) - qty), used: (p.used || 0) + qty }
+        : p));
+    }
+  };
   const capturePhoto = async (caseId, stage, dataURL) => {
     await saveKey(photoKey(caseId, stage), dataURL);
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, photoFlags: { ...(c.photoFlags || {}), [stage]: true } } : c));
@@ -422,7 +435,7 @@ export default function App() {
           products={products} setProducts={setProducts} receiveStock={receiveStock}
           dressers={dressers} addDresser={addDresser} removeDresser={removeDresser}
           dresserPins={dresserPins} setDresserPin={setDresserPin}
-          saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange}
+          saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding}
           doctorCalls={doctorCalls}
@@ -433,7 +446,7 @@ export default function App() {
       {role && role.type === "dresser" && (
         <DresserShell
           name={role.name} cases={cases} machines={machines} products={products} saveCase={saveCase}
-          addDressingChange={addDressingChange} capturePhoto={capturePhoto}
+          addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem} capturePhoto={capturePhoto}
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
@@ -535,7 +548,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -600,7 +613,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         )}
         {tab === "cases" && (
           <CasesTab cases={cases} machines={machines} products={products} saveCase={saveCase} deleteCase={deleteCase}
-            addPayment={addPayment} addDressingChange={addDressingChange} />
+            addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem} />
         )}
         {tab === "quotations" && (
           <QuotationsTab quotations={quotations} products={products} saveQuotation={saveQuotation}
@@ -643,7 +656,7 @@ function ChangePinForm({ pin, onChangePin, onDone }) {
 }
 
 // ================= DRESSER SHELL =================
-function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, onLogout }) {
+function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
@@ -698,8 +711,9 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
           {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
             <div style={styles.list}>
               {myCasesActive.map((c) => (
-                <DresserCaseRow key={c.id} c={c} dresserName={name}
+                <DresserCaseRow key={c.id} c={c} dresserName={name} products={products}
                   onAddDressingChange={(e) => addDressingChange(c.id, e)}
+                  onAddAdditionalItem={(e) => addAdditionalItem(c.id, e)}
                   onCapturePhoto={(stage, dataURL) => capturePhoto(c.id, stage, dataURL)} />
               ))}
             </div>
@@ -810,7 +824,49 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall }) {
   );
 }
 
-function DresserCaseRow({ c, dresserName, onAddDressingChange, onCapturePhoto }) {
+function AdditionalItemsBlock({ c, products, onAddAdditionalItem }) {
+  const [name, setName] = useState("");
+  const [qty, setQty] = useState(1);
+  const [extraCharge, setExtraCharge] = useState("");
+  const [note, setNote] = useState("");
+  const items = c.additionalItems || [];
+
+  const submit = () => {
+    if (!name) return;
+    onAddAdditionalItem({ name, qty: Number(qty) || 1, extraCharge: Number(extraCharge) || 0, note: note.trim() });
+    setName(""); setQty(1); setExtraCharge(""); setNote("");
+  };
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={styles.detailLabel}>Additional items used (e.g. extra canister, foam)</div>
+      {items.length > 0 && (
+        <div style={{ ...styles.card, margin: "6px 0" }}>
+          {items.map((it) => (
+            <div key={it.id} style={styles.dresserLine}>
+              <span style={{ flex: 1 }}>{it.name} × {it.qty}</span>
+              <span style={styles.mutedSmall}>{fmtDate(it.date)}</span>
+              {Number(it.extraCharge) > 0 && <span style={{ fontWeight: 700, color: "#D9720A" }}>+{fmtMoney(it.extraCharge)}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={styles.addPaymentRow}>
+        <select style={{ ...styles.smallInput, flex: 2 }} value={name} onChange={(e) => setName(e.target.value)}>
+          <option value="">Select item…</option>
+          {products.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+        </select>
+        <input type="number" min="1" style={{ ...styles.smallInput, width: 55 }} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Qty" />
+        <input type="number" style={{ ...styles.smallInput, width: 90 }} value={extraCharge} onChange={(e) => setExtraCharge(e.target.value)} placeholder="Extra ₹" />
+      </div>
+      <input type="text" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)}
+        style={{ ...styles.smallInput, width: "100%", marginTop: 8, boxSizing: "border-box" }} />
+      <button style={{ ...styles.smallBtn, width: "100%", marginTop: 8 }} onClick={submit} disabled={!name}>+ Add Item</button>
+    </div>
+  );
+}
+
+function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAdditionalItem, onCapturePhoto }) {
   const [open, setOpen] = useState(false);
   const [protocolDays, setProtocolDays] = useState(c.protocolDays || 5);
   const [note, setNote] = useState("");
@@ -870,6 +926,8 @@ function DresserCaseRow({ c, dresserName, onAddDressingChange, onCapturePhoto })
             onAddDressingChange({ date: todayISO(), dresserName, protocolDays, note });
             setNote(""); setOpen(false);
           }}>Log Today's Change</button>
+
+          <AdditionalItemsBlock c={c} products={products} onAddAdditionalItem={onAddAdditionalItem} />
         </div>
       )}
     </div>
@@ -935,7 +993,7 @@ function SectionTitle({ children }) { return <div style={styles.sectionTitle}>{c
 function EmptyState({ text }) { return <div style={styles.emptyState}>{text}</div>; }
 
 // ---------------- Cases (Owner) ----------------
-function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange }) {
+function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [filter, setFilter] = useState("all"); const [search, setSearch] = useState("");
@@ -972,7 +1030,8 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
               onEdit={() => { setEditing(c); setShowForm(true); }}
               onDelete={() => deleteCase(c.id)}
               onAddPayment={(p) => addPayment(c.id, p)}
-              onAddDressingChange={(e) => addDressingChange(c.id, e)} />
+              onAddDressingChange={(e) => addDressingChange(c.id, e)}
+              onAddAdditionalItem={(e) => addAdditionalItem(c.id, e)} />
           ))}
         </div>
       )}
@@ -980,7 +1039,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
   );
 }
 
-function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, onAddDressingChange }) {
+function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, onAddDressingChange, onAddAdditionalItem }) {
   const [open, setOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payNote, setPayNote] = useState("");
@@ -1079,6 +1138,10 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
               </div>
             )}
           </div>
+
+          {c.status === "active" && onAddAdditionalItem && (
+            <AdditionalItemsBlock c={c} products={products} onAddAdditionalItem={onAddAdditionalItem} />
+          )}
 
           <div style={{ ...styles.paymentsSection, marginTop: 14 }}>
             <div style={styles.detailLabel}>Payment history</div>
