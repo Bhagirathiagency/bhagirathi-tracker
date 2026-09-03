@@ -897,7 +897,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
           <QuotationsTab quotations={quotations} products={products} saveQuotation={saveQuotation}
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} businessName={business.name} />
         )}
-        {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
+        {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} businessId={businessId} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} />}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} machines={machines} />}
@@ -2250,11 +2250,29 @@ function QuotationView({ q, onBack, onEdit, onStatus, businessName = "Bhagirathi
   );
 }
 
-function MachinesTab({ machines, setMachines, machineInUse, cases }) {
+const LEELA_MACHINES_IMPORT = [
+  { model: "Intigrow Plus", serial: "IWP-0226-014" },
+  { model: "Intigrow Plus", serial: "IWP-0226-015" },
+  { model: "Intigrow Plus", serial: "IWP-0226-016" },
+  { model: "Intigrow Plus", serial: "IWP-0226-017" },
+  { model: "Intigrow", serial: "IWP-0326-72" },
+  { model: "Intigrow", serial: "41INP422550" },
+  { model: "Intigrow", serial: "INP-0826-08" },
+  { model: "Intigrow", serial: "INP-0326-73" },
+  { model: "Intigrow", serial: "INP-0326-72" },
+  { model: "Intigrow", serial: "INP-0826-06" },
+  { model: "Intigrow", serial: "21INP5425100" },
+  { model: "Intigrow", serial: "26INP5425100" },
+  { model: "Intigrow", serial: "40INP5425100" },
+  { model: "Intigrow", serial: "INP-0826-07" },
+];
+
+function MachinesTab({ machines, setMachines, machineInUse, cases, businessId }) {
   const [showForm, setShowForm] = useState(false);
   const [serial, setSerial] = useState("");
   const [model, setModel] = useState("");
   const [openId, setOpenId] = useState(null);
+  const [leelaImportDone, setLeelaImportDone] = useState(false);
   const addMachine = () => {
     if (!serial.trim()) return;
     setMachines((prev) => [...prev, { id: uid(), serial: serial.trim(), model: model.trim() || "NPWT Unit" }]);
@@ -2262,8 +2280,30 @@ function MachinesTab({ machines, setMachines, machineInUse, cases }) {
   };
   const removeMachine = (id) => setMachines((prev) => prev.filter((m) => m.id !== id));
 
+  const newLeelaMachineCount = businessId === "leelavac"
+    ? LEELA_MACHINES_IMPORT.filter((item) => !machines.some((m) => m.serial.toLowerCase() === item.serial.toLowerCase())).length
+    : 0;
+  const importLeelaMachines = () => {
+    const existing = new Set(machines.map((m) => m.serial.toLowerCase()));
+    const toAdd = LEELA_MACHINES_IMPORT.filter((item) => !existing.has(item.serial.toLowerCase()));
+    if (toAdd.length === 0) { setLeelaImportDone(true); return; }
+    setMachines((prev) => [...prev, ...toAdd.map((item) => ({ id: uid(), serial: item.serial, model: item.model }))]);
+    setLeelaImportDone(true);
+  };
+
   return (
     <div>
+      {newLeelaMachineCount > 0 && (
+        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FBEAD3" }}>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            <strong>{newLeelaMachineCount} machine{newLeelaMachineCount > 1 ? "s" : ""}</strong> (Intigrow / Intigrow Plus, by serial number) ready to import.
+          </div>
+          <button style={styles.primaryBtn} onClick={importLeelaMachines}>Import Leela Machines ({newLeelaMachineCount})</button>
+        </div>
+      )}
+      {leelaImportDone && newLeelaMachineCount === 0 && businessId === "leelavac" && (
+        <div style={{ ...styles.emptyState2, marginBottom: 10, color: "#128577" }}>All Leela machines are imported.</div>
+      )}
       {showForm ? (
         <div style={styles.formGrid}>
           <Field label="Serial Number"><input style={styles.input} value={serial} onChange={(e) => setSerial(e.target.value)} /></Field>
