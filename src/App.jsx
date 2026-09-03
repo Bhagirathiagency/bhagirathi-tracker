@@ -863,6 +863,11 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
 function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, business, businessId, businesses, myBusinesses, onSwitchBusiness, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
+  const myTodaysVisits = useMemo(() => myCasesActive
+    .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
+    .map((c) => ({ ...c, due: nextDueDate(c), overdue: overdueDays(c) }))
+    .filter((c) => c.due <= todayISO())
+    .sort((a, b) => b.overdue - a.overdue), [myCasesActive, name]);
 
   useEffect(() => {
     const interval = setInterval(() => { updateDresserLocation(name); }, 5 * 60 * 1000);
@@ -929,6 +934,21 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         </CollapsibleSection>
 
         <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
+
+        {myTodaysVisits.length > 0 && (
+          <CollapsibleSection title="Today's Visits" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
+            <div style={styles.card}>
+              {myTodaysVisits.map((c) => (
+                <div key={c.id} style={styles.dresserLine}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: c.overdue > 0 ? "#E1483C" : "#D98D2B" }}>
+                    {c.overdue > 0 ? `${c.overdue}d overdue` : "Due today"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
 
         <CollapsibleSection title="Cases on Therapy" defaultOpen>
           {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
@@ -1178,6 +1198,14 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
 function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInUseCount, overdueCount, dresserStats, lowStock, products, setTab }) {
   const recentCases = [...cases].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)).slice(0, 5);
 
+  const todaysVisits = useMemo(() => {
+    return cases
+      .filter((c) => c.status === "active")
+      .map((c) => ({ ...c, due: nextDueDate(c), overdue: overdueDays(c) }))
+      .filter((c) => c.due <= todayISO())
+      .sort((a, b) => b.overdue - a.overdue || new Date(a.due) - new Date(b.due));
+  }, [cases]);
+
   return (
     <div>
       <div style={styles.cardGrid}>
@@ -1186,6 +1214,22 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
         <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#D98D2B" icon="quotes" onClick={() => setTab("cases")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
       </div>
+
+      {todaysVisits.length > 0 && (
+        <CollapsibleSection title="Today's Visits" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{todaysVisits.length}</span>}>
+          <div style={styles.card}>
+            {todaysVisits.map((c) => (
+              <div key={c.id} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
+                <span style={styles.mutedSmall}>{c.dresserName || "Unassigned"}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: c.overdue > 0 ? "#E1483C" : "#D98D2B" }}>
+                  {c.overdue > 0 ? `${c.overdue}d overdue` : "Due today"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
 
       {lowStock.length > 0 && (
         <CollapsibleSection title="Stock Alerts" right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{lowStock.length}</span>}>
