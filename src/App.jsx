@@ -456,11 +456,11 @@ export default function App() {
   const deleteQuotation = (id) => setQuotations((prev) => prev.filter((q) => q.id !== id));
   const setQuotationStatus = (id, status) =>
     setQuotations((prev) => prev.map((q) => (q.id === id ? { ...q, status } : q)));
-  const receiveStock = (productId, qty, company) => {
+  const receiveStock = (productId, qty, company, receivedBy) => {
     setProducts((prev) => prev.map((p) => p.id === productId ? {
       ...p,
       available: (p.available || 0) + qty,
-      receipts: [...(p.receipts || []), { id: uid(), date: todayISO(), qty, company: company || "Unspecified" }],
+      receipts: [...(p.receipts || []), { id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), qty, company: company || "Unspecified", receivedBy: receivedBy || "Owner" }],
     } : p));
   };
   const resetTestData = () => { setCases([]); setProducts([]); };
@@ -892,7 +892,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
 
         {canManageStock && (
           <CollapsibleSection title="Stock">
-            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />
+            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} />
           </CollapsibleSection>
         )}
       </main>
@@ -2009,7 +2009,7 @@ const PACK_NAME_CLEANUP = {
   "prevena plus 150ml canister 5/pk": "Prevena Plus 150ml Canister",
 };
 
-function StockTab({ products, setProducts, receiveStock }) {
+function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) {
   const [name, setName] = useState("");
   const [initQty, setInitQty] = useState("");
   const [initCost, setInitCost] = useState("");
@@ -2021,7 +2021,12 @@ function StockTab({ products, setProducts, receiveStock }) {
 
   const addProduct = () => {
     if (!name.trim() || products.some((p) => p.name === name.trim())) return;
-    setProducts((prev) => [...prev, { id: uid(), name: name.trim(), available: Number(initQty) || 0, used: 0, costPrice: Number(initCost) || 0, mrp: Number(initMrp) || 0, receipts: [], variants: [] }]);
+    const qty = Number(initQty) || 0;
+    setProducts((prev) => [...prev, {
+      id: uid(), name: name.trim(), available: qty, used: 0, costPrice: Number(initCost) || 0, mrp: Number(initMrp) || 0,
+      receipts: qty > 0 ? [{ id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), qty, company: "Unspecified", receivedBy: actorName }] : [],
+      variants: [],
+    }]);
     setName(""); setInitQty(""); setInitCost(""); setInitMrp("");
   };
   const remove = (id) => setProducts((prev) => prev.filter((p) => p.id !== id));
@@ -2032,7 +2037,7 @@ function StockTab({ products, setProducts, receiveStock }) {
     const f = receiveForm[id] || {};
     const qty = Number(f.qty);
     if (!qty || qty <= 0) return;
-    receiveStock(id, qty, f.company);
+    receiveStock(id, qty, f.company, actorName);
     setReceiveForm((prev) => ({ ...prev, [id]: { qty: "", company: "" } }));
   };
   const addVariant = (id) => {
@@ -2904,6 +2909,22 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
             </div>
           ))}
         </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Stock Activity Log" right={allReceipts.length > 0 ? <span style={{ fontSize: 12, color: "#8A9A96" }}>{allReceipts.length}</span> : null}>
+        <div style={{ ...styles.emptyState2, marginBottom: 8 }}>Every time stock is received or a product is added — by you or by a dresser with stock access — it's logged here with who did it.</div>
+        {allReceipts.length === 0 ? <EmptyState text="No stock activity logged yet." /> : (
+          <div style={styles.card}>
+            {allReceipts.slice(0, 40).map((r) => (
+              <div key={r.id} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{r.product}</span>
+                <span style={styles.mutedSmall}>+{r.qty} · {r.company}</span>
+                <span style={{ ...styles.mutedSmall, color: "#D9720A", fontWeight: 600 }}>{r.receivedBy || "Owner"}</span>
+                <span style={styles.mutedSmall}>{fmtDate(r.date)}{r.time ? ` ${r.time}` : ""}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </CollapsibleSection>
 
       {companyTotals.length > 0 && (
