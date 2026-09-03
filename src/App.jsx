@@ -504,7 +504,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
     return Object.entries(tally).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
   }, [cases]);
 
-  const lowStock = products.filter((p) => (p.available || 0) <= LOW_STOCK_THRESHOLD);
+  const lowStock = products.filter((p) => (p.available || 0) < LOW_STOCK_THRESHOLD);
 
   return (
     <>
@@ -1541,7 +1541,7 @@ function StockTab({ products, setProducts, receiveStock }) {
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                <span style={{ ...styles.badge, color: (p.available || 0) <= LOW_STOCK_THRESHOLD ? "#B3542F" : "#1B6B63", background: (p.available || 0) <= LOW_STOCK_THRESHOLD ? "#F5E4DC" : "#E4F1EE" }}>{p.available || 0} available</span>
+                <span style={{ ...styles.badge, color: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#B3542F" : "#1B6B63", background: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#F5E4DC" : "#E4F1EE" }}>{p.available || 0} available</span>
                 <span style={{ fontSize: 11, color: "#8A9490" }}>{open ? "▲ hide" : "▼ details"}</span>
               </div>
             </div>
