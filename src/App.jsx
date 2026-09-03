@@ -254,6 +254,7 @@ export default function App() {
   const [dressers, setDressers] = useState([]);
   const [dresserPins, setDresserPins] = useState({});
   const [quotations, setQuotations] = useState([]);
+  const [doctorCalls, setDoctorCalls] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -275,7 +276,7 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [c, m, p, ownerPin, drs, qts, drPins] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls] = await Promise.all([
         loadKey("wca-cases", []),
         loadKey("wca-machines", []),
         loadKey("wca-products", DEFAULT_PRODUCTS),
@@ -283,6 +284,7 @@ export default function App() {
         loadKey("wca-dressers", []),
         loadKey("wca-quotations", []),
         loadKey("wca-dresser-pins", {}),
+        loadKey("wca-doctor-calls", []),
       ]);
       setCases(c);
       setMachines(m);
@@ -291,6 +293,7 @@ export default function App() {
       setDressers(drs);
       setQuotations(qts);
       setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
+      setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
       setLoaded(true);
     })();
   }, []);
@@ -301,6 +304,7 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey("wca-dressers", dressers); }, [dressers, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-quotations", quotations); }, [quotations, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-dresser-pins", dresserPins); }, [dresserPins, loaded]);
+  useEffect(() => { if (loaded) saveKey("wca-doctor-calls", doctorCalls); }, [doctorCalls, loaded]);
 
   const saveCase = (data, editingId) => {
     if (editingId) {
@@ -381,6 +385,7 @@ export default function App() {
     } : p));
   };
   const resetTestData = () => { setCases([]); setProducts([]); };
+  const addDoctorCall = (entry) => setDoctorCalls((prev) => [...prev, { id: uid(), date: todayISO(), ...entry }]);
 
   if (!loaded) {
     return <div style={styles.loadingScreen}><div style={styles.loadingText}>Loading…</div></div>;
@@ -409,6 +414,7 @@ export default function App() {
           saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           resetTestData={resetTestData}
+          doctorCalls={doctorCalls}
           pin={pin} onChangePin={setOwnerPin}
           onLogout={() => setRole(null)}
         />
@@ -419,6 +425,7 @@ export default function App() {
           addDressingChange={addDressingChange} capturePhoto={capturePhoto}
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
+          doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
           onLogout={() => setRole(null)}
         />
       )}
@@ -517,7 +524,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, doctorCalls, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -591,7 +598,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} doctorCalls={doctorCalls} />}
       </main>
     </>
   );
@@ -625,7 +632,7 @@ function ChangePinForm({ pin, onChangePin, onDone }) {
 }
 
 // ================= DRESSER SHELL =================
-function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, onLogout }) {
+function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
@@ -716,8 +723,79 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
             creatorName={name} restrictToCreator />
         </CollapsibleSection>
+
+        <CollapsibleSection title="Doctor Calls">
+          <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} />
+        </CollapsibleSection>
       </main>
     </>
+  );
+}
+
+function DoctorCallTab({ name, products, doctorCalls, addDoctorCall }) {
+  const [doctorName, setDoctorName] = useState("");
+  const [doctorMobile, setDoctorMobile] = useState("");
+  const [speciality, setSpeciality] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [date, setDate] = useState(todayISO());
+  const [notes, setNotes] = useState("");
+
+  const myCalls = useMemo(
+    () => doctorCalls.filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
+      .sort((a, b) => new Date(b.date) - new Date(a.date)),
+    [doctorCalls, name]
+  );
+
+  const toggleProduct = (pName) => {
+    setSelectedProducts((prev) => prev.includes(pName) ? prev.filter((n) => n !== pName) : [...prev, pName]);
+  };
+
+  const submit = () => {
+    if (!doctorName.trim()) return;
+    addDoctorCall({
+      dresserName: name, doctorName: doctorName.trim(), doctorMobile: doctorMobile.trim(),
+      speciality: speciality.trim(), products: selectedProducts, date, notes: notes.trim(),
+    });
+    setDoctorName(""); setDoctorMobile(""); setSpeciality(""); setSelectedProducts([]); setNotes("");
+  };
+
+  return (
+    <div>
+      <div style={styles.formGrid}>
+        <Field label="Doctor Name"><input style={styles.input} value={doctorName} onChange={(e) => setDoctorName(e.target.value)} /></Field>
+        <Field label="Doctor Mobile Number"><input type="tel" style={styles.input} value={doctorMobile} onChange={(e) => setDoctorMobile(e.target.value)} placeholder="10-digit number" /></Field>
+        <Field label="Speciality"><input style={styles.input} value={speciality} onChange={(e) => setSpeciality(e.target.value)} placeholder="e.g. General Surgeon, Orthopedician" /></Field>
+        <Field label="Product(s) Discussed">
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 160, overflowY: "auto" }}>
+            {products.length === 0 ? <span style={styles.mutedSmall}>No products in stock yet.</span> : products.map((p) => (
+              <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, padding: "3px 0" }}>
+                <input type="checkbox" checked={selectedProducts.includes(p.name)} onChange={() => toggleProduct(p.name)} />
+                {p.name}
+              </label>
+            ))}
+          </div>
+        </Field>
+        <Field label="Date"><input type="date" style={styles.input} value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+        <Field label="Notes (optional)"><textarea style={{ ...styles.input, minHeight: 50 }} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+      </div>
+      <button style={styles.primaryBtn} onClick={submit}>Log Doctor Call</button>
+
+      <SectionTitle>Your Doctor Calls</SectionTitle>
+      {myCalls.length === 0 ? <EmptyState text="No doctor calls logged yet." /> : (
+        <div style={styles.list}>
+          {myCalls.map((c) => (
+            <div key={c.id} style={styles.card}>
+              <div style={{ padding: 14 }}>
+                <div style={styles.cardTitle}>{c.doctorName}</div>
+                <div style={styles.cardMeta}>{c.speciality || "—"} · {c.doctorMobile || "no number"}</div>
+                <div style={{ ...styles.mutedSmall, marginTop: 6 }}>{fmtDate(c.date)}{(c.products || []).length > 0 ? ` · ${c.products.join(", ")}` : ""}</div>
+                {c.notes && <div style={{ ...styles.notesText, marginTop: 6 }}>{c.notes}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1867,7 +1945,7 @@ function pnlPeriodLabel(key, granularity) {
   return key;
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, doctorCalls }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
 
@@ -1982,6 +2060,19 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     return Object.values(tally).sort((a, b) => b.total - a.total);
   }, [cases]);
   const doctorCommissionTotal = useMemo(() => doctorCommissionStats.reduce((s, d) => s + d.total, 0), [doctorCommissionStats]);
+
+  const doctorCallsByDresser = useMemo(() => {
+    const tally = {};
+    (doctorCalls || []).forEach((c) => {
+      const d = (c.dresserName || "Unassigned").trim() || "Unassigned";
+      tally[d] = (tally[d] || 0) + 1;
+    });
+    return Object.entries(tally).map(([dresserName, calls]) => ({ dresserName, calls })).sort((a, b) => b.calls - a.calls);
+  }, [doctorCalls]);
+  const recentDoctorCalls = useMemo(
+    () => [...(doctorCalls || [])].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 25),
+    [doctorCalls]
+  );
 
   const outstandingByPatient = useMemo(() => {
     return cases
@@ -2236,6 +2327,42 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                   <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
                   <span style={styles.mutedSmall}>{d.cases} case{d.cases > 1 ? "s" : ""}</span>
                   <span style={{ fontWeight: 700, color: "#D98D2B" }}>{fmtMoney(d.total)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Doctor Call Report" defaultOpen={(doctorCalls || []).length > 0}
+        right={(doctorCalls || []).length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#3B5BA5" }}>{doctorCalls.length} calls</span> : null}>
+        {(!doctorCalls || doctorCalls.length === 0) ? <EmptyState text="No doctor calls logged by any dresser yet." /> : (
+          <>
+            {doctorCallsByDresser.length > 1 && (
+              <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
+                <ResponsiveContainer width="100%" height={Math.max(140, doctorCallsByDresser.length * 34)}>
+                  <BarChart data={doctorCallsByDresser} layout="vertical" margin={{ left: 10, right: 20 }}>
+                    <CartesianGrid stroke="#EEF1EC" horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10, fill: "#8A9A96" }} />
+                    <YAxis type="category" dataKey="dresserName" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                    <Bar dataKey="calls" name="Calls" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <div style={styles.list}>
+              {recentDoctorCalls.map((c) => (
+                <div key={c.id} style={styles.card}>
+                  <div style={{ padding: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <div style={styles.cardTitle}>{c.doctorName}</div>
+                      <div style={styles.mutedSmall}>{fmtDate(c.date)}</div>
+                    </div>
+                    <div style={styles.cardMeta}>{c.speciality || "—"} · {c.doctorMobile || "no number"} · by {c.dresserName || "Unassigned"}</div>
+                    {(c.products || []).length > 0 && <div style={{ ...styles.mutedSmall, marginTop: 6 }}>Discussed: {c.products.join(", ")}</div>}
+                    {c.notes && <div style={{ ...styles.notesText, marginTop: 6 }}>{c.notes}</div>}
+                  </div>
                 </div>
               ))}
             </div>
