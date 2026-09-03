@@ -249,12 +249,24 @@ async function quotePdfBlob(node) {
   return pdf.output("blob");
 }
 
+let _cachedLocation = null;
+let _cachedLocationAt = 0;
+let _locationDenied = false;
 function getLocation() {
   return new Promise((resolve) => {
     if (!navigator.geolocation) { resolve(null); return; }
+    if (_locationDenied) { resolve(null); return; }
+    if (_cachedLocation && Date.now() - _cachedLocationAt < 120000) { resolve(_cachedLocation); return; }
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null),
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        _cachedLocation = loc; _cachedLocationAt = Date.now();
+        resolve(loc);
+      },
+      (err) => {
+        if (err && err.code === 1) _locationDenied = true; // PERMISSION_DENIED — stop asking again this session
+        resolve(null);
+      },
       { timeout: 8000 }
     );
   });
