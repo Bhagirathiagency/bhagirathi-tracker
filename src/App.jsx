@@ -164,6 +164,34 @@ function locKey(name) { return `wca-loc-${name.trim().toLowerCase().replace(/[^a
 function mapsLink(lat, lng) { return `https://www.google.com/maps?q=${lat},${lng}`; }
 function waLink(number, text) { return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
 
+const DAILY_THOUGHTS = [
+  "Every dressing you change is a step closer to someone's healing. Thank you for showing up.",
+  "Patients remember the hands that cared for them gently. You make that difference today.",
+  "Consistency heals. One careful change at a time, you're rebuilding someone's health.",
+  "Your work today may not always be seen, but it is always felt.",
+  "Small acts of care, done daily, add up to remarkable recoveries. Keep going.",
+  "Behind every wound closing is a dresser who showed up on time, every time. That's you.",
+  "Precision and patience — the two things you bring to work every single day.",
+  "A calm hand and a kind word can be as healing as any dressing. You bring both.",
+  "Someone's healing timeline depends on your punctuality today. Thank you for being reliable.",
+  "The best care is quiet, steady, and consistent — exactly like the care you give.",
+  "Every patient you visit today is one step closer to going home well. Well done.",
+  "Great outcomes are built one careful, on-time visit at a time.",
+  "Your attention to detail today could be the reason a wound heals without complication.",
+  "Trust is earned dressing change by dressing change. You've earned a lot of it.",
+  "Take pride in the quiet, essential work you do — it changes lives.",
+];
+function todaysThought() {
+  const day = Math.floor(Date.now() / 86400000);
+  return DAILY_THOUGHTS[day % DAILY_THOUGHTS.length];
+}
+function timeGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 // ---------------- icon set (minimal line icons, currentColor) ----------------
 function Icon({ name, size = 20 }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
@@ -527,7 +555,10 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 
       {mode === "dresser" && !pendingDresser && (
         <div style={styles.gateForm}>
-          <div style={styles.gateHint}>You'll only see your own cases and dressing log — no billing details. Your location is recorded when you log in, log a change, and periodically while this app is open, for safety and record-keeping.</div>
+          <div style={{ background: "#FBEAD3", borderRadius: 14, padding: 14, textAlign: "center", marginBottom: 4 }}>
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 14, color: "#D9720A" }}>{timeGreeting()}!</div>
+            <div style={{ fontSize: 12.5, color: "#5B6864", marginTop: 4, lineHeight: 1.5 }}>{todaysThought()}</div>
+          </div>
           {dressers.length === 0 ? (
             <div style={styles.gateHint}>No dressers have been added yet. Ask the owner to add your name in the Dressers tab.</div>
           ) : (
@@ -714,6 +745,9 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
       </header>
 
       <main style={styles.main}>
+        <div style={{ ...styles.emptyState2, textAlign: "center", marginBottom: 10 }}>
+          Your location is recorded on login, on each dressing change, and periodically while this app is open — for safety and record-keeping.
+        </div>
         <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
 
         <CollapsibleSection title="Cases on Therapy" defaultOpen>
