@@ -302,6 +302,7 @@ export default function App() {
   const [products, setProducts] = useState(DEFAULT_PRODUCTS);
   const [dressers, setDressers] = useState([]);
   const [dresserPins, setDresserPins] = useState({});
+  const [dresserStockAccess, setDresserStockAccessState] = useState({});
   const [ownerLogins, setOwnerLogins] = useState([]);
   const [dresserProfiles, setDresserProfiles] = useState({});
   const [quotations, setQuotations] = useState([]);
@@ -327,7 +328,7 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock] = await Promise.all([
         loadKey("wca-cases", []),
         loadKey("wca-machines", []),
         loadKey("wca-products", DEFAULT_PRODUCTS),
@@ -338,6 +339,7 @@ export default function App() {
         loadKey("wca-doctor-calls", []),
         loadKey("wca-owner-logins", []),
         loadKey("wca-dresser-profiles", {}),
+        loadKey("wca-dresser-stock-access", {}),
       ]);
       setCases(c);
       setMachines(m);
@@ -349,6 +351,7 @@ export default function App() {
       setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
       setOwnerLogins(Array.isArray(olog) ? olog : []);
       setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
+      setDresserStockAccessState(dstock && typeof dstock === "object" ? dstock : {});
       setLoaded(true);
     })();
   }, []);
@@ -362,6 +365,7 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey("wca-doctor-calls", doctorCalls); }, [doctorCalls, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-dresser-profiles", dresserProfiles); }, [dresserProfiles, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-owner-logins", ownerLogins); }, [ownerLogins, loaded]);
+  useEffect(() => { if (loaded) saveKey("wca-dresser-stock-access", dresserStockAccess); }, [dresserStockAccess, loaded]);
 
   const saveCase = (data, editingId) => {
     if (editingId) {
@@ -466,6 +470,7 @@ export default function App() {
     setOwnerLogins((prev) => [...prev.slice(-49), { id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), device: `${device} · ${browser}` }]);
   };
   const setDresserProfile = (name, data) => setDresserProfiles((prev) => ({ ...prev, [name]: { ...prev[name], ...data } }));
+  const setDresserStockAccess = (name, allowed) => setDresserStockAccessState((prev) => ({ ...prev, [name]: !!allowed }));
   const clearAllOutstanding = () => {
     setCases((prev) => prev.map((c) => {
       const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -514,12 +519,13 @@ export default function App() {
       )}
       {role && role.type === "dresser" && (
         <DresserShell
-          name={role.name} cases={cases} machines={machines} products={products} saveCase={saveCase}
+          name={role.name} cases={cases} machines={machines} products={products} setProducts={setProducts} receiveStock={receiveStock} saveCase={saveCase}
           addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem} capturePhoto={capturePhoto}
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
+          canManageStock={!!dresserStockAccess[role.name]}
           onLogout={() => setRole(null)}
         />
       )}
@@ -694,7 +700,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
-        {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} />}
+        {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} />}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} />}
       </main>
     </>
@@ -774,7 +780,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
@@ -878,6 +884,12 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
         <CollapsibleSection title="Doctor Calls">
           <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} />
         </CollapsibleSection>
+
+        {canManageStock && (
+          <CollapsibleSection title="Stock">
+            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />
+          </CollapsibleSection>
+        )}
       </main>
     </>
   );
@@ -2106,7 +2118,7 @@ function StockTab({ products, setProducts, receiveStock }) {
 }
 
 // ---------------- Dressers (Owner) ----------------
-function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserStats, dresserProfiles }) {
+function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserStats, dresserProfiles, dresserStockAccess, setDresserStockAccess }) {
   const [name, setName] = useState("");
   const [newPin, setNewPin] = useState("");
   const [pinEdits, setPinEdits] = useState({});
@@ -2193,6 +2205,10 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
                     <button style={styles.smallBtn} onClick={() => savePinEdit(d)}>Save PIN</button>
                     {dresserPins[d] && <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => setDresserPin(d, undefined)}>Clear</button>}
                   </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 13, cursor: "pointer" }}>
+                    <input type="checkbox" checked={!!(dresserStockAccess && dresserStockAccess[d])} onChange={(e) => setDresserStockAccess(d, e.target.checked)} />
+                    Can import &amp; manage stock
+                  </label>
                   <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => removeDresser(d)}>Remove Dresser</button>
                 </div>
               )}
