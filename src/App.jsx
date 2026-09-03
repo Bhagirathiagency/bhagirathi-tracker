@@ -380,6 +380,7 @@ export default function App() {
       receipts: [...(p.receipts || []), { id: uid(), date: todayISO(), qty, company: company || "Unspecified" }],
     } : p));
   };
+  const resetTestData = () => { setCases([]); setProducts([]); };
 
   if (!loaded) {
     return <div style={styles.loadingScreen}><div style={styles.loadingText}>Loading…</div></div>;
@@ -407,6 +408,7 @@ export default function App() {
           dresserPins={dresserPins} setDresserPin={setDresserPin}
           saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
+          resetTestData={resetTestData}
           pin={pin} onChangePin={setOwnerPin}
           onLogout={() => setRole(null)}
         />
@@ -514,7 +516,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -588,7 +590,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} />}
       </main>
     </>
   );
@@ -1851,7 +1853,7 @@ function pnlPeriodLabel(key, granularity) {
   return key;
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
 
@@ -2337,6 +2339,17 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         </div>
       )}
       </CollapsibleSection>
+
+      <SectionTitle>Danger Zone</SectionTitle>
+      <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4" }}>
+        <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+          Permanently clears all cases and all stock/products — use this to wipe out testing data before going live. This cannot be undone.
+        </div>
+        <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
+          const typed = window.prompt('This will permanently delete ALL cases and ALL stock/products. Type "RESET" to confirm:');
+          if (typed === "RESET") resetTestData();
+        }}>Clear All Cases &amp; Stock</button>
+      </div>
     </div>
   );
 }
