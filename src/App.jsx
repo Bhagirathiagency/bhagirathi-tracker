@@ -623,7 +623,6 @@ function ChangePinForm({ pin, onChangePin, onDone }) {
 
 // ================= DRESSER SHELL =================
 function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, onLogout }) {
-  const [sending, setSending] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
@@ -650,16 +649,6 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
       return s + Math.max(0, Number(c.totalAmount || 0) - paid);
     }, 0), [cases, name]);
 
-  const sendSafetyAlert = async () => {
-    setSending(true);
-    const loc = await updateDresserLocation(name);
-    const time = new Date().toLocaleString("en-IN");
-    let msg = `SAFETY ALERT from ${name}\nTime: ${time}`;
-    msg += loc ? `\nLocation: ${mapsLink(loc.lat, loc.lng)}` : "\nLocation: unavailable (permission not granted)";
-    window.open(waLink(OWNER_WHATSAPP, msg), "_blank");
-    setSending(false);
-  };
-
   if (showForm) {
     return (
       <CaseForm machines={machines} products={products} presetDresserName={name}
@@ -682,10 +671,6 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
       </header>
 
       <main style={styles.main}>
-        <button style={styles.safetyBtn} onClick={sendSafetyAlert} disabled={sending}>
-          {sending ? "Getting location…" : "🚨 Send Safety Alert"}
-        </button>
-
         <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
 
         <SectionTitle>Cases on Therapy</SectionTitle>
