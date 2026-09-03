@@ -131,6 +131,12 @@ function normalizeProducts(raw) {
       : { available: 0, used: 0, costPrice: 0, mrp: 0, receipts: [], variants: [], ...p, variants: Array.isArray(p.variants) ? p.variants : [] }
   );
 }
+function productCompany(p) {
+  const receipts = p.receipts || [];
+  if (!receipts.length) return "Unspecified";
+  const latest = [...receipts].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+  return (latest.company || "Unspecified").trim() || "Unspecified";
+}
 function getCaseProducts(c) {
   if (Array.isArray(c.products) && c.products.length) return c.products;
   return c.product ? [c.product] : [];
@@ -1029,6 +1035,15 @@ function Detail({ label, value, highlight }) {
 }
 
 function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName }) {
+  const productsByCompany = useMemo(() => {
+    const groups = {};
+    products.forEach((p) => {
+      const co = productCompany(p);
+      if (!groups[co]) groups[co] = [];
+      groups[co].push(p);
+    });
+    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [products]);
   const [form, setForm] = useState(initial || {
     patientName: "", patientMobile: "", doctorName: "", doctorCommission: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: products[0] ? [products[0].name] : [],
@@ -1080,27 +1095,29 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
           )}
         </Field>
                 <Field label="Product(s)">
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #ccc", borderRadius: 6, padding: 8, maxHeight: 160, overflowY: "auto" }}>
-            {products.map((p) => (
-              <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}>
-                <input
-                  type="checkbox"
-                  checked={(form.products || []).includes(p.name)}
-                  onChange={(e) => {
-                    const current = form.products || [];
-                    const next = e.target.checked
-                      ? [...current, p.name]
-                      : current.filter((n) => n !== p.name);
-                    set("products", next);
-                  }}
-                />
-                {p.name}
-              </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 220, overflowY: "auto" }}>
+            {productsByCompany.map(([company, prods]) => (
+              <div key={company}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9A96", margin: "6px 0 2px" }}>{company}</div>
+                {prods.map((p) => (
+                  <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, padding: "3px 0" }}>
+                    <input
+                      type="checkbox"
+                      checked={(form.products || []).includes(p.name)}
+                      onChange={(e) => {
+                        const current = form.products || [];
+                        const next = e.target.checked
+                          ? [...current, p.name]
+                          : current.filter((n) => n !== p.name);
+                        set("products", next);
+                      }}
+                    />
+                    {p.name}
+                  </label>
+                ))}
+              </div>
             ))}
           </div>
-           <select style={styles.input} value={form.product} onChange={(e) => set("product", e.target.value)}>
-            {products.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
-          </select>
         </Field>
         <Field label="Machine Serial No.">
           <select style={styles.input} value={form.machineSerial} onChange={(e) => set("machineSerial", e.target.value)}>
