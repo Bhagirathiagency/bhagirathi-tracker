@@ -1831,6 +1831,7 @@ function StockTab({ products, setProducts, receiveStock }) {
   const [receiveForm, setReceiveForm] = useState({});
   const [variantInput, setVariantInput] = useState({});
   const [openId, setOpenId] = useState(null);
+  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
 
   const addProduct = () => {
     if (!name.trim() || products.some((p) => p.name === name.trim())) return;
@@ -1873,62 +1874,70 @@ function StockTab({ products, setProducts, receiveStock }) {
       </div>
 
       <SectionTitle>Inventory</SectionTitle>
-      <div style={styles.list}>
-        {products.map((p) => {
-          const open = openId === p.id;
-          return (
-          <div key={p.id} style={styles.card}>
-            <div style={styles.cardTop} onClick={() => setOpenId(open ? null : p.id)}>
-              <div style={{ flex: 1 }}>
-                <div style={styles.cardTitle}>{p.name}</div>
-                <div style={styles.cardMeta}>
-                  {p.used || 0} used all-time{(p.variants || []).length > 0 ? ` · ${p.variants.length} size${p.variants.length > 1 ? "s" : ""}` : ""}
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                <span style={{ ...styles.badge, color: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#E1483C" : "#D9720A", background: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#FCE7E4" : "#FBEAD3" }}>{p.available || 0} available</span>
-                <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
-              </div>
-            </div>
-            {open && (
-              <div style={{ padding: "0 14px 14px" }}>
-                <div style={styles.addPaymentRow}>
-                  <span style={styles.mutedSmall}>Cost price ₹</span>
-                  <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, e.target.value)} />
-                  <span style={styles.mutedSmall}>MRP ₹</span>
-                  <input type="number" style={styles.smallInput} defaultValue={p.mrp || 0} onBlur={(e) => updateMrp(p.id, e.target.value)} />
-                </div>
-                <div style={styles.addPaymentRow}>
-                  <input type="number" placeholder="Qty received" value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setField(p.id, "qty", e.target.value)} style={styles.smallInput} />
-                  <input type="text" placeholder="Company / supplier" value={(receiveForm[p.id] || {}).company || ""} onChange={(e) => setField(p.id, "company", e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
-                  <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
-                </div>
+      {products.length === 0 ? <EmptyState text="No products added yet." /> : (
+        <div>
+          {productsByCompany.map(([company, prods]) => (
+            <CollapsibleSection key={company} title={company} defaultOpen right={<span style={{ fontSize: 11, color: "#8A9A96" }}>{prods.length}</span>}>
+              <div style={styles.list}>
+                {prods.map((p) => {
+                  const open = openId === p.id;
+                  return (
+                  <div key={p.id} style={styles.card}>
+                    <div style={styles.cardTop} onClick={() => setOpenId(open ? null : p.id)}>
+                      <div style={{ flex: 1 }}>
+                        <div style={styles.cardTitle}>{p.name}</div>
+                        <div style={styles.cardMeta}>
+                          {p.used || 0} used all-time{(p.variants || []).length > 0 ? ` · ${p.variants.length} size${p.variants.length > 1 ? "s" : ""}` : ""}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                        <span style={{ ...styles.badge, color: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#E1483C" : "#D9720A", background: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#FCE7E4" : "#FBEAD3" }}>{p.available || 0} available</span>
+                        <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
+                      </div>
+                    </div>
+                    {open && (
+                      <div style={{ padding: "0 14px 14px" }}>
+                        <div style={styles.addPaymentRow}>
+                          <span style={styles.mutedSmall}>Cost price ₹</span>
+                          <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, e.target.value)} />
+                          <span style={styles.mutedSmall}>MRP ₹</span>
+                          <input type="number" style={styles.smallInput} defaultValue={p.mrp || 0} onBlur={(e) => updateMrp(p.id, e.target.value)} />
+                        </div>
+                        <div style={styles.addPaymentRow}>
+                          <input type="number" placeholder="Qty received" value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setField(p.id, "qty", e.target.value)} style={styles.smallInput} />
+                          <input type="text" placeholder="Company / supplier" value={(receiveForm[p.id] || {}).company || ""} onChange={(e) => setField(p.id, "company", e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
+                          <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
+                        </div>
 
-                <div style={{ marginTop: 10 }}>
-                  <span style={styles.mutedSmall}>Sizes / variants (e.g. 300ml, 500ml, 1000ml)</span>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0" }}>
-                    {(p.variants || []).map((v) => (
-                      <span key={v} style={{ ...styles.photoChip, ...styles.photoChipDone, cursor: "default", display: "flex", alignItems: "center", gap: 6 }}>
-                        {v}
-                        <span style={{ cursor: "pointer", color: "#E1483C", fontWeight: 700 }} onClick={() => removeVariant(p.id, v)}>✕</span>
-                      </span>
-                    ))}
-                  </div>
-                  <div style={styles.addPaymentRow}>
-                    <input type="text" placeholder="Add size, e.g. 500ml" style={{ ...styles.smallInput, flex: 1 }}
-                      value={variantInput[p.id] || ""} onChange={(e) => setVariantInput((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                      onKeyDown={(e) => { if (e.key === "Enter") addVariant(p.id); }} />
-                    <button style={styles.smallBtn} onClick={() => addVariant(p.id)}>Add Size</button>
-                  </div>
-                </div>
+                        <div style={{ marginTop: 10 }}>
+                          <span style={styles.mutedSmall}>Sizes / variants (e.g. 300ml, 500ml, 1000ml)</span>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0" }}>
+                            {(p.variants || []).map((v) => (
+                              <span key={v} style={{ ...styles.photoChip, ...styles.photoChipDone, cursor: "default", display: "flex", alignItems: "center", gap: 6 }}>
+                                {v}
+                                <span style={{ cursor: "pointer", color: "#E1483C", fontWeight: 700 }} onClick={() => removeVariant(p.id, v)}>✕</span>
+                              </span>
+                            ))}
+                          </div>
+                          <div style={styles.addPaymentRow}>
+                            <input type="text" placeholder="Add size, e.g. 500ml" style={{ ...styles.smallInput, flex: 1 }}
+                              value={variantInput[p.id] || ""} onChange={(e) => setVariantInput((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === "Enter") addVariant(p.id); }} />
+                            <button style={styles.smallBtn} onClick={() => addVariant(p.id)}>Add Size</button>
+                          </div>
+                        </div>
 
-                <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => remove(p.id)}>Remove Product</button>
+                        <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => remove(p.id)}>Remove Product</button>
+                      </div>
+                    )}
+                  </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
-          );
-        })}
-      </div>
+            </CollapsibleSection>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
