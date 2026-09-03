@@ -329,6 +329,7 @@ export default function App() {
   const [dresserProfiles, setDresserProfiles] = useState({});
   const [quotations, setQuotations] = useState([]);
   const [doctorCalls, setDoctorCalls] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [dresserBusinessAccess, setDresserBusinessAccessState] = useState({});
   const [businessAccessLoaded, setBusinessAccessLoaded] = useState(false);
@@ -377,7 +378,7 @@ export default function App() {
   useEffect(() => {
     setLoaded(false);
     (async () => {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps] = await Promise.all([
         loadKey(bkey(businessId, "wca-cases"), []),
         loadKey(bkey(businessId, "wca-machines"), []),
         loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
@@ -389,6 +390,7 @@ export default function App() {
         loadKey(bkey(businessId, "wca-owner-logins"), []),
         loadKey(bkey(businessId, "wca-dresser-profiles"), {}),
         loadKey(bkey(businessId, "wca-dresser-stock-access"), {}),
+        loadKey(bkey(businessId, "wca-expenses"), []),
       ]);
       setCases(c);
       setMachines(m);
@@ -400,6 +402,7 @@ export default function App() {
       setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
       setOwnerLogins(Array.isArray(olog) ? olog : []);
       setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
+      setExpenses(Array.isArray(exps) ? exps : []);
       {
         const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
         if (businessId === "bhagirathi") {
@@ -417,6 +420,7 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-products"), products); }, [products, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dressers"), dressers); }, [dressers, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-quotations"), quotations); }, [quotations, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-expenses"), expenses); }, [expenses, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-pins"), dresserPins); }, [dresserPins, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-doctor-calls"), doctorCalls); }, [doctorCalls, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-profiles"), dresserProfiles); }, [dresserProfiles, loaded, businessId]);
@@ -539,6 +543,8 @@ export default function App() {
     }));
   };
   const addDoctorCall = (entry) => setDoctorCalls((prev) => [...prev, { id: uid(), date: todayISO(), ...entry }]);
+  const addExpense = (entry) => setExpenses((prev) => [...prev, { id: uid(), date: todayISO(), ...entry }]);
+  const deleteExpense = (id) => setExpenses((prev) => prev.filter((e) => e.id !== id));
 
   if (!loaded) {
     return <div style={styles.loadingScreen}><div style={styles.loadingText}>Loading {business.name}…</div></div>;
@@ -572,6 +578,7 @@ export default function App() {
           resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding}
           ownerLogins={ownerLogins}
           doctorCalls={doctorCalls}
+          expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
           businessId={businessId} business={business} businesses={BUSINESSES} onSwitchBusiness={switchBusiness}
           pin={pin} onChangePin={setOwnerPin}
           onLogout={() => setRole(null)}
@@ -689,7 +696,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -774,7 +781,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} machines={machines} />}
       </main>
     </>
   );
@@ -2599,9 +2606,13 @@ function DoctorCommissionCard({ d, businessName = "Bhagirathi Agency" }) {
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency" }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, machines }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
+  const [expCategory, setExpCategory] = useState("Salary");
+  const [expAmount, setExpAmount] = useState("");
+  const [expNote, setExpNote] = useState("");
+  const [expDate, setExpDate] = useState(todayISO());
 
   const dresserNames = useMemo(() => {
     const set = new Set([...(dressers || []), ...dresserStats.map((d) => d.name)]);
@@ -2636,7 +2647,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     cases.forEach((c) => {
       if (!c.applicationDate) return;
       const key = pnlPeriodKey(c.applicationDate, pnlGranularity);
-      if (!tally[key]) tally[key] = { key, revenue: 0, rental: 0, cost: 0, commission: 0, cases: 0 };
+      if (!tally[key]) tally[key] = { key, revenue: 0, rental: 0, cost: 0, commission: 0, opex: 0, cases: 0 };
       const names = getCaseProducts(c);
       const cost = names.reduce((s, name) => {
         const prod = products.find((p) => p.name === name);
@@ -2648,13 +2659,27 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       tally[key].commission += Number(c.doctorCommission || 0);
       tally[key].cases += 1;
     });
+    (expenses || []).forEach((e) => {
+      if (!e.date) return;
+      const key = pnlPeriodKey(e.date, pnlGranularity);
+      if (!tally[key]) tally[key] = { key, revenue: 0, rental: 0, cost: 0, commission: 0, opex: 0, cases: 0 };
+      tally[key].opex += Number(e.amount || 0);
+    });
     return Object.values(tally)
-      .map((r) => ({ ...r, profit: r.revenue + r.rental - r.cost - r.commission }))
+      .map((r) => ({ ...r, profit: r.revenue + r.rental - r.cost - r.commission - (r.opex || 0) }))
       .sort((a, b) => (a.key < b.key ? 1 : -1));
-  }, [cases, products, pnlGranularity]);
+  }, [cases, products, pnlGranularity, expenses]);
   const pnlTotals = useMemo(() => pnlRows.reduce((acc, r) => ({
-    revenue: acc.revenue + r.revenue, rental: acc.rental + r.rental, cost: acc.cost + r.cost, commission: acc.commission + r.commission, profit: acc.profit + r.profit,
-  }), { revenue: 0, rental: 0, cost: 0, commission: 0, profit: 0 }), [pnlRows]);
+    revenue: acc.revenue + r.revenue, rental: acc.rental + r.rental, cost: acc.cost + r.cost, commission: acc.commission + r.commission, opex: acc.opex + (r.opex || 0), profit: acc.profit + r.profit,
+  }), { revenue: 0, rental: 0, cost: 0, commission: 0, opex: 0, profit: 0 }), [pnlRows]);
+
+  const expensesSorted = useMemo(() => [...(expenses || [])].sort((a, b) => new Date(b.date) - new Date(a.date)), [expenses]);
+  const expensesByCategory = useMemo(() => {
+    const tally = {};
+    (expenses || []).forEach((e) => { tally[e.category || "Other"] = (tally[e.category || "Other"] || 0) + Number(e.amount || 0); });
+    return Object.entries(tally).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
+  }, [expenses]);
+  const expensesTotal = useMemo(() => (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0), [expenses]);
 
   const allReceipts = useMemo(() => {
     const list = [];
@@ -2970,7 +2995,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
           <>
             <div style={styles.cardGrid}>
               <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(pnlTotals.revenue + pnlTotals.rental)}</div><div style={styles.statLabel}>Total Revenue</div></div>
-              <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(pnlTotals.cost + pnlTotals.commission)}</div><div style={styles.statLabel}>Total Cost + Commission</div></div>
+              <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(pnlTotals.cost + pnlTotals.commission + pnlTotals.opex)}</div><div style={styles.statLabel}>Total Cost + Commission + Expenses</div></div>
               <div style={{ ...styles.reportCard, gridColumn: "1 / -1" }}>
                 <div style={{ ...styles.statValue, color: pnlTotals.profit >= 0 ? "#D9720A" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</div>
                 <div style={styles.statLabel}>Net Profit / Loss</div>
@@ -2979,7 +3004,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
             <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={[...pnlRows].reverse().map((r) => ({ label: pnlPeriodLabel(r.key, pnlGranularity), Revenue: r.revenue + r.rental, Cost: r.cost + r.commission, Profit: r.profit }))}>
+                <LineChart data={[...pnlRows].reverse().map((r) => ({ label: pnlPeriodLabel(r.key, pnlGranularity), Revenue: r.revenue + r.rental, Cost: r.cost + r.commission + (r.opex || 0), Profit: r.profit }))}>
                   <CartesianGrid stroke="#EEF1EC" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#8A9A96" }} interval="preserveStartEnd" />
                   <YAxis tick={{ fontSize: 10, fill: "#8A9A96" }} width={40} />
@@ -3004,7 +3029,48 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                     <span>Revenue {fmtMoney(r.revenue + r.rental)}</span>
                     <span>Cost {fmtMoney(r.cost)}</span>
                     {r.commission > 0 && <span>Commission {fmtMoney(r.commission)}</span>}
+                    {r.opex > 0 && <span>Expenses {fmtMoney(r.opex)}</span>}
                   </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Expenses" right={expensesTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(expensesTotal)}</span> : null}>
+        <div style={styles.formGrid}>
+          <div style={styles.addPaymentRow}>
+            <select style={{ ...styles.smallInput, flex: 1 }} value={expCategory} onChange={(e) => setExpCategory(e.target.value)}>
+              {["Salary", "Rent", "Transport/Fuel", "Machine Maintenance", "Utilities", "Marketing", "Other"].map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <input type="number" placeholder="Amount ₹" style={{ ...styles.smallInput, width: 100 }} value={expAmount} onChange={(e) => setExpAmount(e.target.value)} />
+          </div>
+          <div style={styles.addPaymentRow}>
+            <input type="date" style={styles.smallInput} value={expDate} onChange={(e) => setExpDate(e.target.value)} />
+            <input type="text" placeholder="Note (optional)" style={{ ...styles.smallInput, flex: 1 }} value={expNote} onChange={(e) => setExpNote(e.target.value)} />
+            <button style={styles.smallBtn} onClick={() => {
+              const amt = Number(expAmount);
+              if (!amt || amt <= 0) return;
+              addExpense({ category: expCategory, amount: amt, date: expDate, note: expNote.trim() });
+              setExpAmount(""); setExpNote("");
+            }}>Add Expense</button>
+          </div>
+        </div>
+        {expensesByCategory.length === 0 ? <EmptyState text="No expenses logged yet. Salaries, rent, fuel, maintenance — anything beyond product cost." /> : (
+          <>
+            <div style={{ ...styles.card, marginBottom: 12 }}>
+              {expensesByCategory.map((c) => (
+                <div key={c.category} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{c.category}</span><span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(c.amount)}</span></div>
+              ))}
+            </div>
+            <div style={styles.card}>
+              {expensesSorted.slice(0, 40).map((e) => (
+                <div key={e.id} style={styles.dresserLine}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{e.category}{e.note ? ` · ${e.note}` : ""}</span>
+                  <span style={styles.mutedSmall}>{fmtDate(e.date)}</span>
+                  <span style={{ fontWeight: 700 }}>{fmtMoney(e.amount)}</span>
+                  <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => deleteExpense(e.id)}>✕</button>
                 </div>
               ))}
             </div>
@@ -3219,6 +3285,12 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                 <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
                 <span style={styles.mutedSmall}>{fmtDate(c.applicationDate)}</span>
                 <span style={{ ...styles.mutedSmall, color: "#E1483C", fontWeight: 600 }}>{fmtMoney(c.balance)}</span>
+                {c.patientMobile && (
+                  <button style={{ ...styles.linkBtn, color: "#25D366" }} onClick={() => {
+                    const msg = `Dear ${c.patientName}, this is a reminder from ${businessName} — an amount of ${fmtMoney(c.balance)} is outstanding on your wound care case. Kindly clear it at your earliest convenience. Thank you.`;
+                    window.open(waLink(c.patientMobile.replace(/\D/g, ""), msg), "_blank");
+                  }}>Remind</button>
+                )}
               </div>
             ))}
           </div>
@@ -3334,6 +3406,36 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
             ))}
           </div>
         )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Data Export">
+        <div style={{ ...styles.emptyState2, marginBottom: 10 }}>Download a copy of your data — for backup, or to hand to your CA/accountant.</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button style={{ ...styles.smallBtn, flex: 1 }} onClick={() => {
+            const rows = [
+              ["Patient", "Doctor", "Dresser", "Status", "Application Date", "Total Amount", "Paid", "Outstanding", "Machine Rental", "Doctor Commission", "Hospital"],
+              ...cases.map((c) => {
+                const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+                const outstanding = Math.max(0, Number(c.totalAmount || 0) - paid);
+                return [c.patientName, c.doctorName, c.dresserName, c.status, c.applicationDate, c.totalAmount || 0, paid, outstanding, c.machineRentalAmount || 0, c.doctorCommission || 0, c.hospitalName || ""];
+              }),
+            ];
+            const csv = rows.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = `${businessName.replace(/\s+/g, "-")}-cases-${todayISO()}.csv`; a.click();
+            URL.revokeObjectURL(url);
+          }}>Download Cases (CSV)</button>
+          <button style={{ ...styles.smallBtn, flex: 1, background: "#3B5BA5" }} onClick={() => {
+            const backup = { exportedAt: new Date().toISOString(), business: businessName, cases, products, machines, dressers, quotations, doctorCalls, expenses };
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = `${businessName.replace(/\s+/g, "-")}-backup-${todayISO()}.json`; a.click();
+            URL.revokeObjectURL(url);
+          }}>Full Backup (JSON)</button>
+        </div>
       </CollapsibleSection>
 
       <SectionTitle>Danger Zone</SectionTitle>
