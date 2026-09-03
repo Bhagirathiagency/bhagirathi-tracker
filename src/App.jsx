@@ -639,16 +639,6 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 
   return (
     <div style={styles.gateWrap}>
-      {mode === "owner" && businesses && businesses.length > 1 && (
-        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 24, flexWrap: "wrap" }}>
-          {businesses.map((b) => (
-            <button key={b.id} onClick={() => onSwitchBusiness(b.id)}
-              style={{ ...styles.filterChip, ...(b.id === businessId ? styles.filterChipActive : {}) }}>
-              {b.name}
-            </button>
-          ))}
-        </div>
-      )}
       <img src="/bhagirathi-logo.png" alt={business.name} style={styles.brandMarkLg} onClick={handleLogoTap} />
       <div style={styles.gateBrand}>{business.name}</div>
       <div style={styles.brandSub}>Wound Care Tracker</div>
