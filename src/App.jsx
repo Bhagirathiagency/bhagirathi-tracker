@@ -385,6 +385,17 @@ export default function App() {
     } : p));
   };
   const resetTestData = () => { setCases([]); setProducts([]); };
+  const clearAllOutstanding = () => {
+    setCases((prev) => prev.map((c) => {
+      const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      const outstanding = Math.max(0, Number(c.totalAmount || 0) - paid);
+      if (outstanding <= 0) return c;
+      return {
+        ...c,
+        payments: [...(c.payments || []), { id: uid(), amount: outstanding, mode: "Adjustment", note: "Outstanding cleared", date: todayISO() }],
+      };
+    }));
+  };
   const addDoctorCall = (entry) => setDoctorCalls((prev) => [...prev, { id: uid(), date: todayISO(), ...entry }]);
 
   if (!loaded) {
@@ -413,7 +424,7 @@ export default function App() {
           dresserPins={dresserPins} setDresserPin={setDresserPin}
           saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
-          resetTestData={resetTestData}
+          resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding}
           doctorCalls={doctorCalls}
           pin={pin} onChangePin={setOwnerPin}
           onLogout={() => setRole(null)}
@@ -524,7 +535,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, doctorCalls, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -598,7 +609,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} doctorCalls={doctorCalls} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} />}
       </main>
     </>
   );
@@ -1945,7 +1956,7 @@ function pnlPeriodLabel(key, granularity) {
   return key;
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, doctorCalls }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
 
@@ -2482,6 +2493,15 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       </CollapsibleSection>
 
       <SectionTitle>Danger Zone</SectionTitle>
+      <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4", marginBottom: 10 }}>
+        <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+          Marks every case's outstanding balance as paid (adds a settling payment entry to each). Case history stays intact — only outstanding drops to zero. Currently outstanding: {fmtMoney(outstandingTotal)}.
+        </div>
+        <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
+          const typed = window.prompt('This will mark ALL outstanding balances as paid. Type "CLEAR" to confirm:');
+          if (typed === "CLEAR") clearAllOutstanding();
+        }}>Zero Out All Outstanding</button>
+      </div>
       <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4" }}>
         <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
           Permanently clears all cases and all stock/products — use this to wipe out testing data before going live. This cannot be undone.
