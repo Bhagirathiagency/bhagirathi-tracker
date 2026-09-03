@@ -1809,6 +1809,19 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       .sort((a, b) => b.balance - a.balance);
   }, [cases]);
 
+  const outstandingByHospital = useMemo(() => {
+    const tally = {};
+    outstandingByPatient
+      .filter((c) => c.billTo === "Hospital")
+      .forEach((c) => {
+        const hospital = (c.hospitalName || "Unnamed Hospital").trim() || "Unnamed Hospital";
+        if (!tally[hospital]) tally[hospital] = { hospital, balance: 0, patients: 0 };
+        tally[hospital].balance += c.balance;
+        tally[hospital].patients += 1;
+      });
+    return Object.values(tally).sort((a, b) => b.balance - a.balance);
+  }, [outstandingByPatient]);
+
   const monthlyRevenueTrend = useMemo(() => {
     const tally = {};
     cases.forEach((c) => {
@@ -1909,6 +1922,20 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                 <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
                 <span style={styles.mutedSmall}>{fmtDate(c.applicationDate)}</span>
                 <span style={{ ...styles.mutedSmall, color: "#E1483C", fontWeight: 600 }}>{fmtMoney(c.balance)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Outstanding by Hospital" defaultOpen={outstandingByHospital.length > 0}>
+        {outstandingByHospital.length === 0 ? <EmptyState text="No hospital-billed outstanding balances." /> : (
+          <div style={styles.card}>
+            {outstandingByHospital.map((h) => (
+              <div key={h.hospital} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{h.hospital}</span>
+                <span style={styles.mutedSmall}>{h.patients} patient{h.patients > 1 ? "s" : ""}</span>
+                <span style={{ ...styles.mutedSmall, color: "#E1483C", fontWeight: 600 }}>{fmtMoney(h.balance)}</span>
               </div>
             ))}
           </div>
