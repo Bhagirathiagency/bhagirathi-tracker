@@ -35,8 +35,8 @@ async function saveKey(key, value) {
 }
 
 const BUSINESSES = [
-  { id: "bhagirathi", name: "Bhagirathi Agency", tagline: "Wound Care & NPWT Supplies", address: "Nashik, Maharashtra", phone: "", gstin: "" },
-  { id: "leelavac", name: "Leela Medical", tagline: "Wound Care & NPWT Supplies", address: "", phone: "", gstin: "" },
+  { id: "bhagirathi", name: "Bhagirathi Agency", tagline: "Wound Care & NPWT Supplies", address: "Shop No.1, Malhar Bunglow, Opp. Atal Bihari Vajpayee School, Bankar Chowk, Kathe Lane, Nashik-422011", phone: "7507777127", email: "bhagirathiagency@gmail.com", gstin: "27AAWFB2771R1ZG", dlNo: "MH-NZ1-373839, 20B-373840, 21B-373841, 20D-373842" },
+  { id: "leelavac", name: "Leela Medical", tagline: "Wound Care & NPWT Supplies", address: "Room No.01, Shop No.804, Opp. Waiting Area, 8th Floor, S.K. Empire, Nr. Ved Mandir, Mico Circle, Tidke Colony, Nashik", phone: "7507777127", email: "jmhnsk@gmail.com", gstin: "27DAJPS2132H2ZL", dlNo: "MH-NZ1-583399, MH-NZ1-583400" },
 ];
 // Bhagirathi keeps its original, unprefixed keys (that's the live production data already in Supabase).
 // Any other business gets its own namespaced keys so nothing overlaps or gets overwritten.
@@ -2981,10 +2981,15 @@ function Letterhead({ businessName = "Bhagirathi Agency", docType, meta }) {
         <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 58, height: 58, objectFit: "contain" }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 21, color: "#0E2422" }}>{businessName}</div>
-          {b.tagline && <div style={{ fontSize: 11.5, color: "#5B6864" }}>{b.tagline}</div>}
-          {(b.address || b.phone || b.gstin) && (
+          {b.address && <div style={{ fontSize: 10.5, color: "#5B6864", marginTop: 2 }}>{b.address}</div>}
+          {(b.phone || b.email) && (
+            <div style={{ fontSize: 10.5, color: "#5B6864" }}>
+              {b.phone && `Phone: ${b.phone}`}{b.phone && b.email ? " · " : ""}{b.email && `Email: ${b.email}`}
+            </div>
+          )}
+          {(b.gstin || b.dlNo) && (
             <div style={{ fontSize: 10.5, color: "#8A9A96", marginTop: 2 }}>
-              {b.address}{b.address && (b.phone || b.gstin) ? " · " : ""}{b.phone}{b.phone && b.gstin ? " · " : ""}{b.gstin ? `GSTIN: ${b.gstin}` : ""}
+              {b.gstin && `GSTIN: ${b.gstin}`}{b.gstin && b.dlNo ? " · " : ""}{b.dlNo && `D.L. No.: ${b.dlNo}`}
             </div>
           )}
         </div>
