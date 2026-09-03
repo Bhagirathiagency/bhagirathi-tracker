@@ -36,7 +36,7 @@ async function saveKey(key, value) {
 
 const BUSINESSES = [
   { id: "bhagirathi", name: "Bhagirathi Agency", tagline: "Wound Care & NPWT Supplies", address: "Shop No.1, Malhar Bunglow, Opp. Atal Bihari Vajpayee School, Bankar Chowk, Kathe Lane, Nashik-422011", phone: "7507777127", email: "bhagirathiagency@gmail.com", gstin: "27AAWFB2771R1ZG", dlNo: "MH-NZ1-373839, 20B-373840, 21B-373841, 20D-373842" },
-  { id: "leelavac", name: "Leela Medical", tagline: "Wound Care & NPWT Supplies", address: "Room No.01, Shop No.804, Opp. Waiting Area, 8th Floor, S.K. Empire, Nr. Ved Mandir, Mico Circle, Tidke Colony, Nashik", phone: "7507777127", email: "jmhnsk@gmail.com", gstin: "27DAJPS2132H2ZL", dlNo: "MH-NZ1-583399, MH-NZ1-583400" },
+  { id: "leelavac", name: "Leela Medical", tagline: "Wound Care & NPWT Supplies", address: "Room No.01, Shop No.804, Opp. Waiting Area, 8th Floor, S.K. Empire, Nr. Ved Mandir, Mico Circle, Tidke Colony, Nashik", phone: "9673069779", email: "jmhnsk@gmail.com", gstin: "27DAJPS2132H2ZL", dlNo: "MH-NZ1-583399, MH-NZ1-583400" },
 ];
 // Bhagirathi keeps its original, unprefixed keys (that's the live production data already in Supabase).
 // Any other business gets its own namespaced keys so nothing overlaps or gets overwritten.
@@ -2011,6 +2011,11 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
   );
 }
 
+function waNumberFor(businessName) {
+  const b = BUSINESSES.find((x) => x.name === businessName);
+  const phone = b && b.phone ? b.phone.replace(/\D/g, "") : "";
+  return phone ? `91${phone}` : OWNER_WHATSAPP;
+}
 function QuotationView({ q, onBack, onEdit, onStatus, businessName = "Bhagirathi Agency" }) {
   const { subtotal, discount, gstAmount, total } = quoteTotals(q);
   const sheetRef = useRef(null);
@@ -2046,7 +2051,7 @@ function QuotationView({ q, onBack, onEdit, onStatus, businessName = "Bhagirathi
         const a = document.createElement("a");
         a.href = url; a.download = fileName; a.click();
         URL.revokeObjectURL(url);
-        window.open(waLink(q.phone ? q.phone.replace(/\D/g, "") : OWNER_WHATSAPP, shareText), "_blank");
+        window.open(waLink(q.phone ? q.phone.replace(/\D/g, "") : waNumberFor(businessName), shareText), "_blank");
         alert("PDF downloaded. Your browser can't attach it automatically here — attach the downloaded file in the WhatsApp chat that just opened.");
       }
     } catch (e) {
@@ -3414,7 +3419,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     let msg = `${businessName} — Daily Summary\n`;
     msg += `Overdue changes: ${overdueCount}\nOutstanding: ${fmtMoney(outstandingTotal)}\n`;
     if (lowStock.length) msg += `Low stock: ${lowStock.map((p) => p.name).join(", ")}\n`;
-    window.open(waLink(OWNER_WHATSAPP, msg), "_blank");
+    window.open(waLink(waNumberFor(businessName), msg), "_blank");
   };
 
   return (
