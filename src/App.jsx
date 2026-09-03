@@ -126,8 +126,8 @@ function normalizeProducts(raw) {
   if (!Array.isArray(raw)) return DEFAULT_PRODUCTS;
   return raw.map((p) =>
     typeof p === "string"
-      ? { id: uid(), name: p, available: 0, used: 0, costPrice: 0, receipts: [], variants: [] }
-      : { available: 0, used: 0, costPrice: 0, receipts: [], variants: [], ...p, variants: Array.isArray(p.variants) ? p.variants : [] }
+      ? { id: uid(), name: p, available: 0, used: 0, costPrice: 0, mrp: 0, receipts: [], variants: [] }
+      : { available: 0, used: 0, costPrice: 0, mrp: 0, receipts: [], variants: [], ...p, variants: Array.isArray(p.variants) ? p.variants : [] }
   );
 }
 function getCaseProducts(c) {
@@ -986,7 +986,19 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
     billTo: "Patient", hospitalName: "", totalAmount: "", amountReceived: "", notes: "",
   });
   const [customProtocol, setCustomProtocol] = useState(!PROTOCOLS.includes(Number(form.protocolDays)));
+  const [amountTouched, setAmountTouched] = useState(!!initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const mrpTotal = useMemo(
+    () => (form.products || []).reduce((s, n) => s + Number(products.find((p) => p.name === n)?.mrp || 0), 0),
+    [form.products, products]
+  );
+
+  // For a brand-new case, keep Total Amount following the selected products' MRP
+  // until the person types their own number — then it's fully manual from there.
+  useEffect(() => {
+    if (!initial && !amountTouched) set("totalAmount", mrpTotal || "");
+  }, [mrpTotal, initial, amountTouched]);
 
   const submit = () => {
     if (!form.patientName.trim() || !form.doctorName.trim()) return;
@@ -1066,7 +1078,18 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         {form.billTo === "Hospital" && (
           <Field label="Hospital Name"><input style={styles.input} value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)} /></Field>
         )}
-        <Field label="Total Amount (₹)"><input type="number" style={styles.input} value={form.totalAmount} onChange={(e) => set("totalAmount", e.target.value)} /></Field>
+        <Field label="Total Amount (₹)">
+          <input type="number" style={styles.input} value={form.totalAmount}
+            onChange={(e) => { setAmountTouched(true); set("totalAmount", e.target.value); }} />
+          {mrpTotal > 0 && (
+            <span style={styles.mutedSmall}>
+              MRP for selected item(s): {fmtMoney(mrpTotal)}
+              {Number(form.totalAmount) !== mrpTotal && (
+                <> · <span style={{ ...styles.linkBtn, fontSize: 11 }} onClick={() => { setAmountTouched(false); set("totalAmount", mrpTotal); }}>use MRP</span></>
+              )}
+            </span>
+          )}
+        </Field>
         <Field label="Amount Received (₹)"><input type="number" style={styles.input} value={form.amountReceived} onChange={(e) => set("amountReceived", e.target.value)} placeholder="0 if none yet" /></Field>
         <Field label="Notes"><textarea style={{ ...styles.input, minHeight: 60 }} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
       </div>
@@ -1485,17 +1508,19 @@ function StockTab({ products, setProducts, receiveStock }) {
   const [name, setName] = useState("");
   const [initQty, setInitQty] = useState("");
   const [initCost, setInitCost] = useState("");
+  const [initMrp, setInitMrp] = useState("");
   const [receiveForm, setReceiveForm] = useState({});
   const [variantInput, setVariantInput] = useState({});
   const [openId, setOpenId] = useState(null);
 
   const addProduct = () => {
     if (!name.trim() || products.some((p) => p.name === name.trim())) return;
-    setProducts((prev) => [...prev, { id: uid(), name: name.trim(), available: Number(initQty) || 0, used: 0, costPrice: Number(initCost) || 0, receipts: [], variants: [] }]);
-    setName(""); setInitQty(""); setInitCost("");
+    setProducts((prev) => [...prev, { id: uid(), name: name.trim(), available: Number(initQty) || 0, used: 0, costPrice: Number(initCost) || 0, mrp: Number(initMrp) || 0, receipts: [], variants: [] }]);
+    setName(""); setInitQty(""); setInitCost(""); setInitMrp("");
   };
   const remove = (id) => setProducts((prev) => prev.filter((p) => p.id !== id));
   const updateCost = (id, cost) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, costPrice: Number(cost) || 0 } : p));
+  const updateMrp = (id, mrp) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, mrp: Number(mrp) || 0 } : p));
   const setField = (id, field, val) => setReceiveForm((prev) => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
   const doReceive = (id) => {
     const f = receiveForm[id] || {};
@@ -1523,6 +1548,7 @@ function StockTab({ products, setProducts, receiveStock }) {
           <input style={{ ...styles.smallInput, flex: 1 }} placeholder="Product name" value={name} onChange={(e) => setName(e.target.value)} />
           <input style={{ ...styles.smallInput, width: 70 }} type="number" placeholder="Qty" value={initQty} onChange={(e) => setInitQty(e.target.value)} />
           <input style={{ ...styles.smallInput, width: 90 }} type="number" placeholder="Cost ₹" value={initCost} onChange={(e) => setInitCost(e.target.value)} />
+          <input style={{ ...styles.smallInput, width: 90 }} type="number" placeholder="MRP ₹" value={initMrp} onChange={(e) => setInitMrp(e.target.value)} />
         </div>
         <button style={styles.primaryBtn} onClick={addProduct}>Add Product</button>
       </div>
@@ -1550,6 +1576,8 @@ function StockTab({ products, setProducts, receiveStock }) {
                 <div style={styles.addPaymentRow}>
                   <span style={styles.mutedSmall}>Cost price ₹</span>
                   <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, e.target.value)} />
+                  <span style={styles.mutedSmall}>MRP ₹</span>
+                  <input type="number" style={styles.smallInput} defaultValue={p.mrp || 0} onBlur={(e) => updateMrp(p.id, e.target.value)} />
                 </div>
                 <div style={styles.addPaymentRow}>
                   <input type="number" placeholder="Qty received" value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setField(p.id, "qty", e.target.value)} style={styles.smallInput} />
