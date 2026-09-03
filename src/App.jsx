@@ -870,7 +870,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.nav}>
-        {[["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["reports", "Reports", "reports"]].map(([key, label, icon]) => (
+        {[["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["reports", "Reports", "reports"], ["combined", "All Business", "overview"]].map(([key, label, icon]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
             <Icon name={icon} size={16} />{label}
           </button>
@@ -901,8 +901,101 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} />}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} machines={machines} />}
+        {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
     </>
+  );
+}
+
+function CombinedSummaryTab({ businesses }) {
+  const [loading, setLoading] = useState(true);
+  const [perBusiness, setPerBusiness] = useState([]);
+
+  const load = async () => {
+    setLoading(true);
+    const results = await Promise.all(businesses.map(async (b) => {
+      const [cases, expenses, products] = await Promise.all([
+        loadKey(bkey(b.id, "wca-cases"), []),
+        loadKey(bkey(b.id, "wca-expenses"), []),
+        loadKey(bkey(b.id, "wca-products"), []),
+      ]);
+      const prods = normalizeProducts(products);
+      const revenue = cases.reduce((s, c) => s + Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0), 0);
+      const collected = cases.reduce((s, c) => s + (c.payments || []).reduce((a, p) => a + Number(p.amount || 0), 0), 0);
+      const outstanding = Math.max(0, revenue - collected);
+      const cost = cases.reduce((s, c) => {
+        const names = getCaseProducts(c);
+        return s + names.reduce((sub, name) => {
+          const prod = prods.find((p) => p.name === name);
+          return sub + (prod ? Number(prod.costPrice || 0) : 0);
+        }, 0);
+      }, 0);
+      const commission = cases.reduce((s, c) => s + Number(c.doctorCommission || 0), 0);
+      const opex = (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
+      const profit = revenue - cost - commission - opex;
+      const activeCount = cases.filter((c) => c.status === "active").length;
+      return { id: b.id, name: b.name, revenue, collected, outstanding, cost, commission, opex, profit, activeCount, caseCount: cases.length };
+    }));
+    setPerBusiness(results);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []); // eslint-disable-line
+
+  const combined = useMemo(() => perBusiness.reduce((acc, b) => ({
+    revenue: acc.revenue + b.revenue, collected: acc.collected + b.collected, outstanding: acc.outstanding + b.outstanding,
+    profit: acc.profit + b.profit, activeCount: acc.activeCount + b.activeCount, caseCount: acc.caseCount + b.caseCount,
+  }), { revenue: 0, collected: 0, outstanding: 0, profit: 0, activeCount: 0, caseCount: 0 }), [perBusiness]);
+
+  if (loading) return <div style={styles.emptyState2}>Loading both businesses…</div>;
+
+  return (
+    <div>
+      <div style={styles.emptyState2}>Combined totals across all businesses. Pulled fresh each time you open this tab.</div>
+      <button style={{ ...styles.linkBtn, marginBottom: 12 }} onClick={load}>↻ Refresh</button>
+
+      <SectionTitle>Combined Totals</SectionTitle>
+      <div style={styles.cardGrid}>
+        <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(combined.revenue)}</div><div style={styles.statLabel}>Total Revenue</div></div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(combined.collected)}</div><div style={styles.statLabel}>Total Collected</div></div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(combined.outstanding)}</div><div style={styles.statLabel}>Total Outstanding</div></div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: combined.profit >= 0 ? "#D9720A" : "#E1483C" }}>{fmtMoney(combined.profit)}</div><div style={styles.statLabel}>Combined Net Profit</div></div>
+        <div style={styles.reportCard}><div style={styles.statValue}>{combined.activeCount}</div><div style={styles.statLabel}>Active Cases (all businesses)</div></div>
+        <div style={styles.reportCard}><div style={styles.statValue}>{combined.caseCount}</div><div style={styles.statLabel}>Total Cases (all-time)</div></div>
+      </div>
+
+      <SectionTitle>Per Business</SectionTitle>
+      <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
+        <ResponsiveContainer width="100%" height={Math.max(140, perBusiness.length * 50)}>
+          <BarChart data={perBusiness} layout="vertical" margin={{ left: 10, right: 20 }}>
+            <CartesianGrid stroke="#EEF1EC" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} />
+            <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11, fill: "#182322" }} />
+            <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Bar dataKey="revenue" name="Revenue" fill="#D9720A" radius={[0, 6, 6, 0]} />
+            <Bar dataKey="profit" name="Profit" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={styles.list}>
+        {perBusiness.map((b) => (
+          <div key={b.id} style={styles.card}>
+            <div style={{ padding: 14 }}>
+              <div style={styles.cardTitle}>{b.name}</div>
+              <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5B6864", flexWrap: "wrap", marginTop: 6 }}>
+                <span>{b.activeCount} active / {b.caseCount} total cases</span>
+                <span>Revenue {fmtMoney(b.revenue)}</span>
+                <span>Collected {fmtMoney(b.collected)}</span>
+                {b.outstanding > 0 && <span style={{ color: "#E1483C", fontWeight: 600 }}>Outstanding {fmtMoney(b.outstanding)}</span>}
+                <span style={{ color: b.profit >= 0 ? "#D9720A" : "#E1483C", fontWeight: 700 }}>Profit {fmtMoney(b.profit)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
