@@ -1665,6 +1665,23 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
 }
 
 // ---------------- Reports (Owner) ----------------
+function CollapsibleSection({ title, defaultOpen, right, children }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div onClick={() => setOpen((o) => !o)}
+        style={{ ...styles.sectionTitle, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>{title}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {right}
+          <span style={{ fontSize: 10 }}>{open ? "▲" : "▼"}</span>
+        </span>
+      </div>
+      {open && children}
+    </div>
+  );
+}
+
 function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
@@ -1777,107 +1794,112 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
       <button style={styles.primaryBtn} onClick={sendSummary}>Send Summary on WhatsApp</button>
 
-      <SectionTitle>Stock Overview</SectionTitle>
-      <div style={styles.card}>
-        {products.map((p) => (
-          <div key={p.id} style={styles.dresserLine}>
-            <span style={{ flex: 1, fontWeight: 600 }}>{p.name}</span>
-            <span style={styles.mutedSmall}>{p.available || 0} avail · {p.used || 0} used</span>
-          </div>
-        ))}
-      </div>
+      <CollapsibleSection title="Stock Overview">
+        <div style={styles.card}>
+          {products.map((p) => (
+            <div key={p.id} style={styles.dresserLine}>
+              <span style={{ flex: 1, fontWeight: 600 }}>{p.name}</span>
+              <span style={styles.mutedSmall}>{p.available || 0} avail · {p.used || 0} used</span>
+            </div>
+          ))}
+        </div>
+      </CollapsibleSection>
 
       {companyTotals.length > 0 && (
-        <>
-          <SectionTitle>Stock Received by Company</SectionTitle>
+        <CollapsibleSection title="Stock Received by Company">
           <div style={styles.card}>
             {companyTotals.map((c) => (
               <div key={c.company} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{c.company}</span><span style={styles.mutedSmall}>{c.qty} units</span></div>
             ))}
           </div>
-        </>
+        </CollapsibleSection>
       )}
 
-      <SectionTitle>Dresser Workload</SectionTitle>
-      {dresserStats.length === 0 ? <EmptyState text="No dressing changes logged yet." /> : (
-        <div style={styles.card}>
-          {dresserStats.map((d, i) => (
-            <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span><span style={styles.mutedSmall}>{d.count} dressings</span></div>
-          ))}
-        </div>
-      )}
+      <CollapsibleSection title="Dresser Workload">
+        {dresserStats.length === 0 ? <EmptyState text="No dressing changes logged yet." /> : (
+          <div style={styles.card}>
+            {dresserStats.map((d, i) => (
+              <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span><span style={styles.mutedSmall}>{d.count} dressings</span></div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
 
-      <SectionTitle>Doctor-wise Monthly Cases</SectionTitle>
-      {doctorMonthlyStats.length === 0 ? <EmptyState text="No cases yet." /> : (
-        <div style={styles.card}>
-          {doctorMonthlyStats.map((d, i) => (
-            <div key={i} style={styles.dresserLine}>
-              <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
-              <span style={styles.mutedSmall}>{d.month}</span>
-              <span style={styles.mutedSmall}>{d.count} case{d.count > 1 ? "s" : ""}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <CollapsibleSection title="Doctor-wise Monthly Cases">
+        {doctorMonthlyStats.length === 0 ? <EmptyState text="No cases yet." /> : (
+          <div style={styles.card}>
+            {doctorMonthlyStats.map((d, i) => (
+              <div key={i} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
+                <span style={styles.mutedSmall}>{d.month}</span>
+                <span style={styles.mutedSmall}>{d.count} case{d.count > 1 ? "s" : ""}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
 
-      <SectionTitle>Outstanding Payments by Patient</SectionTitle>
-      {outstandingByPatient.length === 0 ? <EmptyState text="No outstanding balances. All caught up!" /> : (
-        <div style={styles.card}>
-          {outstandingByPatient.map((c) => (
-            <div key={c.id} style={styles.dresserLine}>
-              <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
-              <span style={styles.mutedSmall}>{fmtDate(c.applicationDate)}</span>
-              <span style={{ ...styles.mutedSmall, color: "#B3542F", fontWeight: 600 }}>{fmtMoney(c.balance)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <CollapsibleSection title="Outstanding Payments by Patient" defaultOpen={outstandingByPatient.length > 0}>
+        {outstandingByPatient.length === 0 ? <EmptyState text="No outstanding balances. All caught up!" /> : (
+          <div style={styles.card}>
+            {outstandingByPatient.map((c) => (
+              <div key={c.id} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
+                <span style={styles.mutedSmall}>{fmtDate(c.applicationDate)}</span>
+                <span style={{ ...styles.mutedSmall, color: "#B3542F", fontWeight: 600 }}>{fmtMoney(c.balance)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
 
-      <SectionTitle>Monthly Revenue Trend</SectionTitle>
-      {monthlyRevenueTrend.length === 0 ? <EmptyState text="No cases yet." /> : (
-        <div style={styles.card}>
-          {monthlyRevenueTrend.map((m) => (
-            <div key={m.month} style={styles.dresserLine}>
-              <span style={{ flex: 1, fontWeight: 600 }}>{m.month}</span>
-              <span style={styles.mutedSmall}>Billed {fmtMoney(m.billed)}</span>
-              <span style={{ ...styles.mutedSmall, color: "#1B6B63" }}>Collected {fmtMoney(m.collected)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <CollapsibleSection title="Monthly Revenue Trend">
+        {monthlyRevenueTrend.length === 0 ? <EmptyState text="No cases yet." /> : (
+          <div style={styles.card}>
+            {monthlyRevenueTrend.map((m) => (
+              <div key={m.month} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{m.month}</span>
+                <span style={styles.mutedSmall}>Billed {fmtMoney(m.billed)}</span>
+                <span style={{ ...styles.mutedSmall, color: "#1B6B63" }}>Collected {fmtMoney(m.collected)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
 
-      <SectionTitle>Overdue Dressing Changes</SectionTitle>
-      {overdueCasesList.length === 0 ? <EmptyState text="No overdue cases right now." /> : (
-        <div style={styles.card}>
-          {overdueCasesList.map((c) => (
-            <div key={c.id} style={styles.dresserLine}>
-              <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
-              <span style={styles.mutedSmall}>{c.dresserName || "Unassigned"}</span>
-              <span style={{ ...styles.mutedSmall, color: "#B3542F", fontWeight: 600 }}>{c.daysOverdue}d overdue</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <CollapsibleSection title="Overdue Dressing Changes" defaultOpen={overdueCasesList.length > 0}>
+        {overdueCasesList.length === 0 ? <EmptyState text="No overdue cases right now." /> : (
+          <div style={styles.card}>
+            {overdueCasesList.map((c) => (
+              <div key={c.id} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
+                <span style={styles.mutedSmall}>{c.dresserName || "Unassigned"}</span>
+                <span style={{ ...styles.mutedSmall, color: "#B3542F", fontWeight: 600 }}>{c.daysOverdue}d overdue</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
 
-      <SectionTitle>Dresser Locations</SectionTitle>
-      <div style={styles.emptyState2}>Captured on login, on each dressing change, on safety alerts, and roughly every 5 minutes while a dresser has the app open. Stops updating once they close it or lock their phone.</div>
-      {dresserNames.length === 0 ? <EmptyState text="No dressers added yet." /> : (
-        <div style={styles.list}>
-          {dresserNames.map((name) => {
-            const trail = (locations[name] || []).slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
-            const latest = trail[0];
-            const isOpen = expanded === name;
-            return (
-              <div key={name} style={styles.card}>
-                <div style={styles.cardTop} onClick={() => setExpanded(isOpen ? null : name)}>
-                  <div style={{ flex: 1 }}>
-                    <div style={styles.cardTitle}>{name}</div>
-                    <div style={styles.cardMeta}>{trail.length} check-in{trail.length === 1 ? "" : "s"} recorded</div>
-                  </div>
-                  {latest ? (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                      <span style={styles.mutedSmall}>{fmtRelative(latest.ts)}</span>
-                      <a href={mapsLink(latest.lat, latest.lng)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={styles.linkBtn}>Map</a>
+      <CollapsibleSection title="Dresser Locations">
+        <div style={styles.emptyState2}>Captured on login, on each dressing change, on safety alerts, and roughly every 5 minutes while a dresser has the app open. Stops updating once they close it or lock their phone.</div>
+        {dresserNames.length === 0 ? <EmptyState text="No dressers added yet." /> : (
+          <div style={styles.list}>
+            {dresserNames.map((name) => {
+              const trail = (locations[name] || []).slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+              const latest = trail[0];
+              const isOpen = expanded === name;
+              return (
+                <div key={name} style={styles.card}>
+                  <div style={styles.cardTop} onClick={() => setExpanded(isOpen ? null : name)}>
+                    <div style={{ flex: 1 }}>
+                      <div style={styles.cardTitle}>{name}</div>
+                      <div style={styles.cardMeta}>{trail.length} check-in{trail.length === 1 ? "" : "s"} recorded</div>
+                    </div>
+                    {latest ? (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                        <span style={styles.mutedSmall}>{fmtRelative(latest.ts)}</span>
+                        <a href={mapsLink(latest.lat, latest.lng)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={styles.linkBtn}>Map</a>
                     </div>
                   ) : <span style={styles.mutedSmall}>No location yet</span>}
                 </div>
@@ -1897,10 +1919,10 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
           })}
         </div>
       )}
+      </CollapsibleSection>
     </div>
   );
 }
-
 // ---------------- styles ----------------
 const printStyles = `
 @media print {
