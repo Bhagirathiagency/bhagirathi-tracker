@@ -827,10 +827,6 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
       </header>
 
       <main style={styles.main}>
-        <div style={{ ...styles.emptyState2, textAlign: "center", marginBottom: 10 }}>
-          Your location is recorded on login, on each dressing change, and periodically while this app is open — for safety and record-keeping.
-        </div>
-
         <CollapsibleSection title="My Profile" defaultOpen={!profile || !profile.photo}>
           <DresserProfileForm name={name} profile={profile} setDresserProfile={setDresserProfile} />
         </CollapsibleSection>
