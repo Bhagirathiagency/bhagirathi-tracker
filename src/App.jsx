@@ -631,7 +631,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} />}
       </main>
     </>
   );
@@ -2034,6 +2034,40 @@ function pnlPeriodLabel(key, granularity) {
   return key;
 }
 
+function CollapsibleSubcard({ title, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={styles.card}>
+      <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
+        <div style={{ flex: 1 }}><div style={styles.cardTitle}>{title}</div></div>
+        <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
+      </div>
+      {open && <div style={{ padding: "0 14px 14px" }}>{children}</div>}
+    </div>
+  );
+}
+
+function SWOTGrid({ swot }) {
+  const quadrants = [
+    { key: "s", label: "Strengths", color: "#128577", bg: "#E3F3EF" },
+    { key: "w", label: "Weaknesses", color: "#E1483C", bg: "#FCE7E4" },
+    { key: "o", label: "Opportunities", color: "#3B5BA5", bg: "#E7ECF7" },
+    { key: "t", label: "Threats", color: "#D98D2B", bg: "#FBF0DE" },
+  ];
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      {quadrants.map((q) => (
+        <div key={q.key} style={{ background: q.bg, borderRadius: 12, padding: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: q.color, marginBottom: 6 }}>{q.label}</div>
+          <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: "#182322", lineHeight: 1.5 }}>
+            {swot[q.key].map((line, i) => <li key={i}>{line}</li>)}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DoctorCommissionCard({ d }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -2113,7 +2147,7 @@ function DoctorCommissionCard({ d }) {
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
 
@@ -2336,6 +2370,98 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       .sort((a, b) => b.daysOverdue - a.daysOverdue);
   }, [cases]);
 
+  const businessSWOT = useMemo(() => {
+    const s = [], w = [], o = [], t = [];
+    const activeCount = cases.filter((c) => c.status === "active").length;
+    const totalCases = cases.length;
+    const profit = pnlTotals.profit;
+
+    if (totalCases > 0) {
+      if (profit > 0) s.push(`Profitable so far: net profit of ${fmtMoney(profit)} across ${totalCases} case${totalCases > 1 ? "s" : ""}.`);
+      if (activeCount > 0) s.push(`${activeCount} case${activeCount > 1 ? "s" : ""} currently on active VAC therapy.`);
+    } else {
+      w.push("No cases logged yet — too early to assess performance.");
+    }
+    if (dresserStats.length > 1) s.push(`Team of ${dresserStats.length} dressers actively logging dressing changes.`);
+    if (lowStock.length === 0 && products.length > 0) s.push("No products currently below the low-stock threshold.");
+    if ((doctorCalls || []).length > 0) s.push(`${doctorCalls.length} doctor call${doctorCalls.length > 1 ? "s" : ""} logged — active field outreach.`);
+    if (companyStockSales.length > 1) s.push(`Sourcing spread across ${companyStockSales.length} supplier companies, reducing single-supplier dependency.`);
+
+    if (outstandingTotal > 0) w.push(`${fmtMoney(outstandingTotal)} outstanding across patients — collection follow-up needed.`);
+    if (lowStock.length > 0) w.push(`${lowStock.length} product${lowStock.length > 1 ? "s" : ""} below reorder level: ${lowStock.map((p) => p.name).join(", ")}.`);
+    if (overdueCount > 0) w.push(`${overdueCount} dressing change${overdueCount > 1 ? "s" : ""} overdue right now — risk to continuity of care.`);
+    if (profit < 0) w.push(`Operating at a net loss of ${fmtMoney(Math.abs(profit))} for the selected period.`);
+    if (dresserStats.length === 1) w.push("Only one dresser logging changes — key-person dependency.");
+
+    const pendingQuotes = (quotations || []).filter((q) => q.status === "sent" || q.status === "draft");
+    if (pendingQuotes.length > 0) o.push(`${pendingQuotes.length} quotation${pendingQuotes.length > 1 ? "s" : ""} still pending — follow up to convert into cases.`);
+    if (patientRevenue.length > 0) {
+      const top = patientRevenue[0];
+      if (patientRevenue.length > 1 && top.revenue > (patientRevenue.reduce((s, p) => s + p.revenue, 0) / patientRevenue.length) * 2) {
+        o.push(`Revenue concentrated with top patient (${top.patient}) — cross-sell similar cases via referring doctors.`);
+      }
+    }
+    if (doctorCommissionStats.length > 0) o.push(`${doctorCommissionStats[0].doctor} is the top commission-linked referrer — deepen this relationship for more volume.`);
+    if (rentedCases.length > 0 && cases.length > rentedCases.length) o.push("Machine rental is being billed on some cases only — check if it can be extended to more.");
+
+    const outstandingConcentration = outstandingByPatient => outstandingByPatient;
+    if (outstandingTotal > 0 && cases.length > 0) {
+      const outstandingCasesCount = cases.filter((c) => {
+        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        return Number(c.totalAmount || 0) - paid > 0;
+      }).length;
+      if (outstandingCasesCount / cases.length > 0.3) t.push("Over 30% of cases carry an outstanding balance — cash-flow risk if collections slip further.");
+    }
+    if (lowStock.some((p) => ["Canister", "Foam"].some((k) => p.name.toLowerCase().includes(k.toLowerCase())))) {
+      t.push("Core VAC consumables (canister/foam) running low — risk of therapy disruption if not restocked soon.");
+    }
+    if (dresserStats.length > 0) {
+      const top = dresserStats[0];
+      const share = dresserStats.reduce((s, d) => s + d.count, 0);
+      if (share > 0 && top.count / share > 0.6) t.push(`${top.name} handles over 60% of all dressing changes — losing them would significantly disrupt operations.`);
+    }
+    if (s.length === 0) s.push("Not enough data yet to identify clear strengths — keep logging cases.");
+    if (o.length === 0) o.push("No standout growth opportunity detected yet from current data.");
+    if (t.length === 0) t.push("No major threats detected from current data.");
+    return { s, w, o, t };
+  }, [cases, products, dresserStats, lowStock, outstandingTotal, overdueCount, doctorCalls, quotations, companyStockSales, patientRevenue, doctorCommissionStats, rentedCases, pnlTotals]);
+
+  const dresserSWOT = useMemo(() => {
+    return (dressers || []).map((name) => {
+      const theirCases = cases.filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase());
+      const theirChanges = cases.reduce((sum, c) => sum + (c.dressingChanges || []).filter((e) => (e.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase()).length, 0);
+      const theirActive = theirCases.filter((c) => c.status === "active");
+      const theirOverdue = theirActive.filter((c) => overdueDays(c) > 0).length;
+      const theirOutstanding = theirCases.reduce((sum, c) => {
+        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        return sum + Math.max(0, Number(c.totalAmount || 0) - paid);
+      }, 0);
+      const theirCalls = (doctorCalls || []).filter((d) => (d.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase()).length;
+      const theirQuotes = (quotations || []).filter((q) => (q.createdBy || "").trim().toLowerCase() === name.trim().toLowerCase()).length;
+
+      const s = [], w = [], o = [], t = [];
+      if (theirChanges > 0) s.push(`${theirChanges} dressing change${theirChanges > 1 ? "s" : ""} logged.`);
+      if (theirCases.length > 0) s.push(`${theirCases.length} case${theirCases.length > 1 ? "s" : ""} handled in total.`);
+      if (theirCalls > 0) s.push(`${theirCalls} doctor call${theirCalls > 1 ? "s" : ""} logged — active in field outreach.`);
+      if (theirQuotes > 0) s.push(`${theirQuotes} quotation${theirQuotes > 1 ? "s" : ""} created.`);
+
+      if (theirOverdue > 0) w.push(`${theirOverdue} of their active case${theirOverdue > 1 ? "s" : ""} overdue for a dressing change.`);
+      if (theirCalls === 0) w.push("No doctor calls logged yet.");
+      if (theirCases.length === 0) w.push("No cases assigned/logged yet.");
+
+      if (theirCalls > 0 && theirCases.length > 0) o.push("Existing doctor relationships could be leveraged for more referrals.");
+      if (theirQuotes === 0) o.push("Hasn't created any quotations yet — could help with lead conversion.");
+
+      if (theirOutstanding > 0) t.push(`${fmtMoney(theirOutstanding)} outstanding across their cases.`);
+      if (theirOverdue > 0) t.push("Overdue changes risk patient complications if not addressed promptly.");
+
+      if (s.length === 0) s.push("No activity logged yet.");
+      if (o.length === 0) o.push("No specific opportunity identified from current data.");
+      if (t.length === 0) t.push("No notable risk identified from current data.");
+      return { name, s, w, o, t };
+    });
+  }, [dressers, cases, doctorCalls, quotations]);
+
   const sendSummary = () => {
     let msg = `Bhagirathi Agency — Daily Summary\n`;
     msg += `Overdue changes: ${overdueCount}\nOutstanding: ${fmtMoney(outstandingTotal)}\n`;
@@ -2348,6 +2474,22 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <button style={{ ...styles.smallBtn, background: "#3B5BA5" }} onClick={() => window.print()}>Download as PDF</button>
       </div>
+
+      <CollapsibleSection title="SWOT Analysis — Business">
+        <SWOTGrid swot={businessSWOT} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="SWOT Analysis — Team (per Dresser)">
+        {dresserSWOT.length === 0 ? <EmptyState text="No dressers added yet." /> : (
+          <div style={styles.list}>
+            {dresserSWOT.map((d) => (
+              <CollapsibleSubcard key={d.name} title={d.name}>
+                <SWOTGrid swot={d} />
+              </CollapsibleSubcard>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
 
       <SectionTitle>Revenue</SectionTitle>
       <div style={styles.cardGrid}>
