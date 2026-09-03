@@ -319,6 +319,7 @@ export default function App() {
 
   const [role, setRole] = useState(null);
   const [pin, setPin] = useState(null);
+  const [accountantPin, setAccountantPinState] = useState(null);
   const [cases, setCases] = useState([]);
   const [machines, setMachines] = useState([]);
   const [products, setProducts] = useState(DEFAULT_PRODUCTS);
@@ -378,7 +379,7 @@ export default function App() {
   useEffect(() => {
     setLoaded(false);
     (async () => {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin] = await Promise.all([
         loadKey(bkey(businessId, "wca-cases"), []),
         loadKey(bkey(businessId, "wca-machines"), []),
         loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
@@ -391,11 +392,13 @@ export default function App() {
         loadKey(bkey(businessId, "wca-dresser-profiles"), {}),
         loadKey(bkey(businessId, "wca-dresser-stock-access"), {}),
         loadKey(bkey(businessId, "wca-expenses"), []),
+        loadKey(bkey(businessId, "wca-accountant-pin"), null),
       ]);
       setCases(c);
       setMachines(m);
       setProducts(normalizeProducts(p));
       setPin(ownerPin);
+      setAccountantPinState(acctPin);
       setDressers(drs);
       setQuotations(qts);
       setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
@@ -477,6 +480,7 @@ export default function App() {
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, photoFlags: { ...(c.photoFlags || {}), [stage]: true } } : c));
   };
   const setOwnerPin = (newPin) => { setPin(newPin); saveKey(bkey(businessId, "wca-owner-pin"), newPin); };
+  const setAccountantPin = (newPin) => { setAccountantPinState(newPin); saveKey(bkey(businessId, "wca-accountant-pin"), newPin); };
   const addDresser = (name, dresserPin) => {
     const trimmed = name.trim();
     if (!trimmed || dressers.some((d) => d.toLowerCase() === trimmed.toLowerCase())) return;
@@ -557,11 +561,13 @@ export default function App() {
       {!role && (
         <RoleGate
           pin={pin}
+          accountantPin={accountantPin}
           dressers={dressers}
           dresserPins={dresserPins}
           onSetPin={setOwnerPin}
           onOwnerLogin={() => { logOwnerLogin(); setRole({ type: "owner" }); }}
           onDresserLogin={(name) => { setRole({ type: "dresser", name }); updateDresserLocation(name); }}
+          onAccountantLogin={() => setRole({ type: "accountant" })}
           businesses={BUSINESSES} businessId={businessId} business={business} onSwitchBusiness={switchBusiness}
         />
       )}
@@ -581,6 +587,7 @@ export default function App() {
           expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
           businessId={businessId} business={business} businesses={BUSINESSES} onSwitchBusiness={switchBusiness}
           pin={pin} onChangePin={setOwnerPin}
+          accountantPin={accountantPin} onChangeAccountantPin={setAccountantPin}
           onLogout={() => setRole(null)}
         />
       )}
@@ -598,12 +605,20 @@ export default function App() {
           onLogout={() => setRole(null)}
         />
       )}
+      {role && role.type === "accountant" && (
+        <AccountantShell
+          business={business}
+          cases={cases} products={products} dressers={dressers} machines={machines}
+          quotations={quotations} doctorCalls={doctorCalls} expenses={expenses}
+          onLogout={() => setRole(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ================= ROLE GATE =================
-function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresserLogin, businesses, businessId, business, onSwitchBusiness }) {
+function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresserLogin, onAccountantLogin, businesses, businessId, business, onSwitchBusiness }) {
   const [mode, setMode] = useState("dresser");
   const [input, setInput] = useState("");
   const [confirmInput, setConfirmInput] = useState("");
@@ -612,6 +627,8 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
   const [pendingDresser, setPendingDresser] = useState(null);
   const [dresserPinInput, setDresserPinInput] = useState("");
   const [dresserError, setDresserError] = useState("");
+  const [acctInput, setAcctInput] = useState("");
+  const [acctError, setAcctError] = useState("");
 
   const submitOwner = () => {
     if (!pin) {
@@ -621,6 +638,11 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
     }
     if (input === pin) onOwnerLogin();
     else { setError("Incorrect PIN"); setInput(""); }
+  };
+
+  const submitAccountant = () => {
+    if (acctInput === accountantPin) onAccountantLogin();
+    else { setAcctError("Incorrect PIN"); setAcctInput(""); }
   };
 
   const handleLogoTap = () => {
@@ -676,6 +698,24 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
               ))}
             </div>
           )}
+          {accountantPin && (
+            <div style={{ textAlign: "center", marginTop: 18 }}>
+              <button style={styles.linkBtn} onClick={() => { setMode("accountant"); setAcctError(""); setAcctInput(""); }}>Accountant Login</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode === "accountant" && (
+        <div style={styles.gateForm}>
+          <div style={styles.gateHint}>Read-only access to Reports</div>
+          <input type="password" inputMode="numeric" placeholder="Accountant PIN" autoFocus value={acctInput}
+            onChange={(e) => setAcctInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submitAccountant(); }}
+            style={styles.gateInput} />
+          {acctError && <div style={styles.gateError}>{acctError}</div>}
+          <button style={styles.primaryBtn} onClick={submitAccountant}>Unlock</button>
+          <button style={styles.linkBtn} onClick={() => { setMode("dresser"); setAcctError(""); }}>Back</button>
         </div>
       )}
 
@@ -696,7 +736,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -741,6 +781,10 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {showPinForm && (
           <div style={styles.pinPanel}>
             <ChangePinForm pin={pin} onChangePin={(p) => { onChangePin(p); setShowPinForm(false); }} onDone={() => setShowPinForm(false)} />
+            <div style={{ borderTop: "1px solid #EEF1EC", marginTop: 14, paddingTop: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Accountant PIN (read-only Reports access)</div>
+              <AccountantPinForm pin={accountantPin} onChangePin={onChangeAccountantPin} />
+            </div>
           </div>
         )}
       </header>
@@ -787,6 +831,48 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
   );
 }
 
+function AccountantShell({ business, cases, products, dressers, machines, quotations, doctorCalls, expenses, onLogout }) {
+  const outstandingTotal = useMemo(() => cases.reduce((sum, c) => {
+    const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    return sum + Math.max(0, Number(c.totalAmount || 0) - paid);
+  }, 0), [cases]);
+  const overdueCount = cases.filter((c) => overdueDays(c) > 0).length;
+  const dresserStats = useMemo(() => {
+    const tally = {};
+    cases.forEach((c) => {
+      const entries = (c.dressingChanges || []).length ? c.dressingChanges : [{ dresserName: c.dresserName }];
+      entries.forEach((e) => {
+        const name = (e.dresserName || "").trim();
+        if (!name) return;
+        tally[name] = (tally[name] || 0) + 1;
+      });
+    });
+    return Object.entries(tally).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+  }, [cases]);
+  const lowStock = products.filter((p) => (p.available || 0) < LOW_STOCK_THRESHOLD);
+
+  return (
+    <>
+      <header style={styles.header}>
+        <div style={styles.headerInner}>
+          <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt={business.name} style={styles.brandMarkImg} /></div>
+          <div style={{ flex: 1 }}>
+            <div style={styles.brandName}>{business.name}</div>
+            <div style={styles.brandSub}>Accountant view (read-only)</div>
+          </div>
+          <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
+        </div>
+      </header>
+      <main style={styles.main}>
+        <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers}
+          outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock}
+          doctorCalls={doctorCalls} quotations={quotations} businessName={business.name}
+          expenses={expenses} machines={machines} readOnly />
+      </main>
+    </>
+  );
+}
+
 function ChangePinForm({ pin, onChangePin, onDone }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -809,6 +895,31 @@ function ChangePinForm({ pin, onChangePin, onDone }) {
       <div style={styles.formActions}>
         <button style={styles.secondaryBtn} onClick={onDone}>Cancel</button>
         <button style={styles.primaryBtn} onClick={submit}>Update PIN</button>
+      </div>
+    </div>
+  );
+}
+
+function AccountantPinForm({ pin, onChangePin }) {
+  const [next, setNext] = useState("");
+  const [error, setError] = useState("");
+  const submit = () => {
+    if (next.length < 4) { setError("PIN must be at least 4 digits"); return; }
+    onChangePin(next);
+    setNext(""); setError("");
+  };
+  const clear = () => { onChangePin(null); setNext(""); setError(""); };
+  return (
+    <div style={styles.formGrid}>
+      {pin ? <div style={{ ...styles.badge, color: "#128577", background: "#E3F3EF", alignSelf: "flex-start" }}>PIN set — accountant login is active</div>
+        : <div style={{ ...styles.mutedSmall }}>No accountant PIN set yet — the "Accountant Login" link stays hidden until you set one.</div>}
+      <Field label={pin ? "Change accountant PIN" : "Set accountant PIN"}>
+        <input type="password" inputMode="numeric" style={styles.input} value={next} onChange={(e) => setNext(e.target.value)} placeholder="4+ digits" />
+      </Field>
+      {error && <div style={styles.gateError}>{error}</div>}
+      <div style={styles.formActions}>
+        {pin && <button style={{ ...styles.secondaryBtn, color: "#E1483C" }} onClick={clear}>Remove Access</button>}
+        <button style={styles.primaryBtn} onClick={submit}>{pin ? "Update PIN" : "Set PIN"}</button>
       </div>
     </div>
   );
@@ -2650,7 +2761,7 @@ function DoctorCommissionCard({ d, businessName = "Bhagirathi Agency" }) {
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, machines }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, machines, readOnly = false }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [expCategory, setExpCategory] = useState("Salary");
@@ -3083,24 +3194,26 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       </CollapsibleSection>
 
       <CollapsibleSection title="Expenses" right={expensesTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(expensesTotal)}</span> : null}>
-        <div style={styles.formGrid}>
-          <div style={styles.addPaymentRow}>
-            <select style={{ ...styles.smallInput, flex: 1 }} value={expCategory} onChange={(e) => setExpCategory(e.target.value)}>
-              {["Salary", "Rent", "Transport/Fuel", "Machine Maintenance", "Utilities", "Marketing", "Other"].map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <input type="number" placeholder="Amount ₹" style={{ ...styles.smallInput, width: 100 }} value={expAmount} onChange={(e) => setExpAmount(e.target.value)} />
+        {!readOnly && (
+          <div style={styles.formGrid}>
+            <div style={styles.addPaymentRow}>
+              <select style={{ ...styles.smallInput, flex: 1 }} value={expCategory} onChange={(e) => setExpCategory(e.target.value)}>
+                {["Salary", "Rent", "Transport/Fuel", "Machine Maintenance", "Utilities", "Marketing", "Other"].map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <input type="number" placeholder="Amount ₹" style={{ ...styles.smallInput, width: 100 }} value={expAmount} onChange={(e) => setExpAmount(e.target.value)} />
+            </div>
+            <div style={styles.addPaymentRow}>
+              <input type="date" style={styles.smallInput} value={expDate} onChange={(e) => setExpDate(e.target.value)} />
+              <input type="text" placeholder="Note (optional)" style={{ ...styles.smallInput, flex: 1 }} value={expNote} onChange={(e) => setExpNote(e.target.value)} />
+              <button style={styles.smallBtn} onClick={() => {
+                const amt = Number(expAmount);
+                if (!amt || amt <= 0) return;
+                addExpense({ category: expCategory, amount: amt, date: expDate, note: expNote.trim() });
+                setExpAmount(""); setExpNote("");
+              }}>Add Expense</button>
+            </div>
           </div>
-          <div style={styles.addPaymentRow}>
-            <input type="date" style={styles.smallInput} value={expDate} onChange={(e) => setExpDate(e.target.value)} />
-            <input type="text" placeholder="Note (optional)" style={{ ...styles.smallInput, flex: 1 }} value={expNote} onChange={(e) => setExpNote(e.target.value)} />
-            <button style={styles.smallBtn} onClick={() => {
-              const amt = Number(expAmount);
-              if (!amt || amt <= 0) return;
-              addExpense({ category: expCategory, amount: amt, date: expDate, note: expNote.trim() });
-              setExpAmount(""); setExpNote("");
-            }}>Add Expense</button>
-          </div>
-        </div>
+        )}
         {expensesByCategory.length === 0 ? <EmptyState text="No expenses logged yet. Salaries, rent, fuel, maintenance — anything beyond product cost." /> : (
           <>
             <div style={{ ...styles.card, marginBottom: 12 }}>
@@ -3114,7 +3227,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                   <span style={{ flex: 1, fontWeight: 600 }}>{e.category}{e.note ? ` · ${e.note}` : ""}</span>
                   <span style={styles.mutedSmall}>{fmtDate(e.date)}</span>
                   <span style={{ fontWeight: 700 }}>{fmtMoney(e.amount)}</span>
-                  <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => deleteExpense(e.id)}>✕</button>
+                  {!readOnly && <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => deleteExpense(e.id)}>✕</button>}
                 </div>
               ))}
             </div>
@@ -3482,25 +3595,29 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         </div>
       </CollapsibleSection>
 
-      <SectionTitle>Danger Zone</SectionTitle>
-      <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4", marginBottom: 10 }}>
-        <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
-          Marks every case's outstanding balance as paid (adds a settling payment entry to each). Case history stays intact — only outstanding drops to zero. Currently outstanding: {fmtMoney(outstandingTotal)}.
-        </div>
-        <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
-          const typed = window.prompt('This will mark ALL outstanding balances as paid. Type "CLEAR" to confirm:');
-          if (typed === "CLEAR") clearAllOutstanding();
-        }}>Zero Out All Outstanding</button>
-      </div>
-      <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4" }}>
-        <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
-          Permanently clears all cases and all stock/products — use this to wipe out testing data before going live. This cannot be undone.
-        </div>
-        <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
-          const typed = window.prompt('This will permanently delete ALL cases and ALL stock/products. Type "RESET" to confirm:');
-          if (typed === "RESET") resetTestData();
-        }}>Clear All Cases &amp; Stock</button>
-      </div>
+      {!readOnly && (
+        <>
+          <SectionTitle>Danger Zone</SectionTitle>
+          <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+              Marks every case's outstanding balance as paid (adds a settling payment entry to each). Case history stays intact — only outstanding drops to zero. Currently outstanding: {fmtMoney(outstandingTotal)}.
+            </div>
+            <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
+              const typed = window.prompt('This will mark ALL outstanding balances as paid. Type "CLEAR" to confirm:');
+              if (typed === "CLEAR") clearAllOutstanding();
+            }}>Zero Out All Outstanding</button>
+          </div>
+          <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4" }}>
+            <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+              Permanently clears all cases and all stock/products — use this to wipe out testing data before going live. This cannot be undone.
+            </div>
+            <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
+              const typed = window.prompt('This will permanently delete ALL cases and ALL stock/products. Type "RESET" to confirm:');
+              if (typed === "RESET") resetTestData();
+            }}>Clear All Cases &amp; Stock</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
