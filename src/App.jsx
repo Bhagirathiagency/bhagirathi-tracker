@@ -171,6 +171,8 @@ function Icon({ name, size = 20 }) {
       return <svg {...common}><path d="M12 2.5c3.6 0 6.5 2.8 6.5 6.6 0 4.8-6.5 12.4-6.5 12.4S5.5 13.9 5.5 9.1C5.5 5.3 8.4 2.5 12 2.5Z" /><circle cx="12" cy="9" r="2.3" /></svg>;
     case "logout":
       return <svg {...common}><path d="M9 21H5.5A1.5 1.5 0 0 1 4 19.5v-15A1.5 1.5 0 0 1 5.5 3H9" /><path d="M16 16l5-4-5-4" /><path d="M21 12H9" /></svg>;
+    case "download":
+      return <svg {...common}><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M4.5 19.5h15" /></svg>;
     default:
       return null;
   }
@@ -1775,17 +1777,42 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
 // ---------------- Reports (Owner) ----------------
 function CollapsibleSection({ title, defaultOpen, right, children }) {
   const [open, setOpen] = useState(!!defaultOpen);
+  const [busy, setBusy] = useState(false);
+  const contentRef = useRef(null);
+
+  const download = async (e) => {
+    e.stopPropagation();
+    if (!contentRef.current) return;
+    setBusy(true);
+    try {
+      const blob = await quotePdfBlob(contentRef.current);
+      const filename = `${title.replace(/[^a-z0-9]+/gi, "-")}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Couldn't generate PDF for this section.");
+    } finally { setBusy(false); }
+  };
+
   return (
     <div style={{ marginBottom: 4 }}>
       <div onClick={() => setOpen((o) => !o)}
         style={{ ...styles.sectionTitle, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>{title}</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {right}
+          {open && (
+            <span onClick={download} title="Download this report as PDF"
+              style={{ display: "flex", alignItems: "center", color: busy ? "#8A9A96" : "#128577", cursor: busy ? "default" : "pointer" }}>
+              <Icon name="download" size={15} />
+            </span>
+          )}
           <span style={{ fontSize: 10 }}>{open ? "▲" : "▼"}</span>
         </span>
       </div>
-      {open && children}
+      {open && <div ref={contentRef}>{children}</div>}
     </div>
   );
 }
