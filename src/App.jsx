@@ -36,7 +36,7 @@ async function saveKey(key, value) {
 
 const BUSINESSES = [
   { id: "bhagirathi", name: "Bhagirathi Agency", tagline: "Wound Care & NPWT" },
-  { id: "leelavac", name: "Leela VAC", tagline: "Wound Care & NPWT" },
+  { id: "leelavac", name: "Leela Medical", tagline: "Wound Care & NPWT" },
 ];
 // Bhagirathi keeps its original, unprefixed keys (that's the live production data already in Supabase).
 // Any other business gets its own namespaced keys so nothing overlaps or gets overwritten.
