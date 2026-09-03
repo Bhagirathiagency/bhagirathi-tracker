@@ -35,8 +35,8 @@ async function saveKey(key, value) {
 }
 
 const BUSINESSES = [
-  { id: "bhagirathi", name: "Bhagirathi Agency", tagline: "Wound Care & NPWT" },
-  { id: "leelavac", name: "Leela Medical", tagline: "Wound Care & NPWT" },
+  { id: "bhagirathi", name: "Bhagirathi Agency", tagline: "Wound Care & NPWT Supplies", address: "Nashik, Maharashtra", phone: "", gstin: "" },
+  { id: "leelavac", name: "Leela Medical", tagline: "Wound Care & NPWT Supplies", address: "", phone: "", gstin: "" },
 ];
 // Bhagirathi keeps its original, unprefixed keys (that's the live production data already in Supabase).
 // Any other business gets its own namespaced keys so nothing overlaps or gets overwritten.
@@ -668,6 +668,7 @@ export default function App() {
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           canManageStock={!!dresserStockAccess[role.name]}
+          challans={challans} createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
           business={business} businessId={businessId} businesses={BUSINESSES}
           myBusinesses={businessesFor(role.name)} onSwitchBusiness={switchBusiness}
           onLogout={() => setRole(null)}
@@ -1045,7 +1046,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, business, businessId, businesses, myBusinesses, onSwitchBusiness, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
   const myTodaysVisits = useMemo(() => myCasesActive
@@ -1184,6 +1185,13 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         {canManageStock && (
           <CollapsibleSection title="Stock">
             <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} />
+          </CollapsibleSection>
+        )}
+        {canManageStock && (
+          <CollapsibleSection title="Delivery Challans">
+            <ChallansTab challans={challans} products={products} cases={cases}
+              createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
+              businessName={business.name} />
           </CollapsibleSection>
         )}
       </main>
@@ -2103,13 +2111,8 @@ function QuotationView({ q, onBack, onEdit, onStatus, businessName = "Bhagirathi
       </div>
 
       <div style={styles.quoteSheet} ref={sheetRef}>
-        <div style={styles.quoteHeader}>
-          <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 46, height: 46, objectFit: "contain" }} />
-          <div>
-            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17 }}>{businessName}</div>
-            <div style={{ fontSize: 11, color: "#5B6864" }}>Wound Care & NPWT Supplies</div>
-          </div>
-        </div>
+        <Letterhead businessName={businessName} docType="Quotation"
+          meta={<div style={{ fontSize: 11, color: "#5B6864" }}>{q.quoteNo}</div>} />
         <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0", fontSize: 13 }}>
           <div><strong>Quotation No.</strong><br />{q.quoteNo}</div>
           <div><strong>Date</strong><br />{fmtDate(q.date)}</div>
@@ -2497,13 +2500,8 @@ function ChallanPdfView({ ch, onBack, businessName }) {
         <button style={{ ...styles.smallBtn, flex: 1 }} disabled={busy} onClick={downloadPdf}>{busy ? "Preparing…" : "Download PDF"}</button>
       </div>
       <div style={styles.quoteSheet} ref={sheetRef}>
-        <div style={styles.quoteHeader}>
-          <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 46, height: 46, objectFit: "contain" }} />
-          <div>
-            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17 }}>{businessName}</div>
-            <div style={{ fontSize: 11, color: "#5B6864" }}>Delivery Challan</div>
-          </div>
-        </div>
+        <Letterhead businessName={businessName} docType="Delivery Challan"
+          meta={<div style={{ fontSize: 11, color: "#5B6864" }}>{ch.challanNo}</div>} />
         <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0", fontSize: 13 }}>
           <div><strong>Challan No.</strong><br />{ch.challanNo}</div>
           <div><strong>Date</strong><br />{fmtDate(ch.date)}</div>
@@ -2975,6 +2973,32 @@ function SWOTGrid({ swot }) {
   );
 }
 
+function Letterhead({ businessName = "Bhagirathi Agency", docType, meta }) {
+  const b = BUSINESSES.find((x) => x.name === businessName) || {};
+  return (
+    <div style={{ borderBottom: "3px solid #D9720A", paddingBottom: 14, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 58, height: 58, objectFit: "contain" }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 21, color: "#0E2422" }}>{businessName}</div>
+          {b.tagline && <div style={{ fontSize: 11.5, color: "#5B6864" }}>{b.tagline}</div>}
+          {(b.address || b.phone || b.gstin) && (
+            <div style={{ fontSize: 10.5, color: "#8A9A96", marginTop: 2 }}>
+              {b.address}{b.address && (b.phone || b.gstin) ? " · " : ""}{b.phone}{b.phone && b.gstin ? " · " : ""}{b.gstin ? `GSTIN: ${b.gstin}` : ""}
+            </div>
+          )}
+        </div>
+        {docType && (
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: "#D9720A", textTransform: "uppercase", letterSpacing: 0.5 }}>{docType}</div>
+            {meta}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DoctorCommissionCard({ d, businessName = "Bhagirathi Agency" }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -3014,13 +3038,7 @@ function DoctorCommissionCard({ d, businessName = "Bhagirathi Agency" }) {
             {busy ? "Preparing…" : "Download Commission Statement PDF"}
           </button>
           <div ref={sheetRef} style={styles.quoteSheet}>
-            <div style={styles.quoteHeader}>
-              <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 40, height: 40, objectFit: "contain" }} />
-              <div>
-                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 }}>{businessName}</div>
-                <div style={{ fontSize: 11, color: "#5B6864" }}>Doctor Commission Statement</div>
-              </div>
-            </div>
+            <Letterhead businessName={businessName} docType="Commission Statement" />
             <div style={{ margin: "12px 0", fontSize: 13 }}>
               <strong>Doctor:</strong> {d.doctor}<br />
               <strong>Statement generated:</strong> {fmtDate(todayISO())}
