@@ -303,6 +303,7 @@ export default function App() {
   const [dressers, setDressers] = useState([]);
   const [dresserPins, setDresserPins] = useState({});
   const [ownerLogins, setOwnerLogins] = useState([]);
+  const [dresserProfiles, setDresserProfiles] = useState({});
   const [quotations, setQuotations] = useState([]);
   const [doctorCalls, setDoctorCalls] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -326,7 +327,7 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles] = await Promise.all([
         loadKey("wca-cases", []),
         loadKey("wca-machines", []),
         loadKey("wca-products", DEFAULT_PRODUCTS),
@@ -336,6 +337,7 @@ export default function App() {
         loadKey("wca-dresser-pins", {}),
         loadKey("wca-doctor-calls", []),
         loadKey("wca-owner-logins", []),
+        loadKey("wca-dresser-profiles", {}),
       ]);
       setCases(c);
       setMachines(m);
@@ -346,6 +348,7 @@ export default function App() {
       setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
       setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
       setOwnerLogins(Array.isArray(olog) ? olog : []);
+      setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
       setLoaded(true);
     })();
   }, []);
@@ -357,6 +360,7 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey("wca-quotations", quotations); }, [quotations, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-dresser-pins", dresserPins); }, [dresserPins, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-doctor-calls", doctorCalls); }, [doctorCalls, loaded]);
+  useEffect(() => { if (loaded) saveKey("wca-dresser-profiles", dresserProfiles); }, [dresserProfiles, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-owner-logins", ownerLogins); }, [ownerLogins, loaded]);
 
   const saveCase = (data, editingId) => {
@@ -461,6 +465,7 @@ export default function App() {
     const browser = /Chrome/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : /Firefox/.test(ua) ? "Firefox" : "Browser";
     setOwnerLogins((prev) => [...prev.slice(-49), { id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), device: `${device} · ${browser}` }]);
   };
+  const setDresserProfile = (name, data) => setDresserProfiles((prev) => ({ ...prev, [name]: { ...prev[name], ...data } }));
   const clearAllOutstanding = () => {
     setCases((prev) => prev.map((c) => {
       const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -514,6 +519,7 @@ export default function App() {
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
+          profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           onLogout={() => setRole(null)}
         />
       )}
@@ -688,7 +694,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
-        {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} />}
+        {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} />}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} />}
       </main>
     </>
@@ -723,7 +729,52 @@ function ChangePinForm({ pin, onChangePin, onDone }) {
 }
 
 // ================= DRESSER SHELL =================
-function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, onLogout }) {
+function DresserProfileForm({ name, profile, setDresserProfile }) {
+  const [phone, setPhone] = useState((profile && profile.phone) || "");
+  const [bio, setBio] = useState((profile && profile.bio) || "");
+  const [uploading, setUploading] = useState(false);
+  const photo = profile && profile.photo;
+
+  const handlePhoto = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const dataURL = await compressImage(file);
+      setDresserProfile(name, { photo: dataURL });
+    } catch (e) { console.error(e); }
+    setUploading(false);
+  };
+
+  const save = () => setDresserProfile(name, { phone: phone.trim(), bio: bio.trim() });
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+        <label style={{ cursor: "pointer" }}>
+          {photo ? (
+            <img src={photo} alt={name} style={{ width: 72, height: 72, borderRadius: 16, objectFit: "cover", border: "1px solid #DCE4DF" }} />
+          ) : (
+            <div style={{ width: 72, height: 72, borderRadius: 16, border: "1px dashed #DCE4DF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#8A9A96", textAlign: "center" }}>
+              {uploading ? "…" : "Add photo"}
+            </div>
+          )}
+          <input type="file" accept="image/*" capture="user" style={{ display: "none" }} onChange={(e) => handlePhoto(e.target.files[0])} />
+        </label>
+        <div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 }}>{name}</div>
+          <div style={styles.mutedSmall}>Tap the photo to {photo ? "change" : "add"} it</div>
+        </div>
+      </div>
+      <div style={styles.formGrid}>
+        <Field label="Phone Number"><input type="tel" style={styles.input} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit number" /></Field>
+        <Field label="About / Bio (optional)"><textarea style={{ ...styles.input, minHeight: 60 }} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="e.g. years of experience, specialization" /></Field>
+      </div>
+      <button style={styles.smallBtn} onClick={save}>Save Profile</button>
+    </div>
+  );
+}
+
+function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
@@ -762,7 +813,11 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
     <>
       <header style={styles.header}>
         <div style={styles.headerInner}>
-          <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={styles.brandMarkImg} /></div>
+          {profile && profile.photo ? (
+            <img src={profile.photo} alt={name} style={{ width: 40, height: 40, borderRadius: 12, objectFit: "cover" }} />
+          ) : (
+            <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={styles.brandMarkImg} /></div>
+          )}
           <div style={{ flex: 1 }}>
             <div style={styles.brandName}>Bhagirathi Agency</div>
             <div style={styles.brandSub}>Hi, {name}</div>
@@ -775,6 +830,11 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
         <div style={{ ...styles.emptyState2, textAlign: "center", marginBottom: 10 }}>
           Your location is recorded on login, on each dressing change, and periodically while this app is open — for safety and record-keeping.
         </div>
+
+        <CollapsibleSection title="My Profile" defaultOpen={!profile || !profile.photo}>
+          <DresserProfileForm name={name} profile={profile} setDresserProfile={setDresserProfile} />
+        </CollapsibleSection>
+
         <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
 
         <CollapsibleSection title="Cases on Therapy" defaultOpen>
@@ -1943,7 +2003,7 @@ function StockTab({ products, setProducts, receiveStock }) {
 }
 
 // ---------------- Dressers (Owner) ----------------
-function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserStats }) {
+function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserStats, dresserProfiles }) {
   const [name, setName] = useState("");
   const [newPin, setNewPin] = useState("");
   const [pinEdits, setPinEdits] = useState({});
@@ -1995,9 +2055,16 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
             return (
             <div key={d} style={styles.card}>
               <div style={styles.cardTop} onClick={() => setOpenId(open ? null : d)}>
+                {(dresserProfiles && dresserProfiles[d] && dresserProfiles[d].photo) ? (
+                  <img src={dresserProfiles[d].photo} alt={d} style={{ width: 40, height: 40, borderRadius: 10, objectFit: "cover", marginRight: 10 }} />
+                ) : (
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "#FBEAD3", color: "#D9720A", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, marginRight: 10, fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {d.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div style={{ flex: 1 }}>
                   <div style={styles.cardTitle}>{d}</div>
-                  <div style={styles.cardMeta}>{countFor(d)} dressing{countFor(d) === 1 ? "" : "s"} logged</div>
+                  <div style={styles.cardMeta}>{countFor(d)} dressing{countFor(d) === 1 ? "" : "s"} logged{(dresserProfiles && dresserProfiles[d] && dresserProfiles[d].phone) ? ` · ${dresserProfiles[d].phone}` : ""}</div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                   {dresserPins[d] ? (
@@ -2010,6 +2077,9 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
               </div>
               {open && (
                 <div style={{ padding: "0 14px 14px" }}>
+                  {(dresserProfiles && dresserProfiles[d] && dresserProfiles[d].bio) && (
+                    <div style={{ ...styles.notesText, marginBottom: 10 }}>{dresserProfiles[d].bio}</div>
+                  )}
                   {!dresserPins[d] && (
                     <div style={{ ...styles.mutedSmall, color: "#E1483C", marginBottom: 6 }}>Anyone can log in as {d} until a PIN is set.</div>
                   )}
