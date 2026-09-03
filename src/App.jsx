@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 
 // ---------- storage helpers ----------
 import { createClient } from "@supabase/supabase-js";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -145,6 +147,26 @@ function photoKey(caseId, stage) { return `photo-${caseId}-${stage}`; }
 function locKey(name) { return `wca-loc-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`; }
 function mapsLink(lat, lng) { return `https://www.google.com/maps?q=${lat},${lng}`; }
 function waLink(number, text) { return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
+async function quotePdfBlob(node) {
+  const canvas = await html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF({ unit: "pt", format: "a4" });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const imgW = pageW;
+  const imgH = (canvas.height * imgW) / canvas.width;
+  let heightLeft = imgH;
+  let y = 0;
+  pdf.addImage(imgData, "PNG", 0, y, imgW, imgH);
+  heightLeft -= pageH;
+  while (heightLeft > 0) {
+    y = heightLeft - imgH;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, y, imgW, imgH);
+    heightLeft -= pageH;
+  }
+  return pdf.output("blob");
+}
 
 function getLocation() {
   return new Promise((resolve) => {
@@ -1187,7 +1209,65 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
 
 function QuotationView({ q, onBack, onEdit, onStatus }) {
   const { subtotal, discount, gstAmount, total } = quoteTotals(q);
+  const sheetRef = useRef(null);
+  const [busy, setBusy] = useState("");
   const shareText = `Bhagirathi Agency — Quotation ${q.quoteNo}\nTo: ${q.customerName}\nTotal: ${fmtMoney(total)}\nValid till: ${fmtDate(q.validTill)}`;
+  const fileName = `Quotation-${(q.quoteNo || "BA").replace(/\//g, "-")}.pdf`;
+
+  const makeFile = async () => {
+    const blob = await quotePdfBlob(sheetRef.current);
+    return new File([blob], fileName, { type: "application/pdf" });
+  };
+
+  const downloadPdf = async () => {
+    setBusy("download");
+    try {
+      const file = await makeFile();
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url; a.download = fileName; a.click();
+      URL.revokeObjectURL(url);
+    } finally { setBusy(""); }
+  };
+
+  const sharePdf = async () => {
+    setBusy("share");
+    try {
+      const file = await makeFile();
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: `Quotation ${q.quoteNo}`, text: shareText });
+      } else {
+        // Desktop / unsupported: download the file, then open WhatsApp with the text so it can be attached manually.
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+        URL.revokeObjectURL(url);
+        window.open(waLink(q.phone ? q.phone.replace(/\D/g, "") : OWNER_WHATSAPP, shareText), "_blank");
+        alert("PDF downloaded. Your browser can't attach it automatically here — attach the downloaded file in the WhatsApp chat that just opened.");
+      }
+    } catch (e) {
+      if (e?.name !== "AbortError") alert("Couldn't share. Try Download instead.");
+    } finally { setBusy(""); }
+  };
+
+  const emailPdf = async () => {
+    setBusy("email");
+    try {
+      const file = await makeFile();
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: `Quotation ${q.quoteNo}`, text: shareText });
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+        URL.revokeObjectURL(url);
+        const subject = encodeURIComponent(`Quotation ${q.quoteNo} — Bhagirathi Agency`);
+        const body = encodeURIComponent(`Dear ${q.customerName || ""},\n\nPlease find attached our quotation ${q.quoteNo} dated ${fmtDate(q.date)}, valid till ${fmtDate(q.validTill)}.\nTotal: ${fmtMoney(total)}\n\nRegards,\nBhagirathi Agency`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        alert("PDF downloaded. Attach the downloaded file to the email draft that just opened — email links can't attach files automatically.");
+      }
+    } finally { setBusy(""); }
+  };
 
   return (
     <div>
@@ -1199,14 +1279,20 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
             style={{ ...styles.filterChip, ...(q.status === s ? styles.filterChipActive : {}) }}>{QUOTE_STATUS[s].label}</button>
         ))}
       </div>
-      <div className="no-print" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div className="no-print" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <button style={styles.secondaryBtn} onClick={onEdit}>Edit</button>
-        <button style={{ ...styles.smallBtn, flex: 1 }} onClick={() => window.print()}>Download as PDF</button>
-        <button style={{ ...styles.smallBtn, background: "#25D366", flex: 1 }}
-          onClick={() => window.open(waLink(q.phone ? q.phone.replace(/\D/g, "") : OWNER_WHATSAPP, shareText), "_blank")}>Share</button>
+        <button style={{ ...styles.smallBtn, background: "#3B5BA5", flex: 1 }} disabled={!!busy} onClick={downloadPdf}>
+          {busy === "download" ? "Preparing…" : "Download PDF"}
+        </button>
+        <button style={{ ...styles.smallBtn, background: "#25D366", flex: 1 }} disabled={!!busy} onClick={sharePdf}>
+          {busy === "share" ? "Preparing…" : "WhatsApp"}
+        </button>
+        <button style={{ ...styles.smallBtn, background: "#B3542F", flex: 1 }} disabled={!!busy} onClick={emailPdf}>
+          {busy === "email" ? "Preparing…" : "Email"}
+        </button>
       </div>
 
-      <div style={styles.quoteSheet}>
+      <div style={styles.quoteSheet} ref={sheetRef}>
         <div style={styles.quoteHeader}>
           <img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={{ width: 46, height: 46, objectFit: "contain" }} />
           <div>
