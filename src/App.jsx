@@ -330,6 +330,27 @@ export default function App() {
   const [quotations, setQuotations] = useState([]);
   const [doctorCalls, setDoctorCalls] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [dresserBusinessAccess, setDresserBusinessAccessState] = useState({});
+  const [businessAccessLoaded, setBusinessAccessLoaded] = useState(false);
+
+  // Global (not per-business) — which businesses each dresser name is allowed into. Loaded once, independent of the active business.
+  useEffect(() => {
+    (async () => {
+      const raw = await loadKey("wca-dresser-business-access", {});
+      setDresserBusinessAccessState(raw && typeof raw === "object" ? raw : {});
+      setBusinessAccessLoaded(true);
+    })();
+  }, []);
+  useEffect(() => { if (businessAccessLoaded) saveKey("wca-dresser-business-access", dresserBusinessAccess); }, [dresserBusinessAccess, businessAccessLoaded]);
+  const setDresserBusinessAccess = (name, businessIds) => {
+    const key = name.trim().toLowerCase();
+    setDresserBusinessAccessState((prev) => ({ ...prev, [key]: businessIds }));
+  };
+  const businessesFor = (name) => {
+    const key = (name || "").trim().toLowerCase();
+    const list = dresserBusinessAccess[key];
+    return Array.isArray(list) && list.length > 0 ? list : [businessId];
+  };
 
   useEffect(() => {
     document.title = business.name;
@@ -540,6 +561,7 @@ export default function App() {
           dressers={dressers} addDresser={addDresser} removeDresser={removeDresser}
           dresserPins={dresserPins} setDresserPin={setDresserPin}
           dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess}
+          dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess}
           saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding}
@@ -559,7 +581,8 @@ export default function App() {
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           canManageStock={!!dresserStockAccess[role.name]}
-          business={business}
+          business={business} businessId={businessId} businesses={BUSINESSES}
+          myBusinesses={businessesFor(role.name)} onSwitchBusiness={switchBusiness}
           onLogout={() => setRole(null)}
         />
       )}
@@ -671,7 +694,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -755,7 +778,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
-        {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} />}
+        {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} />}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} />}
       </main>
     </>
@@ -835,7 +858,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, business, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, business, businessId, businesses, myBusinesses, onSwitchBusiness, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
@@ -886,6 +909,17 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
         </div>
       </header>
+
+      {myBusinesses && myBusinesses.length > 1 && businesses && (
+        <div style={{ display: "flex", gap: 6, padding: "10px 16px 0", maxWidth: 640, margin: "0 auto", overflowX: "auto" }}>
+          {businesses.filter((b) => myBusinesses.includes(b.id)).map((b) => (
+            <button key={b.id} onClick={() => onSwitchBusiness(b.id)}
+              style={{ ...styles.filterChip, ...(b.id === businessId ? styles.filterChipActive : {}) }}>
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <main style={styles.main}>
         <CollapsibleSection title="My Profile" defaultOpen={!profile || !profile.photo}>
@@ -2256,7 +2290,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) 
 }
 
 // ---------------- Dressers (Owner) ----------------
-function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserStats, dresserProfiles, dresserStockAccess, setDresserStockAccess }) {
+function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserStats, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, businesses, businessId }) {
   const [name, setName] = useState("");
   const [newPin, setNewPin] = useState("");
   const [pinEdits, setPinEdits] = useState({});
@@ -2273,6 +2307,16 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
     if (val && val.length < 4) { alert("PIN should be at least 4 digits"); return; }
     setDresserPin(d, val || undefined);
     setPinEdits((prev) => ({ ...prev, [d]: "" }));
+  };
+  const businessesForDresser = (d) => {
+    const list = (dresserBusinessAccess || {})[d.trim().toLowerCase()];
+    return Array.isArray(list) && list.length > 0 ? list : [businessId];
+  };
+  const toggleBusinessAccess = (d, bId) => {
+    const current = businessesForDresser(d);
+    const next = current.includes(bId) ? current.filter((x) => x !== bId) : [...current, bId];
+    if (next.length === 0) return; // must keep at least one
+    setDresserBusinessAccess(d, next);
   };
 
   return (
@@ -2347,6 +2391,22 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
                     <input type="checkbox" checked={!!(dresserStockAccess && dresserStockAccess[d])} onChange={(e) => setDresserStockAccess(d, e.target.checked)} />
                     Can import &amp; manage stock
                   </label>
+                  {businesses && businesses.length > 1 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={styles.mutedSmall}>Can access these businesses</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                        {businesses.map((b) => {
+                          const has = businessesForDresser(d).includes(b.id);
+                          return (
+                            <button key={b.id} onClick={() => toggleBusinessAccess(d, b.id)}
+                              style={{ ...styles.filterChip, ...(has ? styles.filterChipActive : {}) }}>
+                              {b.name}{has ? " ✓" : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => removeDresser(d)}>Remove Dresser</button>
                 </div>
               )}
