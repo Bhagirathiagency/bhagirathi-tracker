@@ -1928,49 +1928,86 @@ const PRICE_LIST_IMPORT = [
   { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A9 52x37x1mm", ref: "83413-200", mrp: 21281 },
   { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A9 52x37x2mm", ref: "83423-200", mrp: 23344 },
   { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A9 52x37x3mm", ref: "83433-200", mrp: 25688 },
-  // ---- Solventum: VAC / Prevena ----
-  { company: "Solventum", name: "SensaTRAC Small Granufoam Dressing 10 Pack", ref: "M8275051/10.S", mrp: 9380 },
-  { company: "Solventum", name: "SensaTRAC Small Granufoam Dressing 5 Pack", ref: "M8275051/5.S", mrp: 9380 },
-  { company: "Solventum", name: "SensaTRAC Medium Granufoam Dressing 10 Pack", ref: "M8275052/10.S", mrp: 11240 },
-  { company: "Solventum", name: "SensaTRAC Medium Granufoam Dressing 5 Pack", ref: "M8275052/5.S", mrp: 11240 },
-  { company: "Solventum", name: "SensaTRAC Large Granufoam Dressing 10 Pack", ref: "M8275053/10.S", mrp: 14230 },
-  { company: "Solventum", name: "SensaTRAC Large Granufoam Dressing 5 Pack", ref: "M8275053/5.S", mrp: 14230 },
-  { company: "Solventum", name: "ActiV.A.C. Canister with Gel 10/Case", ref: "M8275058/10.S", mrp: 2980 },
-  { company: "Solventum", name: "ActiV.A.C. Canister with Gel 5/Case", ref: "M8275058/5.S", mrp: 2980 },
-  { company: "Solventum", name: "500ml Canister with Gel 10 Pack, InfoVAC", ref: "M8275063/10.S", mrp: 3760 },
-  { company: "Solventum", name: "500ml Canister with Gel 5 Pack, InfoVAC", ref: "M8275063/5.S", mrp: 3760 },
-  { company: "Solventum", name: "SensaTRAC Thin Granufoam Dressing 10 Pack", ref: "M8275081/10.S", mrp: 7420 },
-  { company: "Solventum", name: "SensaTRAC Thin Granufoam Dressing 5 Pack", ref: "M8275081/5.S", mrp: 7420 },
-  { company: "Solventum", name: "InfoV.A.C. 1000ml Canister 5 Pack", ref: "M8275093/5.S", mrp: 5560 },
+  // ---- Solventum: VAC / Prevena (per unit — no pack-size duplicates) ----
+  { company: "Solventum", name: "SensaTRAC Small Granufoam Dressing", ref: "M8275051", mrp: 9380 },
+  { company: "Solventum", name: "SensaTRAC Medium Granufoam Dressing", ref: "M8275052", mrp: 11240 },
+  { company: "Solventum", name: "SensaTRAC Large Granufoam Dressing", ref: "M8275053", mrp: 14230 },
+  { company: "Solventum", name: "ActiV.A.C. Canister with Gel", ref: "M8275058", mrp: 2980 },
+  { company: "Solventum", name: "500ml Canister with Gel, InfoVAC", ref: "M8275063", mrp: 3760 },
+  { company: "Solventum", name: "SensaTRAC Thin Granufoam Dressing", ref: "M8275081", mrp: 7420 },
+  { company: "Solventum", name: "InfoV.A.C. 1000ml Canister", ref: "M8275093", mrp: 5560 },
   { company: "Solventum", name: "V.A.C.Ulta Therapy Unit (1yr warranty)", ref: "ULTDEV01/IN", mrp: 820313 },
   { company: "Solventum", name: "ActiVAC Therapy Unit (1yr warranty)", ref: "340123", mrp: 492188 },
   { company: "Solventum", name: "AB Thera Sensa T.R.A.C", ref: "M8275026", mrp: 40781 },
-  { company: "Solventum", name: "VAC Granufoam Bridge Dressing 10 Pack", ref: "M8275042", mrp: 7875 },
-  { company: "Solventum", name: "SensaTRAC Small Silver Granufoam Dressing 10 Pack", ref: "M8275098", mrp: 10219 },
-  { company: "Solventum", name: "SensaTRAC Medium Silver Granufoam Dressing 10 Pack", ref: "M8275096", mrp: 12281 },
-  { company: "Solventum", name: "SensaTRAC Large Silver Granufoam Dressing 10 Pack", ref: "M8275099", mrp: 15563 },
-  { company: "Solventum", name: "VAC Standard Drape 10 Pack", ref: "M6275009", mrp: 394 },
-  { company: "Solventum", name: "SensaTRAC Pad 10 Pack", ref: "M8275057", mrp: 1875 },
-  { company: "Solventum", name: "VAC ATS TRAC Y Connector 10 Pack", ref: "M6275066", mrp: 375 },
-  { company: "Solventum", name: "VAC ATS TRAC Tubing Cap 10 Pack", ref: "M6275069", mrp: 403 },
-  { company: "Solventum", name: "VAC Veraflo Small Dressing 5 Pack", ref: "ULTVFL05SM", mrp: 11063 },
-  { company: "Solventum", name: "VAC Veraflo Medium Dressing 5 Pack", ref: "ULTVFL05MD", mrp: 13313 },
-  { company: "Solventum", name: "VAC Veraflo Large Dressing 5 Pack", ref: "ULTVFL05LG", mrp: 16781 },
-  { company: "Solventum", name: "VAC Veraflo Cleanse Medium Dressing 5 Pack", ref: "ULTVCL05MD", mrp: 14438 },
-  { company: "Solventum", name: "VAC Veraflo Cleanse Choice Medium Dressing 5 Pack", ref: "ULTVCC05MD", mrp: 18094 },
-  { company: "Solventum", name: "VAC Veraflo Cleanse Choice Large Dressing 5 Pack", ref: "ULTVCC05LG", mrp: 19781 },
-  { company: "Solventum", name: "VAC VeraLINK 5 Pack", ref: "ULTLNK0500", mrp: 3750 },
-  { company: "Solventum", name: "Prevena Peel & Place Dressing 20cm 5/PK", ref: "PRE1055", mrp: 23090 },
-  { company: "Solventum", name: "Prevena Peel & Place Dressing 13cm 5/PK", ref: "PRE1155", mrp: 19345 },
-  { company: "Solventum", name: "Prevena Peel & Place Dressing 35cm 5/PK", ref: "PRE3255", mrp: 27188 },
-  { company: "Solventum", name: "Prevena Plus Customizable Dressing 90cm 5/PK", ref: "PRE4055", mrp: 30000 },
-  { company: "Solventum", name: "Prevena 125 Incision Management System 20cm KIT", ref: "PRE1001", mrp: 50000 },
-  { company: "Solventum", name: "Prevena 125 Incision Management System 13cm KIT", ref: "PRE1101", mrp: 50000 },
-  { company: "Solventum", name: "Prevena Plus 125 Incision Management System 35cm KIT", ref: "PRE3201", mrp: 75000 },
-  { company: "Solventum", name: "Prevena Plus 125 Customizable Incision Mgmt System 90cm KIT", ref: "PRE4001", mrp: 66700 },
-  { company: "Solventum", name: "Prevena 125 45ml Canister 5/PK", ref: "PRE1095", mrp: 4840 },
-  { company: "Solventum", name: "Prevena Plus 150ml Canister 5/PK", ref: "PRE4095", mrp: 5650 },
+  { company: "Solventum", name: "VAC Granufoam Bridge Dressing", ref: "M8275042", mrp: 7875 },
+  { company: "Solventum", name: "SensaTRAC Small Silver Granufoam Dressing", ref: "M8275098", mrp: 10219 },
+  { company: "Solventum", name: "SensaTRAC Medium Silver Granufoam Dressing", ref: "M8275096", mrp: 12281 },
+  { company: "Solventum", name: "SensaTRAC Large Silver Granufoam Dressing", ref: "M8275099", mrp: 15563 },
+  { company: "Solventum", name: "VAC Standard Drape", ref: "M6275009", mrp: 394 },
+  { company: "Solventum", name: "SensaTRAC Pad", ref: "M8275057", mrp: 1875 },
+  { company: "Solventum", name: "VAC ATS TRAC Y Connector", ref: "M6275066", mrp: 375 },
+  { company: "Solventum", name: "VAC ATS TRAC Tubing Cap", ref: "M6275069", mrp: 403 },
+  { company: "Solventum", name: "VAC Veraflo Small Dressing", ref: "ULTVFL05SM", mrp: 11063 },
+  { company: "Solventum", name: "VAC Veraflo Medium Dressing", ref: "ULTVFL05MD", mrp: 13313 },
+  { company: "Solventum", name: "VAC Veraflo Large Dressing", ref: "ULTVFL05LG", mrp: 16781 },
+  { company: "Solventum", name: "VAC Veraflo Cleanse Medium Dressing", ref: "ULTVCL05MD", mrp: 14438 },
+  { company: "Solventum", name: "VAC Veraflo Cleanse Choice Medium Dressing", ref: "ULTVCC05MD", mrp: 18094 },
+  { company: "Solventum", name: "VAC Veraflo Cleanse Choice Large Dressing", ref: "ULTVCC05LG", mrp: 19781 },
+  { company: "Solventum", name: "VAC VeraLINK", ref: "ULTLNK0500", mrp: 3750 },
+  { company: "Solventum", name: "Prevena Peel & Place Dressing 20cm", ref: "PRE1055", mrp: 23090 },
+  { company: "Solventum", name: "Prevena Peel & Place Dressing 13cm", ref: "PRE1155", mrp: 19345 },
+  { company: "Solventum", name: "Prevena Peel & Place Dressing 35cm", ref: "PRE3255", mrp: 27188 },
+  { company: "Solventum", name: "Prevena Plus Customizable Dressing 90cm", ref: "PRE4055", mrp: 30000 },
+  { company: "Solventum", name: "Prevena 125 Incision Management System 20cm", ref: "PRE1001", mrp: 50000 },
+  { company: "Solventum", name: "Prevena 125 Incision Management System 13cm", ref: "PRE1101", mrp: 50000 },
+  { company: "Solventum", name: "Prevena Plus 125 Incision Management System 35cm", ref: "PRE3201", mrp: 75000 },
+  { company: "Solventum", name: "Prevena Plus 125 Customizable Incision Mgmt System 90cm", ref: "PRE4001", mrp: 66700 },
+  { company: "Solventum", name: "Prevena 125 45ml Canister", ref: "PRE1095", mrp: 4840 },
+  { company: "Solventum", name: "Prevena Plus 150ml Canister", ref: "PRE4095", mrp: 5650 },
 ];
+
+// Old pack-labeled names (from an earlier import) -> new per-unit name, so duplicates like
+// "...10 Pack" and "...5 Pack" merge into a single per-unit product.
+const PACK_NAME_CLEANUP = {
+  "sensatrac small granufoam dressing 10 pack": "SensaTRAC Small Granufoam Dressing",
+  "sensatrac small granufoam dressing 5 pack": "SensaTRAC Small Granufoam Dressing",
+  "sensatrac medium granufoam dressing 10 pack": "SensaTRAC Medium Granufoam Dressing",
+  "sensatrac medium granufoam dressing 5 pack": "SensaTRAC Medium Granufoam Dressing",
+  "sensatrac large granufoam dressing 10 pack": "SensaTRAC Large Granufoam Dressing",
+  "sensatrac large granufoam dressing 5 pack": "SensaTRAC Large Granufoam Dressing",
+  "activ.a.c. canister with gel 10/case": "ActiV.A.C. Canister with Gel",
+  "activ.a.c. canister with gel 5/case": "ActiV.A.C. Canister with Gel",
+  "500ml canister with gel 10 pack, infovac": "500ml Canister with Gel, InfoVAC",
+  "500ml canister with gel 5 pack, infovac": "500ml Canister with Gel, InfoVAC",
+  "sensatrac thin granufoam dressing 10 pack": "SensaTRAC Thin Granufoam Dressing",
+  "sensatrac thin granufoam dressing 5 pack": "SensaTRAC Thin Granufoam Dressing",
+  "infov.a.c. 1000ml canister 5 pack": "InfoV.A.C. 1000ml Canister",
+  "vac granufoam bridge dressing 10 pack": "VAC Granufoam Bridge Dressing",
+  "sensatrac small silver granufoam dressing 10 pack": "SensaTRAC Small Silver Granufoam Dressing",
+  "sensatrac medium silver granufoam dressing 10 pack": "SensaTRAC Medium Silver Granufoam Dressing",
+  "sensatrac large silver granufoam dressing 10 pack": "SensaTRAC Large Silver Granufoam Dressing",
+  "vac standard drape 10 pack": "VAC Standard Drape",
+  "sensatrac pad 10 pack": "SensaTRAC Pad",
+  "vac ats trac y connector 10 pack": "VAC ATS TRAC Y Connector",
+  "vac ats trac tubing cap 10 pack": "VAC ATS TRAC Tubing Cap",
+  "vac veraflo small dressing 5 pack": "VAC Veraflo Small Dressing",
+  "vac veraflo medium dressing 5 pack": "VAC Veraflo Medium Dressing",
+  "vac veraflo large dressing 5 pack": "VAC Veraflo Large Dressing",
+  "vac veraflo cleanse medium dressing 5 pack": "VAC Veraflo Cleanse Medium Dressing",
+  "vac veraflo cleanse choice medium dressing 5 pack": "VAC Veraflo Cleanse Choice Medium Dressing",
+  "vac veraflo cleanse choice large dressing 5 pack": "VAC Veraflo Cleanse Choice Large Dressing",
+  "vac veralink 5 pack": "VAC VeraLINK",
+  "prevena peel & place dressing 20cm 5/pk": "Prevena Peel & Place Dressing 20cm",
+  "prevena peel & place dressing 13cm 5/pk": "Prevena Peel & Place Dressing 13cm",
+  "prevena peel & place dressing 35cm 5/pk": "Prevena Peel & Place Dressing 35cm",
+  "prevena plus customizable dressing 90cm 5/pk": "Prevena Plus Customizable Dressing 90cm",
+  "prevena 125 incision management system 20cm kit": "Prevena 125 Incision Management System 20cm",
+  "prevena 125 incision management system 13cm kit": "Prevena 125 Incision Management System 13cm",
+  "prevena plus 125 incision management system 35cm kit": "Prevena Plus 125 Incision Management System 35cm",
+  "prevena plus 125 customizable incision mgmt system 90cm kit": "Prevena Plus 125 Customizable Incision Mgmt System 90cm",
+  "prevena 125 45ml canister 5/pk": "Prevena 125 45ml Canister",
+  "prevena plus 150ml canister 5/pk": "Prevena Plus 150ml Canister",
+};
 
 function StockTab({ products, setProducts, receiveStock }) {
   const [name, setName] = useState("");
@@ -2029,8 +2066,42 @@ function StockTab({ products, setProducts, receiveStock }) {
   };
   const newImportCount = PRICE_LIST_IMPORT.filter((item) => !products.some((p) => p.name.toLowerCase() === item.name.toLowerCase())).length;
 
+  const packDupCount = products.filter((p) => PACK_NAME_CLEANUP[p.name.toLowerCase()]).length;
+  const cleanupPackDuplicates = () => {
+    const merged = {}; // target name (lowercase) -> merged product
+    const untouched = [];
+    products.forEach((p) => {
+      const target = PACK_NAME_CLEANUP[p.name.toLowerCase()];
+      if (!target) { untouched.push(p); return; }
+      const key = target.toLowerCase();
+      if (!merged[key]) {
+        merged[key] = { ...p, name: target };
+      } else {
+        const m = merged[key];
+        merged[key] = {
+          ...m,
+          available: (m.available || 0) + (p.available || 0),
+          used: (m.used || 0) + (p.used || 0),
+          costPrice: m.costPrice || p.costPrice || 0,
+          mrp: m.mrp || p.mrp || 0,
+          receipts: [...(m.receipts || []), ...(p.receipts || [])],
+          variants: Array.from(new Set([...(m.variants || []), ...(p.variants || [])])),
+        };
+      }
+    });
+    setProducts([...untouched, ...Object.values(merged)]);
+  };
+
   return (
     <div>
+      {packDupCount > 0 && (
+        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FCE7E4" }}>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            <strong>{packDupCount} item{packDupCount > 1 ? "s" : ""}</strong> still have "5 Pack"/"10 Pack" in the name from an earlier import. Since you sell per unit, this merges any duplicates (like the 5-pack and 10-pack of the same dressing) into one per-unit product, combining their stock counts.
+          </div>
+          <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={cleanupPackDuplicates}>Clean Up Pack-Size Duplicates ({packDupCount})</button>
+        </div>
+      )}
       {newImportCount > 0 && (
         <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FBEAD3" }}>
           <div style={{ fontSize: 13, marginBottom: 8 }}>
