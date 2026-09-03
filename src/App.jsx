@@ -1879,6 +1879,82 @@ function MachinesTab({ machines, setMachines, machineInUse, cases }) {
 }
 
 // ---------------- Stock ----------------
+const PRICE_LIST_IMPORT = [
+  // ---- MedSkin Solutions: MatriDerm ----
+  { company: "MedSkin Solutions", name: "MatriDerm Dermal Matrix A4 297x210x2mm", ref: "83400-200", mrp: 361350 },
+  { company: "MedSkin Solutions", name: "MatriDerm Dermal Matrix A4 297x210x1mm", ref: "83500-200", mrp: 328500 },
+  { company: "MedSkin Solutions", name: "MatriDerm Dermal Matrix A6 148x105x2mm", ref: "83401-200", mrp: 94854 },
+  { company: "MedSkin Solutions", name: "MatriDerm Dermal Matrix A6 148x105x1mm", ref: "83403-200", mrp: 86231 },
+  { company: "MedSkin Solutions", name: "MatriDerm Dermal Matrix A8 74x52x1mm", ref: "83404-200", mrp: 37125 },
+  { company: "MedSkin Solutions", name: "MatriDerm Dermal Matrix A9 52x37x1mm", ref: "83405-200", mrp: 20250 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A4 297x210x1mm", ref: "83440-200", mrp: 344925 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A4 297x210x2mm", ref: "83460-200", mrp: 379418 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A4 297x210x3mm", ref: "83470-200", mrp: 417359 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A6 148x105x1mm", ref: "83441-200", mrp: 90543 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A6 148x105x2mm", ref: "83461-200", mrp: 99597 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A6 148x105x3mm", ref: "83471-200", mrp: 109557 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A8 74x52x1mm", ref: "83442-200", mrp: 38906 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A8 74x52x2mm", ref: "83462-200", mrp: 42844 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A8 74x52x3mm", ref: "83472-200", mrp: 47063 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A9 52x37x1mm", ref: "83443-200", mrp: 21281 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A9 52x37x2mm", ref: "83463-200", mrp: 23344 },
+  { company: "MedSkin Solutions", name: "MatriDerm Flex A9 52x37x3mm", ref: "83473-200", mrp: 25688 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A4 297x210x1mm", ref: "83410-200", mrp: 344925 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A4 297x210x2mm", ref: "83420-200", mrp: 379418 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A4 297x210x3mm", ref: "83430-200", mrp: 417359 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A6 148x105x1mm", ref: "83411-200", mrp: 90543 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A6 148x105x2mm", ref: "83421-200", mrp: 99597 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A6 148x105x3mm", ref: "83431-200", mrp: 109557 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A8 74x52x1mm", ref: "83412-200", mrp: 38906 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A8 74x52x2mm", ref: "83422-200", mrp: 42844 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A8 74x52x3mm", ref: "83432-200", mrp: 47063 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A9 52x37x1mm", ref: "83413-200", mrp: 21281 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A9 52x37x2mm", ref: "83423-200", mrp: 23344 },
+  { company: "MedSkin Solutions", name: "MatriDerm Fenestrated A9 52x37x3mm", ref: "83433-200", mrp: 25688 },
+  // ---- Solventum: VAC / Prevena ----
+  { company: "Solventum", name: "SensaTRAC Small Granufoam Dressing 10 Pack", ref: "M8275051/10.S", mrp: 9380 },
+  { company: "Solventum", name: "SensaTRAC Small Granufoam Dressing 5 Pack", ref: "M8275051/5.S", mrp: 9380 },
+  { company: "Solventum", name: "SensaTRAC Medium Granufoam Dressing 10 Pack", ref: "M8275052/10.S", mrp: 11240 },
+  { company: "Solventum", name: "SensaTRAC Medium Granufoam Dressing 5 Pack", ref: "M8275052/5.S", mrp: 11240 },
+  { company: "Solventum", name: "SensaTRAC Large Granufoam Dressing 10 Pack", ref: "M8275053/10.S", mrp: 14230 },
+  { company: "Solventum", name: "SensaTRAC Large Granufoam Dressing 5 Pack", ref: "M8275053/5.S", mrp: 14230 },
+  { company: "Solventum", name: "ActiV.A.C. Canister with Gel 10/Case", ref: "M8275058/10.S", mrp: 2980 },
+  { company: "Solventum", name: "ActiV.A.C. Canister with Gel 5/Case", ref: "M8275058/5.S", mrp: 2980 },
+  { company: "Solventum", name: "500ml Canister with Gel 10 Pack, InfoVAC", ref: "M8275063/10.S", mrp: 3760 },
+  { company: "Solventum", name: "500ml Canister with Gel 5 Pack, InfoVAC", ref: "M8275063/5.S", mrp: 3760 },
+  { company: "Solventum", name: "SensaTRAC Thin Granufoam Dressing 10 Pack", ref: "M8275081/10.S", mrp: 7420 },
+  { company: "Solventum", name: "SensaTRAC Thin Granufoam Dressing 5 Pack", ref: "M8275081/5.S", mrp: 7420 },
+  { company: "Solventum", name: "InfoV.A.C. 1000ml Canister 5 Pack", ref: "M8275093/5.S", mrp: 5560 },
+  { company: "Solventum", name: "V.A.C.Ulta Therapy Unit (1yr warranty)", ref: "ULTDEV01/IN", mrp: 820313 },
+  { company: "Solventum", name: "ActiVAC Therapy Unit (1yr warranty)", ref: "340123", mrp: 492188 },
+  { company: "Solventum", name: "AB Thera Sensa T.R.A.C", ref: "M8275026", mrp: 40781 },
+  { company: "Solventum", name: "VAC Granufoam Bridge Dressing 10 Pack", ref: "M8275042", mrp: 7875 },
+  { company: "Solventum", name: "SensaTRAC Small Silver Granufoam Dressing 10 Pack", ref: "M8275098", mrp: 10219 },
+  { company: "Solventum", name: "SensaTRAC Medium Silver Granufoam Dressing 10 Pack", ref: "M8275096", mrp: 12281 },
+  { company: "Solventum", name: "SensaTRAC Large Silver Granufoam Dressing 10 Pack", ref: "M8275099", mrp: 15563 },
+  { company: "Solventum", name: "VAC Standard Drape 10 Pack", ref: "M6275009", mrp: 394 },
+  { company: "Solventum", name: "SensaTRAC Pad 10 Pack", ref: "M8275057", mrp: 1875 },
+  { company: "Solventum", name: "VAC ATS TRAC Y Connector 10 Pack", ref: "M6275066", mrp: 375 },
+  { company: "Solventum", name: "VAC ATS TRAC Tubing Cap 10 Pack", ref: "M6275069", mrp: 403 },
+  { company: "Solventum", name: "VAC Veraflo Small Dressing 5 Pack", ref: "ULTVFL05SM", mrp: 11063 },
+  { company: "Solventum", name: "VAC Veraflo Medium Dressing 5 Pack", ref: "ULTVFL05MD", mrp: 13313 },
+  { company: "Solventum", name: "VAC Veraflo Large Dressing 5 Pack", ref: "ULTVFL05LG", mrp: 16781 },
+  { company: "Solventum", name: "VAC Veraflo Cleanse Medium Dressing 5 Pack", ref: "ULTVCL05MD", mrp: 14438 },
+  { company: "Solventum", name: "VAC Veraflo Cleanse Choice Medium Dressing 5 Pack", ref: "ULTVCC05MD", mrp: 18094 },
+  { company: "Solventum", name: "VAC Veraflo Cleanse Choice Large Dressing 5 Pack", ref: "ULTVCC05LG", mrp: 19781 },
+  { company: "Solventum", name: "VAC VeraLINK 5 Pack", ref: "ULTLNK0500", mrp: 3750 },
+  { company: "Solventum", name: "Prevena Peel & Place Dressing 20cm 5/PK", ref: "PRE1055", mrp: 23090 },
+  { company: "Solventum", name: "Prevena Peel & Place Dressing 13cm 5/PK", ref: "PRE1155", mrp: 19345 },
+  { company: "Solventum", name: "Prevena Peel & Place Dressing 35cm 5/PK", ref: "PRE3255", mrp: 27188 },
+  { company: "Solventum", name: "Prevena Plus Customizable Dressing 90cm 5/PK", ref: "PRE4055", mrp: 30000 },
+  { company: "Solventum", name: "Prevena 125 Incision Management System 20cm KIT", ref: "PRE1001", mrp: 50000 },
+  { company: "Solventum", name: "Prevena 125 Incision Management System 13cm KIT", ref: "PRE1101", mrp: 50000 },
+  { company: "Solventum", name: "Prevena Plus 125 Incision Management System 35cm KIT", ref: "PRE3201", mrp: 75000 },
+  { company: "Solventum", name: "Prevena Plus 125 Customizable Incision Mgmt System 90cm KIT", ref: "PRE4001", mrp: 66700 },
+  { company: "Solventum", name: "Prevena 125 45ml Canister 5/PK", ref: "PRE1095", mrp: 4840 },
+  { company: "Solventum", name: "Prevena Plus 150ml Canister 5/PK", ref: "PRE4095", mrp: 5650 },
+];
+
 function StockTab({ products, setProducts, receiveStock }) {
   const [name, setName] = useState("");
   const [initQty, setInitQty] = useState("");
@@ -1916,8 +1992,39 @@ function StockTab({ products, setProducts, receiveStock }) {
   const removeVariant = (id, v) => setProducts((prev) => prev.map((p) => p.id === id
     ? { ...p, variants: (p.variants || []).filter((x) => x !== v) } : p));
 
+  const [importDone, setImportDone] = useState(false);
+  const importPriceList = () => {
+    const existingNames = new Set(products.map((p) => p.name.toLowerCase()));
+    const toAdd = PRICE_LIST_IMPORT.filter((item) => !existingNames.has(item.name.toLowerCase()));
+    if (toAdd.length === 0) { setImportDone(true); return; }
+    const newProducts = toAdd.map((item) => ({
+      id: uid(),
+      name: item.name,
+      available: 0,
+      used: 0,
+      costPrice: 0,
+      mrp: item.mrp,
+      variants: [],
+      receipts: [{ id: uid(), date: todayISO(), qty: 0, company: item.company }],
+    }));
+    setProducts((prev) => [...prev, ...newProducts]);
+    setImportDone(true);
+  };
+  const newImportCount = PRICE_LIST_IMPORT.filter((item) => !products.some((p) => p.name.toLowerCase() === item.name.toLowerCase())).length;
+
   return (
     <div>
+      {newImportCount > 0 && (
+        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FBEAD3" }}>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            <strong>{newImportCount} product{newImportCount > 1 ? "s" : ""}</strong> from the MedSkin Solutions (MatriDerm) and Solventum (VAC/Prevena) price lists can be imported with their MRP and company tagged — set your cost price and opening stock after.
+          </div>
+          <button style={styles.primaryBtn} onClick={importPriceList}>Import Price List ({newImportCount})</button>
+        </div>
+      )}
+      {importDone && newImportCount === 0 && (
+        <div style={{ ...styles.emptyState2, marginBottom: 10, color: "#128577" }}>All MedSkin Solutions &amp; Solventum items are imported.</div>
+      )}
       <SectionTitle>Add Product</SectionTitle>
       <div style={styles.formGrid}>
         <div style={styles.addPaymentRow}>
