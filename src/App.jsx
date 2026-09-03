@@ -1087,22 +1087,29 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
     date: todayISO(),
     validTill: addDays(todayISO(), 15),
     customerName: "", phone: "", address: "",
-    items: products[0] ? [{ id: uid(), name: products[0].name, qty: 1, rate: 0 }] : [{ id: uid(), name: "", qty: 1, rate: 0 }],
+    items: [{ id: uid(), name: "", qty: 1, rate: 0, custom: products.length === 0 }],
     discount: 0, gstPercent: 0,
     notes: "", terms: DEFAULT_TERMS,
   });
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setItem = (id, k, v) => setForm((f) => ({ ...f, items: f.items.map((it) => it.id === id ? { ...it, [k]: v } : it) }));
-  const addItem = () => setForm((f) => ({ ...f, items: [...f.items, { id: uid(), name: "", qty: 1, rate: 0 }] }));
+  const addItem = () => setForm((f) => ({ ...f, items: [...f.items, { id: uid(), name: "", qty: 1, rate: 0, custom: products.length === 0 } ] }));
   const removeItem = (id) => setForm((f) => ({ ...f, items: f.items.filter((it) => it.id !== id) }));
+  const pickFromStock = (id, name) => {
+    const prod = products.find((p) => p.name === name);
+    setForm((f) => ({
+      ...f,
+      items: f.items.map((it) => it.id === id ? {
+        ...it, name, custom: false,
+        rate: Number(it.rate) > 0 ? it.rate : (prod ? prod.costPrice || 0 : it.rate),
+      } : it),
+    }));
+  };
   const { subtotal, taxable, gstAmount, total } = quoteTotals(form);
 
   return (
     <div>
-      <datalist id="quote-product-names">
-        {products.map((p) => <option key={p.id} value={p.name} />)}
-      </datalist>
       <div style={styles.formGrid}>
         <div style={styles.field}><span style={styles.fieldLabel}>Customer Name</span>
           <input style={styles.input} value={form.customerName} onChange={(e) => set("customerName", e.target.value)} placeholder="Patient / customer / hospital name" /></div>
@@ -1119,12 +1126,30 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
 
         <SectionTitle>Items</SectionTitle>
         {form.items.map((it) => (
-          <div key={it.id} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
-            <input style={{ ...styles.input, flex: 3 }} list="quote-product-names" placeholder="Item / product"
-              value={it.name} onChange={(e) => setItem(it.id, "name", e.target.value)} />
-            <input style={{ ...styles.input, flex: 1 }} type="number" placeholder="Qty"
+          <div key={it.id} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center", flexWrap: "wrap" }}>
+            {it.custom ? (
+              <div style={{ display: "flex", flex: 3, minWidth: 160, gap: 4, alignItems: "center" }}>
+                <input style={{ ...styles.input, flex: 1 }} placeholder="Custom item name"
+                  value={it.name} onChange={(e) => setItem(it.id, "name", e.target.value)} />
+                {products.length > 0 && (
+                  <button style={{ ...styles.linkBtn, fontSize: 11 }} onClick={() => setItem(it.id, "custom", false)}>stock</button>
+                )}
+              </div>
+            ) : (
+              <select style={{ ...styles.input, flex: 3, minWidth: 160 }} value={it.name}
+                onChange={(e) => e.target.value === "__new__" ? setItem(it.id, "custom", true) : pickFromStock(it.id, e.target.value)}>
+                <option value="" disabled>Select item…</option>
+                <optgroup label="From Stock">
+                  {products.map((p) => (
+                    <option key={p.id} value={p.name}>{p.name} ({p.available || 0} in stock)</option>
+                  ))}
+                </optgroup>
+                <option value="__new__">+ New item (not in stock)</option>
+              </select>
+            )}
+            <input style={{ ...styles.input, flex: 1, minWidth: 60 }} type="number" placeholder="Qty"
               value={it.qty} onChange={(e) => setItem(it.id, "qty", e.target.value)} />
-            <input style={{ ...styles.input, flex: 1.3 }} type="number" placeholder="Rate ₹"
+            <input style={{ ...styles.input, flex: 1.3, minWidth: 70 }} type="number" placeholder="Rate ₹"
               value={it.rate} onChange={(e) => setItem(it.id, "rate", e.target.value)} />
             <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => removeItem(it.id)}>✕</button>
           </div>
