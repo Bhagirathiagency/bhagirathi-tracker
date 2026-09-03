@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -141,7 +142,7 @@ function estimateProfit(c, products) {
     return sum + (prod ? Number(prod.costPrice || 0) : 0);
   }, 0);
 
-    return Number(c.totalAmount || 0) - cost;
+    return Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - cost - Number(c.doctorCommission || 0);
 }
 function photoKey(caseId, stage) { return `photo-${caseId}-${stage}`; }
 function locKey(name) { return `wca-loc-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`; }
@@ -940,6 +941,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
             <Detail label="Bill To" value={c.billTo === "Hospital" ? (c.hospitalName || "Hospital") : "Patient"} />
             <Detail label="Total Amount" value={fmtMoney(c.totalAmount)} />
             {Number(c.machineRentalAmount) > 0 && <Detail label="Machine Rental" value={fmtMoney(c.machineRentalAmount)} />}
+            {Number(c.doctorCommission) > 0 && <Detail label="Doctor Commission" value={fmtMoney(c.doctorCommission)} />}
             <Detail label="Paid" value={fmtMoney(paid)} />
             <Detail label="Outstanding" value={fmtMoney(outstanding)} highlight={outstanding > 0} />
             <Detail label="Est. Profit" value={fmtMoney(profit)} highlight={profit < 0} />
@@ -1023,7 +1025,7 @@ function Detail({ label, value, highlight }) {
 
 function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName }) {
   const [form, setForm] = useState(initial || {
-    patientName: "", patientMobile: "", doctorName: "", dresserName: presetDresserName || "", protocolDays: 5,
+    patientName: "", patientMobile: "", doctorName: "", doctorCommission: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: products[0] ? [products[0].name] : [],
     applicationDate: todayISO(), applicationTime: nowTimeHM(), status: "active", endDate: "",
     billTo: "Patient", hospitalName: "", totalAmount: "", amountReceived: "", machineRentalAmount: "", notes: "",
@@ -1045,7 +1047,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
 
   const submit = () => {
     if (!form.patientName.trim() || !form.doctorName.trim()) return;
-    onSave({ ...form, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, protocolDays: Number(form.protocolDays) || 5 });
+    onSave({ ...form, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: Number(form.protocolDays) || 5 });
   };
 
   return (
@@ -1055,6 +1057,9 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         <Field label="Patient Name"><input style={styles.input} value={form.patientName} onChange={(e) => set("patientName", e.target.value)} /></Field>
         <Field label="Patient Mobile Number"><input type="tel" style={styles.input} value={form.patientMobile} onChange={(e) => set("patientMobile", e.target.value)} placeholder="10-digit number" /></Field>
         <Field label="Doctor Name"><input style={styles.input} value={form.doctorName} onChange={(e) => set("doctorName", e.target.value)} /></Field>
+        <Field label="Doctor Commission (₹, optional)">
+          <input type="number" style={styles.input} value={form.doctorCommission} onChange={(e) => set("doctorCommission", e.target.value)} placeholder="0 if none" />
+        </Field>
         <Field label="Dresser Name (applied by)"><input style={styles.input} value={form.dresserName} onChange={(e) => set("dresserName", e.target.value)} /></Field>
         <Field label="Therapy Protocol">
           {!customProtocol ? (
@@ -1851,7 +1856,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     cases.forEach((c) => {
       if (!c.applicationDate) return;
       const key = pnlPeriodKey(c.applicationDate, pnlGranularity);
-      if (!tally[key]) tally[key] = { key, revenue: 0, rental: 0, cost: 0, cases: 0 };
+      if (!tally[key]) tally[key] = { key, revenue: 0, rental: 0, cost: 0, commission: 0, cases: 0 };
       const names = getCaseProducts(c);
       const cost = names.reduce((s, name) => {
         const prod = products.find((p) => p.name === name);
@@ -1860,15 +1865,16 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       tally[key].revenue += Number(c.totalAmount || 0);
       tally[key].rental += Number(c.machineRentalAmount || 0);
       tally[key].cost += cost;
+      tally[key].commission += Number(c.doctorCommission || 0);
       tally[key].cases += 1;
     });
     return Object.values(tally)
-      .map((r) => ({ ...r, profit: r.revenue + r.rental - r.cost }))
+      .map((r) => ({ ...r, profit: r.revenue + r.rental - r.cost - r.commission }))
       .sort((a, b) => (a.key < b.key ? 1 : -1));
   }, [cases, products, pnlGranularity]);
   const pnlTotals = useMemo(() => pnlRows.reduce((acc, r) => ({
-    revenue: acc.revenue + r.revenue, rental: acc.rental + r.rental, cost: acc.cost + r.cost, profit: acc.profit + r.profit,
-  }), { revenue: 0, rental: 0, cost: 0, profit: 0 }), [pnlRows]);
+    revenue: acc.revenue + r.revenue, rental: acc.rental + r.rental, cost: acc.cost + r.cost, commission: acc.commission + r.commission, profit: acc.profit + r.profit,
+  }), { revenue: 0, rental: 0, cost: 0, commission: 0, profit: 0 }), [pnlRows]);
 
   const allReceipts = useMemo(() => {
     const list = [];
@@ -1914,6 +1920,20 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     });
     return Object.values(tally).sort((a, b) => a.doctor.localeCompare(b.doctor) || new Date(b.sortDate) - new Date(a.sortDate));
   }, [cases]);
+
+  const doctorCommissionStats = useMemo(() => {
+    const tally = {};
+    cases.forEach((c) => {
+      const amt = Number(c.doctorCommission || 0);
+      if (amt <= 0) return;
+      const doctor = (c.doctorName || "Unknown").trim() || "Unknown";
+      if (!tally[doctor]) tally[doctor] = { doctor, total: 0, cases: 0 };
+      tally[doctor].total += amt;
+      tally[doctor].cases += 1;
+    });
+    return Object.values(tally).sort((a, b) => b.total - a.total);
+  }, [cases]);
+  const doctorCommissionTotal = useMemo(() => doctorCommissionStats.reduce((s, d) => s + d.total, 0), [doctorCommissionStats]);
 
   const outstandingByPatient = useMemo(() => {
     return cases
@@ -2015,12 +2035,28 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
           <>
             <div style={styles.cardGrid}>
               <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(pnlTotals.revenue + pnlTotals.rental)}</div><div style={styles.statLabel}>Total Revenue</div></div>
-              <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(pnlTotals.cost)}</div><div style={styles.statLabel}>Total Cost</div></div>
+              <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(pnlTotals.cost + pnlTotals.commission)}</div><div style={styles.statLabel}>Total Cost + Commission</div></div>
               <div style={{ ...styles.reportCard, gridColumn: "1 / -1" }}>
                 <div style={{ ...styles.statValue, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</div>
                 <div style={styles.statLabel}>Net Profit / Loss</div>
               </div>
             </div>
+
+            <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={[...pnlRows].reverse().map((r) => ({ label: pnlPeriodLabel(r.key, pnlGranularity), Revenue: r.revenue + r.rental, Cost: r.cost + r.commission, Profit: r.profit }))}>
+                  <CartesianGrid stroke="#EEF1EC" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#8A9A96" }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 10, fill: "#8A9A96" }} width={40} />
+                  <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line type="monotone" dataKey="Revenue" stroke="#128577" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Cost" stroke="#E1483C" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Profit" stroke="#3B5BA5" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
             <div style={styles.card}>
               {pnlRows.map((r) => (
                 <div key={r.key} style={styles.cardExpanded}>
@@ -2028,10 +2064,11 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                     <span style={{ fontWeight: 700 }}>{pnlPeriodLabel(r.key, pnlGranularity)}</span>
                     <span style={{ fontWeight: 700, color: r.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(r.profit)}</span>
                   </div>
-                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5B6864" }}>
+                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5B6864", flexWrap: "wrap" }}>
                     <span>{r.cases} case{r.cases > 1 ? "s" : ""}</span>
                     <span>Revenue {fmtMoney(r.revenue + r.rental)}</span>
                     <span>Cost {fmtMoney(r.cost)}</span>
+                    {r.commission > 0 && <span>Commission {fmtMoney(r.commission)}</span>}
                   </div>
                 </div>
               ))}
@@ -2130,6 +2167,34 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         )}
       </CollapsibleSection>
 
+      <CollapsibleSection title="Doctor Commission" defaultOpen={doctorCommissionStats.length > 0}
+        right={doctorCommissionTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#D98D2B" }}>{fmtMoney(doctorCommissionTotal)}</span> : null}>
+        {doctorCommissionStats.length === 0 ? <EmptyState text="No commission entered on any case yet. Add it in the case form when applicable." /> : (
+          <>
+            <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
+              <ResponsiveContainer width="100%" height={Math.max(160, doctorCommissionStats.length * 34)}>
+                <BarChart data={doctorCommissionStats} layout="vertical" margin={{ left: 10, right: 20 }}>
+                  <CartesianGrid stroke="#EEF1EC" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} />
+                  <YAxis type="category" dataKey="doctor" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
+                  <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                  <Bar dataKey="total" name="Commission" fill="#D98D2B" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={styles.card}>
+              {doctorCommissionStats.map((d) => (
+                <div key={d.doctor} style={styles.dresserLine}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
+                  <span style={styles.mutedSmall}>{d.cases} case{d.cases > 1 ? "s" : ""}</span>
+                  <span style={{ fontWeight: 700, color: "#D98D2B" }}>{fmtMoney(d.total)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CollapsibleSection>
+
       <CollapsibleSection title="Outstanding Payments by Patient" defaultOpen={outstandingByPatient.length > 0}>
         {outstandingByPatient.length === 0 ? <EmptyState text="No outstanding balances. All caught up!" /> : (
           <div style={styles.card}>
@@ -2160,15 +2225,30 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
       <CollapsibleSection title="Monthly Revenue Trend">
         {monthlyRevenueTrend.length === 0 ? <EmptyState text="No cases yet." /> : (
-          <div style={styles.card}>
-            {monthlyRevenueTrend.map((m) => (
-              <div key={m.month} style={styles.dresserLine}>
-                <span style={{ flex: 1, fontWeight: 600 }}>{m.month}</span>
-                <span style={styles.mutedSmall}>Billed {fmtMoney(m.billed)}</span>
-                <span style={{ ...styles.mutedSmall, color: "#128577" }}>Collected {fmtMoney(m.collected)}</span>
-              </div>
-            ))}
-          </div>
+          <>
+            <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={[...monthlyRevenueTrend].reverse()}>
+                  <CartesianGrid stroke="#EEF1EC" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#8A9A96" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "#8A9A96" }} width={40} />
+                  <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="billed" name="Billed" fill="#3B5BA5" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="collected" name="Collected" fill="#128577" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={styles.card}>
+              {monthlyRevenueTrend.map((m) => (
+                <div key={m.month} style={styles.dresserLine}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{m.month}</span>
+                  <span style={styles.mutedSmall}>Billed {fmtMoney(m.billed)}</span>
+                  <span style={{ ...styles.mutedSmall, color: "#128577" }}>Collected {fmtMoney(m.collected)}</span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </CollapsibleSection>
 
