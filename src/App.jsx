@@ -245,7 +245,6 @@ export default function App() {
   const [dressers, setDressers] = useState([]);
   const [dresserPins, setDresserPins] = useState({});
   const [quotations, setQuotations] = useState([]);
-  const [rentals, setRentals] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -267,7 +266,7 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [c, m, p, ownerPin, drs, qts, drPins, rnts] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins] = await Promise.all([
         loadKey("wca-cases", []),
         loadKey("wca-machines", []),
         loadKey("wca-products", DEFAULT_PRODUCTS),
@@ -275,7 +274,6 @@ export default function App() {
         loadKey("wca-dressers", []),
         loadKey("wca-quotations", []),
         loadKey("wca-dresser-pins", {}),
-        loadKey("wca-rentals", []),
       ]);
       setCases(c);
       setMachines(m);
@@ -284,7 +282,6 @@ export default function App() {
       setDressers(drs);
       setQuotations(qts);
       setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
-      setRentals(Array.isArray(rnts) ? rnts : []);
       setLoaded(true);
     })();
   }, []);
@@ -295,7 +292,6 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey("wca-dressers", dressers); }, [dressers, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-quotations", quotations); }, [quotations, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-dresser-pins", dresserPins); }, [dresserPins, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-rentals", rentals); }, [rentals, loaded]);
 
   const saveCase = (data, editingId) => {
     if (editingId) {
@@ -345,7 +341,6 @@ export default function App() {
     setDresserPins((prev) => { const next = { ...prev }; delete next[name]; return next; });
   };
   const setDresserPin = (name, newPin) => setDresserPins((prev) => ({ ...prev, [name]: newPin ? String(newPin) : undefined }));
-  const addRental = (entry) => setRentals((prev) => [...prev, { id: uid(), date: todayISO(), ...entry }]);
   const updateDresserLocation = async (name) => {
     const loc = await getLocation();
     if (loc) {
@@ -403,7 +398,6 @@ export default function App() {
           dresserPins={dresserPins} setDresserPin={setDresserPin}
           saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
-          rentals={rentals}
           pin={pin} onChangePin={setOwnerPin}
           onLogout={() => setRole(null)}
         />
@@ -413,7 +407,6 @@ export default function App() {
           name={role.name} cases={cases} machines={machines} products={products} saveCase={saveCase}
           addDressingChange={addDressingChange} capturePhoto={capturePhoto}
           updateDresserLocation={updateDresserLocation}
-          rentals={rentals} addRental={addRental}
           onLogout={() => setRole(null)}
         />
       )}
@@ -512,7 +505,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, rentals, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -586,7 +579,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} rentals={rentals} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} />}
       </main>
     </>
   );
@@ -620,10 +613,9 @@ function ChangePinForm({ pin, onChangePin, onDone }) {
 }
 
 // ================= DRESSER SHELL =================
-function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, rentals, addRental, onLogout }) {
+function DresserShell({ name, cases, machines, products, saveCase, addDressingChange, capturePhoto, updateDresserLocation, onLogout }) {
   const [sending, setSending] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [tab, setTab] = useState("cases");
   const myCasesActive = cases.filter((c) => c.status === "active");
 
   useEffect(() => {
@@ -642,11 +634,9 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
     return list.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [cases, name]);
 
-  const myRentals = useMemo(
-    () => rentals.filter((r) => (r.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
-      .sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [rentals, name]
-  );
+  const myRentalTotal = useMemo(() => cases
+    .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
+    .reduce((s, c) => s + Number(c.machineRentalAmount || 0), 0), [cases, name]);
 
   const sendSafetyAlert = async () => {
     setSending(true);
@@ -679,119 +669,47 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
         </div>
       </header>
 
-      <nav style={styles.nav}>
-        <button onClick={() => setTab("cases")} style={{ ...styles.navBtn, ...(tab === "cases" ? styles.navBtnActive : {}) }}>
-          <Icon name="cases" size={16} />My Cases
-        </button>
-        <button onClick={() => setTab("rental")} style={{ ...styles.navBtn, ...(tab === "rental" ? styles.navBtnActive : {}) }}>
-          <Icon name="machines" size={16} />Machine Rental
-        </button>
-      </nav>
-
       <main style={styles.main}>
-        {tab === "cases" && (
-          <>
-            <button style={styles.safetyBtn} onClick={sendSafetyAlert} disabled={sending}>
-              {sending ? "Getting location…" : "🚨 Send Safety Alert"}
-            </button>
+        <button style={styles.safetyBtn} onClick={sendSafetyAlert} disabled={sending}>
+          {sending ? "Getting location…" : "🚨 Send Safety Alert"}
+        </button>
 
-            <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
+        <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
 
-            <SectionTitle>Cases on Therapy</SectionTitle>
-            {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
-              <div style={styles.list}>
-                {myCasesActive.map((c) => (
-                  <DresserCaseRow key={c.id} c={c} dresserName={name}
-                    onAddDressingChange={(e) => addDressingChange(c.id, e)}
-                    onCapturePhoto={(stage, dataURL) => capturePhoto(c.id, stage, dataURL)} />
-                ))}
-              </div>
-            )}
-
-            <SectionTitle>Your Reporting</SectionTitle>
-            <div style={styles.cardGrid}>
-              <div style={{ ...styles.statCard, cursor: "default", borderColor: "#12857733" }}>
-                <div style={{ ...styles.statValue, color: "#128577" }}>{myChanges.length}</div>
-                <div style={styles.statLabel}>Total dressings logged</div>
-              </div>
-            </div>
-            {myChanges.length === 0 ? <EmptyState text="Your dressing changes will show up here." /> : (
-              <div style={styles.card}>
-                {myChanges.slice(0, 15).map((e) => (
-                  <div key={e.id} style={styles.dresserLine}>
-                    <span style={{ flex: 1 }}>{e.patientName}</span>
-                    <span style={styles.mutedSmall}>{fmtDate(e.date)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
+        <SectionTitle>Cases on Therapy</SectionTitle>
+        {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
+          <div style={styles.list}>
+            {myCasesActive.map((c) => (
+              <DresserCaseRow key={c.id} c={c} dresserName={name}
+                onAddDressingChange={(e) => addDressingChange(c.id, e)}
+                onCapturePhoto={(stage, dataURL) => capturePhoto(c.id, stage, dataURL)} />
+            ))}
+          </div>
         )}
 
-        {tab === "rental" && (
-          <DresserRentalTab name={name} machines={machines} myRentals={myRentals} addRental={addRental} />
+        <SectionTitle>Your Reporting</SectionTitle>
+        <div style={styles.cardGrid}>
+          <div style={{ ...styles.statCard, cursor: "default", borderColor: "#12857733" }}>
+            <div style={{ ...styles.statValue, color: "#128577" }}>{myChanges.length}</div>
+            <div style={styles.statLabel}>Total dressings logged</div>
+          </div>
+          <div style={{ ...styles.statCard, cursor: "default", borderColor: "#12857733" }}>
+            <div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(myRentalTotal)}</div>
+            <div style={styles.statLabel}>Machine rental collected</div>
+          </div>
+        </div>
+        {myChanges.length === 0 ? <EmptyState text="Your dressing changes will show up here." /> : (
+          <div style={styles.card}>
+            {myChanges.slice(0, 15).map((e) => (
+              <div key={e.id} style={styles.dresserLine}>
+                <span style={{ flex: 1 }}>{e.patientName}</span>
+                <span style={styles.mutedSmall}>{fmtDate(e.date)}</span>
+              </div>
+            ))}
+          </div>
         )}
       </main>
     </>
-  );
-}
-
-function DresserRentalTab({ name, machines, myRentals, addRental }) {
-  const [machineSerial, setMachineSerial] = useState("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(todayISO());
-  const [note, setNote] = useState("");
-
-  const total = myRentals.reduce((s, r) => s + Number(r.amount || 0), 0);
-
-  const submit = () => {
-    const amt = Number(amount);
-    if (!amt || amt <= 0) return;
-    addRental({ dresserName: name, machineSerial, amount: amt, date, note: note.trim() });
-    setAmount(""); setNote("");
-  };
-
-  return (
-    <div>
-      <SectionTitle>Log Machine Rental Received</SectionTitle>
-      <div style={styles.formGrid}>
-        <Field label="Machine">
-          <select style={styles.input} value={machineSerial} onChange={(e) => setMachineSerial(e.target.value)}>
-            <option value="">— Not specific / general —</option>
-            {machines.map((m) => <option key={m.id} value={m.serial}>{m.serial} ({m.model})</option>)}
-          </select>
-        </Field>
-        <Field label="Amount Received (₹)">
-          <input type="number" style={styles.input} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter amount" />
-        </Field>
-        <Field label="Date">
-          <input type="date" style={styles.input} value={date} onChange={(e) => setDate(e.target.value)} />
-        </Field>
-        <Field label="Note (optional)">
-          <input style={styles.input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. patient / hospital name" />
-        </Field>
-      </div>
-      <button style={styles.primaryBtn} onClick={submit}>Add Rental Entry</button>
-
-      <SectionTitle>Your Rental Collections</SectionTitle>
-      <div style={styles.cardGrid}>
-        <div style={{ ...styles.statCard, cursor: "default", borderColor: "#12857733" }}>
-          <div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(total)}</div>
-          <div style={styles.statLabel}>Total collected by you</div>
-        </div>
-      </div>
-      {myRentals.length === 0 ? <EmptyState text="No rental entries logged yet." /> : (
-        <div style={styles.card}>
-          {myRentals.map((r) => (
-            <div key={r.id} style={styles.dresserLine}>
-              <span style={{ flex: 1 }}>{r.machineSerial || "General"}{r.note ? ` · ${r.note}` : ""}</span>
-              <span style={styles.mutedSmall}>{fmtDate(r.date)}</span>
-              <span style={{ fontWeight: 700, color: "#128577" }}>{fmtMoney(r.amount)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -1021,6 +939,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
             <Detail label="Patient Mobile" value={c.patientMobile || "—"} />
             <Detail label="Bill To" value={c.billTo === "Hospital" ? (c.hospitalName || "Hospital") : "Patient"} />
             <Detail label="Total Amount" value={fmtMoney(c.totalAmount)} />
+            {Number(c.machineRentalAmount) > 0 && <Detail label="Machine Rental" value={fmtMoney(c.machineRentalAmount)} />}
             <Detail label="Paid" value={fmtMoney(paid)} />
             <Detail label="Outstanding" value={fmtMoney(outstanding)} highlight={outstanding > 0} />
             <Detail label="Est. Profit" value={fmtMoney(profit)} highlight={profit < 0} />
@@ -1107,7 +1026,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
     patientName: "", patientMobile: "", doctorName: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: products[0] ? [products[0].name] : [],
     applicationDate: todayISO(), applicationTime: nowTimeHM(), status: "active", endDate: "",
-    billTo: "Patient", hospitalName: "", totalAmount: "", amountReceived: "", notes: "",
+    billTo: "Patient", hospitalName: "", totalAmount: "", amountReceived: "", machineRentalAmount: "", notes: "",
   });
   const [customProtocol, setCustomProtocol] = useState(!PROTOCOLS.includes(Number(form.protocolDays)));
   const [amountTouched, setAmountTouched] = useState(!!initial);
@@ -1126,7 +1045,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
 
   const submit = () => {
     if (!form.patientName.trim() || !form.doctorName.trim()) return;
-    onSave({ ...form, totalAmount: Number(form.totalAmount) || 0, protocolDays: Number(form.protocolDays) || 5 });
+    onSave({ ...form, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, protocolDays: Number(form.protocolDays) || 5 });
   };
 
   return (
@@ -1179,6 +1098,11 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             {machines.map((m) => <option key={m.id} value={m.serial}>{m.serial} ({m.model})</option>)}
           </select>
         </Field>
+        {form.machineSerial && (
+          <Field label="Machine Rental Amount (₹)">
+            <input type="number" style={styles.input} value={form.machineRentalAmount} onChange={(e) => set("machineRentalAmount", e.target.value)} placeholder="0 if no rental charged" />
+          </Field>
+        )}
         <Field label="Application Date"><input type="date" style={styles.input} value={form.applicationDate} onChange={(e) => set("applicationDate", e.target.value)} /></Field>
         <Field label="Application Time"><input type="time" style={styles.input} value={form.applicationTime} onChange={(e) => set("applicationTime", e.target.value)} /></Field>
         <Field label="Status">
@@ -1861,7 +1785,7 @@ function CollapsibleSection({ title, defaultOpen, right, children }) {
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, rentals }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
 
@@ -1939,18 +1863,22 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     return Object.values(tally).sort((a, b) => b.balance - a.balance);
   }, [outstandingByPatient]);
 
-  const rentalTotal = useMemo(() => (rentals || []).reduce((s, r) => s + Number(r.amount || 0), 0), [rentals]);
+  const rentedCases = useMemo(
+    () => cases.filter((c) => Number(c.machineRentalAmount || 0) > 0),
+    [cases]
+  );
+  const rentalTotal = useMemo(() => rentedCases.reduce((s, c) => s + Number(c.machineRentalAmount || 0), 0), [rentedCases]);
   const rentalByDresser = useMemo(() => {
     const tally = {};
-    (rentals || []).forEach((r) => {
-      const d = (r.dresserName || "Unassigned").trim() || "Unassigned";
-      tally[d] = (tally[d] || 0) + Number(r.amount || 0);
+    rentedCases.forEach((c) => {
+      const d = (c.dresserName || "Unassigned").trim() || "Unassigned";
+      tally[d] = (tally[d] || 0) + Number(c.machineRentalAmount || 0);
     });
     return Object.entries(tally).map(([dresserName, amount]) => ({ dresserName, amount })).sort((a, b) => b.amount - a.amount);
-  }, [rentals]);
+  }, [rentedCases]);
   const recentRentals = useMemo(
-    () => [...(rentals || [])].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20),
-    [rentals]
+    () => [...rentedCases].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)).slice(0, 20),
+    [rentedCases]
   );
 
   const monthlyRevenueTrend = useMemo(() => {
@@ -2022,21 +1950,21 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       )}
 
       <CollapsibleSection title="Machine Rental Collections" right={rentalTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#128577" }}>{fmtMoney(rentalTotal)}</span> : null}>
-        {(!rentals || rentals.length === 0) ? <EmptyState text="No machine rental entries logged yet." /> : (
+        {rentedCases.length === 0 ? <EmptyState text="No machine rental amounts logged on any case yet." /> : (
           <>
             <div style={styles.card}>
               {rentalByDresser.map((d) => (
                 <div key={d.dresserName} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{d.dresserName}</span><span style={{ fontWeight: 700, color: "#128577" }}>{fmtMoney(d.amount)}</span></div>
               ))}
             </div>
-            <div style={{ ...styles.mutedSmall, margin: "10px 0 4px" }}>Recent entries</div>
+            <div style={{ ...styles.mutedSmall, margin: "10px 0 4px" }}>Recent cases with rental</div>
             <div style={styles.card}>
-              {recentRentals.map((r) => (
-                <div key={r.id} style={styles.dresserLine}>
-                  <span style={{ flex: 1, fontWeight: 600 }}>{r.dresserName || "Unassigned"}</span>
-                  <span style={styles.mutedSmall}>{r.machineSerial || "General"}{r.note ? ` · ${r.note}` : ""}</span>
-                  <span style={styles.mutedSmall}>{fmtDate(r.date)}</span>
-                  <span style={{ fontWeight: 700 }}>{fmtMoney(r.amount)}</span>
+              {recentRentals.map((c) => (
+                <div key={c.id} style={styles.dresserLine}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
+                  <span style={styles.mutedSmall}>{c.machineSerial || "No machine"} · {c.dresserName || "Unassigned"}</span>
+                  <span style={styles.mutedSmall}>{fmtDate(c.applicationDate)}</span>
+                  <span style={{ fontWeight: 700 }}>{fmtMoney(c.machineRentalAmount)}</span>
                 </div>
               ))}
             </div>
