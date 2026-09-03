@@ -351,7 +351,12 @@ export default function App() {
       setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
       setOwnerLogins(Array.isArray(olog) ? olog : []);
       setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
-      setDresserStockAccessState(dstock && typeof dstock === "object" ? dstock : {});
+      {
+        const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
+        const devashish = (drs || []).find((n) => n.trim().toLowerCase() === "devashish");
+        if (devashish && stockAccess[devashish] === undefined) stockAccess[devashish] = true;
+        setDresserStockAccessState(stockAccess);
+      }
       setLoaded(true);
     })();
   }, []);
