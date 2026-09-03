@@ -1490,6 +1490,7 @@ function MachinesTab({ machines, setMachines, machineInUse, cases }) {
   const [showForm, setShowForm] = useState(false);
   const [serial, setSerial] = useState("");
   const [model, setModel] = useState("");
+  const [openId, setOpenId] = useState(null);
   const addMachine = () => {
     if (!serial.trim()) return;
     setMachines((prev) => [...prev, { id: uid(), serial: serial.trim(), model: model.trim() || "NPWT Unit" }]);
@@ -1515,19 +1516,29 @@ function MachinesTab({ machines, setMachines, machineInUse, cases }) {
           {machines.map((m) => {
             const inUse = machineInUse(m.serial);
             const activeCase = cases.find((c) => c.machineSerial === m.serial && c.status === "active");
+            const open = openId === m.id;
             return (
               <div key={m.id} style={styles.card}>
-                <div style={styles.cardTop}>
+                <div style={styles.cardTop} onClick={() => setOpenId(open ? null : m.id)}>
                   <div style={{ flex: 1 }}>
                     <div style={styles.cardTitle}>{m.serial}</div>
                     <div style={styles.cardMeta}>{m.model}</div>
-                    {inUse && activeCase && <div style={styles.mutedSmall}>With {activeCase.patientName} since {fmtDate(activeCase.applicationDate)}</div>}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                     <span style={{ ...styles.badge, color: inUse ? "#128577" : "#5B6864", background: inUse ? "#E3F3EF" : "#EEF0EE" }}>{inUse ? "In Use" : "Available"}</span>
-                    <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => removeMachine(m.id)}>Remove</button>
+                    <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
                   </div>
                 </div>
+                {open && (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    {inUse && activeCase ? (
+                      <div style={styles.mutedSmall}>With {activeCase.patientName} since {fmtDate(activeCase.applicationDate)}</div>
+                    ) : (
+                      <div style={styles.mutedSmall}>Not currently assigned to a case.</div>
+                    )}
+                    <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => removeMachine(m.id)}>Remove Machine</button>
+                  </div>
+                )}
               </div>
             );
           })}
