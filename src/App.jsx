@@ -2019,6 +2019,85 @@ function pnlPeriodLabel(key, granularity) {
   return key;
 }
 
+function DoctorCommissionCard({ d }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const sheetRef = useRef(null);
+  const grandTotal = d.months.reduce((s, m) => s + m.total, 0);
+
+  const downloadPdf = async (e) => {
+    e.stopPropagation();
+    if (!sheetRef.current) return;
+    setBusy(true);
+    try {
+      const blob = await quotePdfBlob(sheetRef.current);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `Commission-Statement-${d.doctor.replace(/[^a-z0-9]+/gi, "-")}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Couldn't generate PDF.");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={styles.card}>
+      <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
+        <div style={{ flex: 1 }}>
+          <div style={styles.cardTitle}>{d.doctor}</div>
+          <div style={styles.cardMeta}>{d.months.length} month{d.months.length > 1 ? "s" : ""} with commission</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <span style={{ fontWeight: 700, color: "#D98D2B" }}>{fmtMoney(grandTotal)}</span>
+          <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
+        </div>
+      </div>
+      {open && (
+        <div style={{ padding: "0 14px 14px" }}>
+          <button style={{ ...styles.smallBtn, width: "100%", marginBottom: 12 }} disabled={busy} onClick={downloadPdf}>
+            {busy ? "Preparing…" : "Download Commission Statement PDF"}
+          </button>
+          <div ref={sheetRef} style={styles.quoteSheet}>
+            <div style={styles.quoteHeader}>
+              <img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={{ width: 40, height: 40, objectFit: "contain" }} />
+              <div>
+                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 }}>Bhagirathi Agency</div>
+                <div style={{ fontSize: 11, color: "#5B6864" }}>Doctor Commission Statement</div>
+              </div>
+            </div>
+            <div style={{ margin: "12px 0", fontSize: 13 }}>
+              <strong>Doctor:</strong> {d.doctor}<br />
+              <strong>Statement generated:</strong> {fmtDate(todayISO())}
+            </div>
+            {d.months.map((m) => (
+              <div key={m.monthKey} style={{ marginBottom: 14 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, borderBottom: "1px solid #DCE4DF", paddingBottom: 4, marginBottom: 4 }}>{m.monthLabel}</div>
+                <table style={styles.quoteTable}>
+                  <thead><tr><th style={styles.quoteTh}>#</th><th style={styles.quoteTh}>Patient</th><th style={styles.quoteTh}>Date</th><th style={styles.quoteTh}>Amount</th></tr></thead>
+                  <tbody>
+                    {m.entries.map((e, i) => (
+                      <tr key={i}>
+                        <td style={styles.quoteTd}>{i + 1}</td>
+                        <td style={styles.quoteTd}>{e.patientName}</td>
+                        <td style={styles.quoteTd}>{fmtDate(e.date)}</td>
+                        <td style={styles.quoteTd}>{fmtMoney(e.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div style={{ textAlign: "right", fontWeight: 700, fontSize: 12, marginTop: 4 }}>Month total: {fmtMoney(m.total)}</div>
+              </div>
+            ))}
+            <div style={{ borderTop: "2px solid #6E0F1A", marginTop: 10, paddingTop: 8, textAlign: "right", fontWeight: 700 }}>
+              Grand total payable: {fmtMoney(grandTotal)}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
@@ -2134,6 +2213,25 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     return Object.values(tally).sort((a, b) => b.total - a.total);
   }, [cases]);
   const doctorCommissionTotal = useMemo(() => doctorCommissionStats.reduce((s, d) => s + d.total, 0), [doctorCommissionStats]);
+
+  const doctorCommissionMonthly = useMemo(() => {
+    const byDoctor = {};
+    cases.forEach((c) => {
+      const amt = Number(c.doctorCommission || 0);
+      if (amt <= 0) return;
+      const doctor = (c.doctorName || "Unknown").trim() || "Unknown";
+      const monthKey = c.applicationDate ? `${new Date(c.applicationDate).getFullYear()}-${String(new Date(c.applicationDate).getMonth() + 1).padStart(2, "0")}` : "Unknown";
+      const monthLabel = c.applicationDate ? new Date(c.applicationDate).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : "Unknown";
+      if (!byDoctor[doctor]) byDoctor[doctor] = {};
+      if (!byDoctor[doctor][monthKey]) byDoctor[doctor][monthKey] = { monthKey, monthLabel, total: 0, entries: [] };
+      byDoctor[doctor][monthKey].total += amt;
+      byDoctor[doctor][monthKey].entries.push({ patientName: c.patientName, date: c.applicationDate, amount: amt });
+    });
+    return Object.entries(byDoctor).map(([doctor, months]) => ({
+      doctor,
+      months: Object.values(months).sort((a, b) => (a.monthKey < b.monthKey ? 1 : -1)),
+    })).sort((a, b) => a.doctor.localeCompare(b.doctor));
+  }, [cases]);
 
   const doctorCallsByDresser = useMemo(() => {
     const tally = {};
@@ -2410,13 +2508,9 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div style={styles.card}>
-              {doctorCommissionStats.map((d) => (
-                <div key={d.doctor} style={styles.dresserLine}>
-                  <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
-                  <span style={styles.mutedSmall}>{d.cases} case{d.cases > 1 ? "s" : ""}</span>
-                  <span style={{ fontWeight: 700, color: "#D98D2B" }}>{fmtMoney(d.total)}</span>
-                </div>
+            <div style={styles.list}>
+              {doctorCommissionMonthly.map((d) => (
+                <DoctorCommissionCard key={d.doctor} d={d} />
               ))}
             </div>
           </>
