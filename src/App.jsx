@@ -63,7 +63,7 @@ const fmtRelative = (iso) => {
 };
 
 const STATUS = {
-  active: { label: "On Therapy", color: "#1B6B63", bg: "#E4F1EE" },
+  active: { label: "On Therapy", color: "#128577", bg: "#E3F3EF" },
   stopped: { label: "Stopped", color: "#8A5A2B", bg: "#F5EBDC" },
   reapplied: { label: "Reapplied", color: "#3B5BA5", bg: "#E7ECF7" },
 };
@@ -78,10 +78,10 @@ const PHOTO_STAGES = [
   { key: "completion", label: "Therapy Completion" },
 ];
 const QUOTE_STATUS = {
-  draft: { label: "Draft", color: "#5A6560", bg: "#EFEDE3" },
+  draft: { label: "Draft", color: "#5B6864", bg: "#EEF1EC" },
   sent: { label: "Sent", color: "#3B5BA5", bg: "#E7ECF7" },
-  accepted: { label: "Accepted", color: "#1B6B63", bg: "#E4F1EE" },
-  rejected: { label: "Rejected", color: "#B3542F", bg: "#F5E4DC" },
+  accepted: { label: "Accepted", color: "#128577", bg: "#E3F3EF" },
+  rejected: { label: "Rejected", color: "#E1483C", bg: "#FCE7E4" },
 };
 const DEFAULT_TERMS =
   "1. Prices are in INR and exclusive of GST unless stated otherwise.\n" +
@@ -147,6 +147,33 @@ function photoKey(caseId, stage) { return `photo-${caseId}-${stage}`; }
 function locKey(name) { return `wca-loc-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`; }
 function mapsLink(lat, lng) { return `https://www.google.com/maps?q=${lat},${lng}`; }
 function waLink(number, text) { return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
+
+// ---------------- icon set (minimal line icons, currentColor) ----------------
+function Icon({ name, size = 20 }) {
+  const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (name) {
+    case "overview":
+      return <svg {...common}><rect x="3.5" y="3.5" width="7" height="7" rx="1.6" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.6" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.6" /></svg>;
+    case "cases":
+      return <svg {...common}><rect x="4.5" y="5" width="15" height="16" rx="2" /><path d="M9 5V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1" /><path d="M8.5 12h7M8.5 16h5" /></svg>;
+    case "quotes":
+      return <svg {...common}><path d="M6.5 2.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20V4a1.5 1.5 0 0 1 1.5-1.5Z" /><path d="M14 2.5V7h4.5" /><path d="M8.3 12.3h7.4M8.3 15.6h4.7" /></svg>;
+    case "machines":
+      return <svg {...common}><path d="M3 12h3.2l2-5.5 3.6 11 2.4-9 1.8 3.5H21" /></svg>;
+    case "stock":
+      return <svg {...common}><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5Z" /><path d="M3.5 7.5 12 12l8.5-4.5" /><path d="M12 12v9" /></svg>;
+    case "dressers":
+      return <svg {...common}><circle cx="9" cy="8" r="3.2" /><path d="M2.8 20c.6-3.6 3.2-6 6.2-6s5.6 2.4 6.2 6" /><circle cx="17" cy="8.5" r="2.4" /><path d="M15.5 14.4c2.4.2 4.4 2.4 4.9 5.6" /></svg>;
+    case "reports":
+      return <svg {...common}><path d="M4 20V10M11 20V4M18 20v-7" /><path d="M2.5 20.5h19" /></svg>;
+    case "pin":
+      return <svg {...common}><path d="M12 2.5c3.6 0 6.5 2.8 6.5 6.6 0 4.8-6.5 12.4-6.5 12.4S5.5 13.9 5.5 9.1C5.5 5.3 8.4 2.5 12 2.5Z" /><circle cx="12" cy="9" r="2.3" /></svg>;
+    case "logout":
+      return <svg {...common}><path d="M9 21H5.5A1.5 1.5 0 0 1 4 19.5v-15A1.5 1.5 0 0 1 5.5 3H9" /><path d="M16 16l5-4-5-4" /><path d="M21 12H9" /></svg>;
+    default:
+      return null;
+  }
+}
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -516,8 +543,8 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             <div style={styles.brandSub}>Owner view</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button style={styles.logoutBtn} onClick={() => setShowPinForm((s) => !s)}>PIN</button>
-            <button style={styles.logoutBtn} onClick={onLogout}>Switch User</button>
+            <button style={styles.logoutBtn} onClick={() => setShowPinForm((s) => !s)}><Icon name="pin" size={15} /> PIN</button>
+            <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
           </div>
         </div>
         {showPinForm && (
@@ -528,8 +555,10 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       </header>
 
       <nav style={styles.nav}>
-        {[["dashboard", "Overview"], ["cases", "Cases"], ["quotations", "Quotes"], ["machines", "Machines"], ["stock", "Stock"], ["dressers", "Dressers"], ["reports", "Reports"]].map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>{label}</button>
+        {[["dashboard", "Overview", "overview"], ["cases", "Cases", "cases"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["reports", "Reports", "reports"]].map(([key, label, icon]) => (
+          <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
+            <Icon name={icon} size={16} />{label}
+          </button>
         ))}
       </nav>
 
@@ -632,7 +661,7 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
             <div style={styles.brandName}>Bhagirathi Agency</div>
             <div style={styles.brandSub}>Hi, {name}</div>
           </div>
-          <button style={styles.logoutBtn} onClick={onLogout}>Switch User</button>
+          <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
         </div>
       </header>
 
@@ -656,8 +685,8 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
 
         <SectionTitle>Your Reporting</SectionTitle>
         <div style={styles.cardGrid}>
-          <div style={{ ...styles.statCard, cursor: "default", borderColor: "#1B6B6333" }}>
-            <div style={{ ...styles.statValue, color: "#1B6B63" }}>{myChanges.length}</div>
+          <div style={{ ...styles.statCard, cursor: "default", borderColor: "#12857733" }}>
+            <div style={{ ...styles.statValue, color: "#128577" }}>{myChanges.length}</div>
             <div style={styles.statLabel}>Total dressings logged</div>
           </div>
         </div>
@@ -749,10 +778,10 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
   return (
     <div>
       <div style={styles.cardGrid}>
-        <StatCard label="Active Cases" value={activeCount} accent="#1B6B63" onClick={() => setTab("cases")} />
-        <StatCard label="Change Due / Overdue" value={overdueCount} accent="#B3542F" onClick={() => setTab("cases")} />
-        <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#B3542F" onClick={() => setTab("cases")} />
-        <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" onClick={() => setTab("machines")} />
+        <StatCard label="Active Cases" value={activeCount} accent="#128577" icon="cases" onClick={() => setTab("cases")} />
+        <StatCard label="Change Due / Overdue" value={overdueCount} accent="#E1483C" icon="reports" onClick={() => setTab("cases")} />
+        <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#D98D2B" icon="quotes" onClick={() => setTab("cases")} />
+        <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
       </div>
 
       {lowStock.length > 0 && (
@@ -760,7 +789,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
           <SectionTitle>Stock Alerts</SectionTitle>
           <div style={styles.card}>
             {lowStock.map((p) => (
-              <div key={p.id} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{p.name}</span><span style={{ color: "#B3542F", fontSize: 12, fontWeight: 700 }}>{p.available || 0} left</span></div>
+              <div key={p.id} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{p.name}</span><span style={{ color: "#E1483C", fontSize: 12, fontWeight: 700 }}>{p.available || 0} left</span></div>
             ))}
           </div>
         </>
@@ -785,9 +814,14 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
   );
 }
 
-function StatCard({ label, value, accent, onClick }) {
+function StatCard({ label, value, accent, icon, onClick }) {
   return (
-    <button onClick={onClick} style={{ ...styles.statCard, borderColor: accent + "33" }}>
+    <button onClick={onClick} style={{ ...styles.statCard, borderColor: accent + "26" }}>
+      {icon && (
+        <div style={{ width: 32, height: 32, borderRadius: 9, background: accent + "1A", color: accent, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+          <Icon name={icon} size={17} />
+        </div>
+      )}
       <div style={{ ...styles.statValue, color: accent }}>{value}</div>
       <div style={styles.statLabel}>{label}</div>
     </button>
@@ -966,7 +1000,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
 
           <div style={styles.actionRow}>
             <button style={styles.linkBtn} onClick={onEdit}>Edit</button>
-            <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={onDelete}>Delete</button>
+            <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={onDelete}>Delete</button>
           </div>
         </div>
       )}
@@ -975,7 +1009,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
 }
 
 function Detail({ label, value, highlight }) {
-  return <div><div style={styles.detailLabel}>{label}</div><div style={{ ...styles.detailValue, color: highlight ? "#B3542F" : "#1F2421" }}>{value}</div></div>;
+  return <div><div style={styles.detailLabel}>{label}</div><div style={{ ...styles.detailValue, color: highlight ? "#E1483C" : "#182322" }}>{value}</div></div>;
 }
 
 function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName }) {
@@ -1163,7 +1197,7 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
                   <div style={{ display: "flex", gap: 16, padding: "0 14px 12px" }}>
                     <button style={styles.linkBtn} onClick={() => setViewing(q)}>View / Print</button>
                     <button style={styles.linkBtn} onClick={() => { setEditing(q); setShowForm(true); }}>Edit</button>
-                    <button style={{ ...styles.linkBtn, color: "#B3542F" }}
+                    <button style={{ ...styles.linkBtn, color: "#E1483C" }}
                       onClick={() => { if (window.confirm("Delete this quotation?")) deleteQuotation(q.id); }}>Delete</button>
                   </div>
                 </div>
@@ -1234,7 +1268,7 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
           const selectedProduct = products.find((p) => p.name === it.productName);
           const hasVariants = selectedProduct && (selectedProduct.variants || []).length > 0;
           return (
-          <div key={it.id} style={{ marginBottom: 6, border: "1px solid #F0EEE3", borderRadius: 8, padding: 6 }}>
+          <div key={it.id} style={{ marginBottom: 6, border: "1px solid #EEF1EC", borderRadius: 8, padding: 6 }}>
             <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
               {it.custom ? (
                 <div style={{ display: "flex", flex: 3, minWidth: 160, gap: 4, alignItems: "center" }}>
@@ -1260,7 +1294,7 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
                 value={it.qty} onChange={(e) => setItem(it.id, "qty", e.target.value)} />
               <input style={{ ...styles.input, flex: 1.3, minWidth: 70 }} type="number" placeholder="Rate ₹"
                 value={it.rate} onChange={(e) => setItem(it.id, "rate", e.target.value)} />
-              <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => removeItem(it.id)}>✕</button>
+              <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => removeItem(it.id)}>✕</button>
             </div>
             {hasVariants && (
               <div style={{ marginTop: 6 }}>
@@ -1400,7 +1434,7 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
         <button style={{ ...styles.smallBtn, background: "#25D366", flex: 1 }} disabled={!!busy} onClick={sharePdf}>
           {busy === "share" ? "Preparing…" : "WhatsApp"}
         </button>
-        <button style={{ ...styles.smallBtn, background: "#B3542F", flex: 1 }} disabled={!!busy} onClick={emailPdf}>
+        <button style={{ ...styles.smallBtn, background: "#E1483C", flex: 1 }} disabled={!!busy} onClick={emailPdf}>
           {busy === "email" ? "Preparing…" : "Email"}
         </button>
       </div>
@@ -1410,7 +1444,7 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
           <img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={{ width: 46, height: 46, objectFit: "contain" }} />
           <div>
             <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17 }}>Bhagirathi Agency</div>
-            <div style={{ fontSize: 11, color: "#5A6560" }}>Wound Care & NPWT Supplies · Nashik, Maharashtra</div>
+            <div style={{ fontSize: 11, color: "#5B6864" }}>Wound Care & NPWT Supplies · Nashik, Maharashtra</div>
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0", fontSize: 13 }}>
@@ -1442,10 +1476,10 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
           <div style={{ display: "flex", justifyContent: "space-between" }}><span>Subtotal</span><span>{fmtMoney(subtotal)}</span></div>
           {discount > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Discount</span><span>-{fmtMoney(discount)}</span></div>}
           {Number(q.gstPercent) > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>GST ({q.gstPercent}%)</span><span>{fmtMoney(gstAmount)}</span></div>}
-          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid #DCD8CC", marginTop: 4, paddingTop: 4 }}><span>Total</span><span>{fmtMoney(total)}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid #DCE4DF", marginTop: 4, paddingTop: 4 }}><span>Total</span><span>{fmtMoney(total)}</span></div>
         </div>
         {q.notes && <div style={{ marginTop: 16, fontSize: 12 }}><strong>Notes:</strong><br />{q.notes}</div>}
-        {q.terms && <div style={{ marginTop: 16, fontSize: 11, color: "#5A6560", whiteSpace: "pre-line" }}><strong>Terms & Conditions</strong><br />{q.terms}</div>}
+        {q.terms && <div style={{ marginTop: 16, fontSize: 11, color: "#5B6864", whiteSpace: "pre-line" }}><strong>Terms & Conditions</strong><br />{q.terms}</div>}
         <div style={{ marginTop: 40, fontSize: 12 }}>For Bhagirathi Agency<br /><br /><br />Authorised Signatory</div>
       </div>
     </div>
@@ -1490,8 +1524,8 @@ function MachinesTab({ machines, setMachines, machineInUse, cases }) {
                     {inUse && activeCase && <div style={styles.mutedSmall}>With {activeCase.patientName} since {fmtDate(activeCase.applicationDate)}</div>}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                    <span style={{ ...styles.badge, color: inUse ? "#1B6B63" : "#5A6560", background: inUse ? "#E4F1EE" : "#EEF0EE" }}>{inUse ? "In Use" : "Available"}</span>
-                    <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => removeMachine(m.id)}>Remove</button>
+                    <span style={{ ...styles.badge, color: inUse ? "#128577" : "#5B6864", background: inUse ? "#E3F3EF" : "#EEF0EE" }}>{inUse ? "In Use" : "Available"}</span>
+                    <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => removeMachine(m.id)}>Remove</button>
                   </div>
                 </div>
               </div>
@@ -1567,8 +1601,8 @@ function StockTab({ products, setProducts, receiveStock }) {
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                <span style={{ ...styles.badge, color: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#B3542F" : "#1B6B63", background: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#F5E4DC" : "#E4F1EE" }}>{p.available || 0} available</span>
-                <span style={{ fontSize: 11, color: "#8A9490" }}>{open ? "▲ hide" : "▼ details"}</span>
+                <span style={{ ...styles.badge, color: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#E1483C" : "#128577", background: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#FCE7E4" : "#E3F3EF" }}>{p.available || 0} available</span>
+                <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
               </div>
             </div>
             {open && (
@@ -1591,7 +1625,7 @@ function StockTab({ products, setProducts, receiveStock }) {
                     {(p.variants || []).map((v) => (
                       <span key={v} style={{ ...styles.photoChip, ...styles.photoChipDone, cursor: "default", display: "flex", alignItems: "center", gap: 6 }}>
                         {v}
-                        <span style={{ cursor: "pointer", color: "#B3542F", fontWeight: 700 }} onClick={() => removeVariant(p.id, v)}>✕</span>
+                        <span style={{ cursor: "pointer", color: "#E1483C", fontWeight: 700 }} onClick={() => removeVariant(p.id, v)}>✕</span>
                       </span>
                     ))}
                   </div>
@@ -1603,7 +1637,7 @@ function StockTab({ products, setProducts, receiveStock }) {
                   </div>
                 </div>
 
-                <button style={{ ...styles.linkBtn, color: "#B3542F", marginTop: 12 }} onClick={() => remove(p.id)}>Remove Product</button>
+                <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => remove(p.id)}>Remove Product</button>
               </div>
             )}
           </div>
@@ -1668,20 +1702,20 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
                   <div style={styles.cardTitle}>{d}</div>
                   <div style={styles.cardMeta}>{countFor(d)} dressing{countFor(d) === 1 ? "" : "s"} logged</div>
                 </div>
-                <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => removeDresser(d)}>Remove</button>
+                <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => removeDresser(d)}>Remove</button>
               </div>
               <div style={{ padding: "0 14px 14px" }}>
                 {dresserPins[d] ? (
-                  <span style={{ ...styles.badge, color: "#1B6B63", background: "#E4F1EE" }}>PIN protected</span>
+                  <span style={{ ...styles.badge, color: "#128577", background: "#E3F3EF" }}>PIN protected</span>
                 ) : (
-                  <span style={{ ...styles.badge, color: "#B3542F", background: "#F5E4DC" }}>No PIN — anyone can log in as {d}</span>
+                  <span style={{ ...styles.badge, color: "#E1483C", background: "#FCE7E4" }}>No PIN — anyone can log in as {d}</span>
                 )}
                 <div style={{ ...styles.addPaymentRow, marginTop: 8 }}>
                   <input type="text" inputMode="numeric" placeholder={dresserPins[d] ? "New PIN (4+ digits)" : "Set PIN (4+ digits)"}
                     style={styles.smallInput} value={pinEdits[d] || ""}
                     onChange={(e) => setPinEdits((prev) => ({ ...prev, [d]: e.target.value }))} />
                   <button style={styles.smallBtn} onClick={() => savePinEdit(d)}>Save PIN</button>
-                  {dresserPins[d] && <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => setDresserPin(d, undefined)}>Clear</button>}
+                  {dresserPins[d] && <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => setDresserPin(d, undefined)}>Clear</button>}
                 </div>
               </div>
             </div>
@@ -1809,8 +1843,8 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       <SectionTitle>Revenue</SectionTitle>
       <div style={styles.cardGrid}>
         <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(totalBilled)}</div><div style={styles.statLabel}>Total Billed</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#1B6B63" }}>{fmtMoney(totalCollected)}</div><div style={styles.statLabel}>Total Collected</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#B3542F" }}>{fmtMoney(outstandingTotal)}</div><div style={styles.statLabel}>Outstanding</div></div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(totalCollected)}</div><div style={styles.statLabel}>Total Collected</div></div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(outstandingTotal)}</div><div style={styles.statLabel}>Outstanding</div></div>
         <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#3B5BA5" }}>{fmtMoney(totalProfit)}</div><div style={styles.statLabel}>Est. Profit</div></div>
       </div>
 
@@ -1874,7 +1908,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               <div key={c.id} style={styles.dresserLine}>
                 <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
                 <span style={styles.mutedSmall}>{fmtDate(c.applicationDate)}</span>
-                <span style={{ ...styles.mutedSmall, color: "#B3542F", fontWeight: 600 }}>{fmtMoney(c.balance)}</span>
+                <span style={{ ...styles.mutedSmall, color: "#E1483C", fontWeight: 600 }}>{fmtMoney(c.balance)}</span>
               </div>
             ))}
           </div>
@@ -1888,7 +1922,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               <div key={m.month} style={styles.dresserLine}>
                 <span style={{ flex: 1, fontWeight: 600 }}>{m.month}</span>
                 <span style={styles.mutedSmall}>Billed {fmtMoney(m.billed)}</span>
-                <span style={{ ...styles.mutedSmall, color: "#1B6B63" }}>Collected {fmtMoney(m.collected)}</span>
+                <span style={{ ...styles.mutedSmall, color: "#128577" }}>Collected {fmtMoney(m.collected)}</span>
               </div>
             ))}
           </div>
@@ -1902,7 +1936,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               <div key={c.id} style={styles.dresserLine}>
                 <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
                 <span style={styles.mutedSmall}>{c.dresserName || "Unassigned"}</span>
-                <span style={{ ...styles.mutedSmall, color: "#B3542F", fontWeight: 600 }}>{c.daysOverdue}d overdue</span>
+                <span style={{ ...styles.mutedSmall, color: "#E1483C", fontWeight: 600 }}>{c.daysOverdue}d overdue</span>
               </div>
             ))}
           </div>
@@ -1961,88 +1995,88 @@ const printStyles = `
 `;
 
 const fontImport = `
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
 `;
 
 const styles = {
-  app: { fontFamily: "'IBM Plex Mono', ui-monospace, monospace", background: "#F6F5F0", minHeight: "100vh", color: "#1F2421", paddingBottom: 40 },
-  loadingScreen: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F6F5F0" },
-  loadingText: { fontFamily: "monospace", color: "#5A6560" },
-  header: { background: "linear-gradient(135deg, #16302E 0%, #1B4B45 100%)", padding: "18px 16px", boxShadow: "0 2px 12px rgba(22,48,46,0.18)" },
+  app: { fontFamily: "'Inter', -apple-system, sans-serif", background: "#F4F7F5", minHeight: "100vh", color: "#182322", paddingBottom: 40 },
+  loadingScreen: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4F7F5" },
+  loadingText: { fontFamily: "'Space Grotesk', sans-serif", color: "#5B6864", fontWeight: 600 },
+  header: { background: "linear-gradient(135deg, #0E2422 0%, #128577 100%)", padding: "18px 16px", borderRadius: "0 0 20px 20px", boxShadow: "0 8px 24px rgba(14,36,34,0.18)" },
   headerInner: { display: "flex", alignItems: "center", gap: 12, maxWidth: 640, margin: "0 auto" },
-  brandMark: { width: 38, height: 38, borderRadius: 10, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  brandMark: { width: 40, height: 40, borderRadius: 12, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   brandMarkImg: { width: "82%", height: "82%", objectFit: "contain" },
-  brandMarkLg: { width: 64, height: 64, borderRadius: 14, objectFit: "contain", margin: "60px auto 14px", cursor: "pointer" },
-  gateBrand: { textAlign: "center", color: "#16302E", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 18 },
-  brandName: { color: "#F6F5F0", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 },
-  brandSub: { color: "#9FC2BC", fontSize: 12, letterSpacing: 0.3, textAlign: "center" },
-  logoutBtn: { background: "transparent", border: "1px solid #3A5854", color: "#9FC2BC", borderRadius: 20, padding: "6px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer" },
-  pinPanel: { maxWidth: 640, margin: "12px auto 0", background: "#fff", borderRadius: 12, padding: 14 },
+  brandMarkLg: { width: 68, height: 68, borderRadius: 18, objectFit: "contain", margin: "60px auto 14px", cursor: "pointer", boxShadow: "0 8px 20px rgba(14,36,34,0.12)" },
+  gateBrand: { textAlign: "center", color: "#0E2422", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 19 },
+  brandName: { color: "#F4F7F5", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 },
+  brandSub: { color: "#A9CFC7", fontSize: 12, letterSpacing: 0.2, textAlign: "center" },
+  logoutBtn: { display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.22)", color: "#DCEFEA", borderRadius: 20, padding: "6px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer" },
+  pinPanel: { maxWidth: 640, margin: "12px auto 0", background: "#fff", borderRadius: 14, padding: 14 },
   gateWrap: { maxWidth: 360, margin: "0 auto", padding: "0 20px", textAlign: "center" },
   gateOptions: { display: "flex", flexDirection: "column", gap: 10, marginTop: 40 },
-  gateBtn: { background: "#1B6B63", color: "#fff", border: "none", borderRadius: 12, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" },
-  gateBtnAlt: { background: "#fff", color: "#1B6B63", border: "1px solid #1B6B63" },
+  gateBtn: { background: "#128577", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", boxShadow: "0 6px 16px rgba(18,133,119,0.28)" },
+  gateBtnAlt: { background: "#fff", color: "#128577", border: "1px solid #CFE4DF", boxShadow: "none" },
   gateForm: { display: "flex", flexDirection: "column", gap: 10, marginTop: 30, textAlign: "left" },
-  gateHint: { fontSize: 12, color: "#5A6560", textAlign: "center", marginBottom: 6 },
-  gateInput: { border: "1px solid #DCD8CC", borderRadius: 10, padding: "12px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff", textAlign: "center" },
-  gateError: { color: "#B3542F", fontSize: 12, textAlign: "center" },
+  gateHint: { fontSize: 12, color: "#5B6864", textAlign: "center", marginBottom: 6 },
+  gateInput: { border: "1px solid #DCE4DF", borderRadius: 12, padding: "12px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff", textAlign: "center" },
+  gateError: { color: "#E1483C", fontSize: 12, textAlign: "center" },
   nav: { display: "flex", gap: 6, padding: "10px 16px", maxWidth: 640, margin: "0 auto", overflowX: "auto" },
-  navBtn: { border: "1px solid #DCD8CC", background: "#fff", color: "#5A6560", padding: "8px 14px", borderRadius: 20, fontSize: 13, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
-  navBtnActive: { background: "#1B6B63", color: "#fff", borderColor: "#1B6B63", boxShadow: "0 2px 6px rgba(27,107,99,0.35)" },
+  navBtn: { display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #E3E7E2", background: "#fff", color: "#5B6864", padding: "8px 14px", borderRadius: 20, fontSize: 13, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
+  navBtnActive: { background: "#128577", color: "#fff", borderColor: "#128577", boxShadow: "0 4px 10px rgba(18,133,119,0.3)" },
   main: { maxWidth: 640, margin: "0 auto", padding: "8px 16px" },
   cardGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, margin: "10px 0 22px" },
-  statCard: { textAlign: "left", border: "1px solid", background: "#fff", borderRadius: 14, padding: "16px 14px", cursor: "pointer", boxShadow: "0 1px 4px rgba(22,48,46,0.06)" },
-  reportCard: { textAlign: "left", border: "1px solid #E7E4D9", background: "#fff", borderRadius: 14, padding: "16px 14px", boxShadow: "0 1px 4px rgba(22,48,46,0.06)" },
-  statValue: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700 },
-  statLabel: { fontSize: 12, color: "#5A6560", marginTop: 4 },
-  sectionTitle: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, textTransform: "uppercase", letterSpacing: 0.8, color: "#5A6560", margin: "18px 0 8px" },
-  emptyState: { color: "#8A9490", fontSize: 13, padding: "24px 0", textAlign: "center", border: "1px dashed #DCD8CC", borderRadius: 12 },
-  emptyState2: { color: "#8A9490", fontSize: 11, marginBottom: 8 },
+  statCard: { textAlign: "left", border: "1px solid", background: "#fff", borderRadius: 16, padding: "16px 14px", cursor: "pointer", boxShadow: "0 1px 2px rgba(14,36,34,0.04), 0 8px 20px rgba(14,36,34,0.05)" },
+  reportCard: { textAlign: "left", border: "1px solid #E3E7E2", background: "#fff", borderRadius: 16, padding: "16px 14px", boxShadow: "0 1px 2px rgba(14,36,34,0.04), 0 8px 20px rgba(14,36,34,0.05)" },
+  statValue: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 21, fontWeight: 700 },
+  statLabel: { fontSize: 12, color: "#5B6864", marginTop: 4 },
+  sectionTitle: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: "#182322", margin: "20px 0 8px" },
+  emptyState: { color: "#8A9A96", fontSize: 13, padding: "24px 0", textAlign: "center", border: "1px dashed #DCE4DF", borderRadius: 14 },
+  emptyState2: { color: "#8A9A96", fontSize: 11, marginBottom: 8 },
   list: { display: "flex", flexDirection: "column", gap: 10 },
-  card: { background: "#fff", border: "1px solid #E7E4D9", borderRadius: 12, overflow: "hidden" },
+  card: { background: "#fff", border: "1px solid #E3E7E2", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 2px rgba(14,36,34,0.03)" },
   cardTop: { display: "flex", padding: 14, gap: 10, cursor: "pointer", alignItems: "flex-start" },
   cardTitle: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15 },
-  cardMeta: { fontSize: 12, color: "#5A6560", marginTop: 2 },
+  cardMeta: { fontSize: 12, color: "#5B6864", marginTop: 2 },
   badge: { fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 20 },
-  dueTag: { fontSize: 11, color: "#B3542F", fontWeight: 700 },
-  paidTag: { fontSize: 11, color: "#1B6B63", fontWeight: 700 },
-  overdueTag: { fontSize: 11, color: "#fff", background: "#B3542F", fontWeight: 700, padding: "3px 8px", borderRadius: 20 },
-  cardExpanded: { borderTop: "1px solid #EFEDE3", padding: 14 },
+  dueTag: { fontSize: 11, color: "#E1483C", fontWeight: 700 },
+  paidTag: { fontSize: 11, color: "#128577", fontWeight: 700 },
+  overdueTag: { fontSize: 11, color: "#fff", background: "#E1483C", fontWeight: 700, padding: "3px 8px", borderRadius: 20 },
+  cardExpanded: { borderTop: "1px solid #EEF1EC", padding: 14 },
   detailGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 },
-  detailLabel: { fontSize: 10, color: "#8A9490", textTransform: "uppercase", letterSpacing: 0.5 },
+  detailLabel: { fontSize: 10, color: "#8A9A96", textTransform: "uppercase", letterSpacing: 0.5 },
   detailValue: { fontSize: 14, fontWeight: 600, marginTop: 2 },
-  notesBox: { background: "#F6F5F0", borderRadius: 8, padding: 10, marginBottom: 10 },
+  notesBox: { background: "#F4F7F5", borderRadius: 10, padding: 10, marginBottom: 10 },
   notesText: { fontSize: 13, marginTop: 4 },
   paymentsSection: { marginTop: 6 },
-  paymentLine: { display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, padding: "6px 0", borderBottom: "1px solid #F0EEE3" },
-  mutedSmall: { fontSize: 12, color: "#8A9490" },
+  paymentLine: { display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, padding: "6px 0", borderBottom: "1px solid #EEF1EC" },
+  mutedSmall: { fontSize: 12, color: "#8A9A96" },
   addPaymentRow: { display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" },
-  smallInput: { border: "1px solid #DCD8CC", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", minWidth: 90 },
-  smallBtn: { background: "#1B6B63", color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  smallInput: { border: "1px solid #DCE4DF", borderRadius: 9, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", minWidth: 90 },
+  smallBtn: { background: "#128577", color: "#fff", border: "none", borderRadius: 9, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" },
   actionRow: { display: "flex", gap: 16, marginTop: 12 },
-  linkBtn: { background: "none", border: "none", color: "#1B6B63", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, textDecoration: "none" },
+  linkBtn: { background: "none", border: "none", color: "#128577", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, textDecoration: "none" },
   filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 },
-  filterChip: { border: "1px solid #DCD8CC", background: "#fff", color: "#5A6560", padding: "6px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer" },
-  filterChipActive: { background: "#16302E", color: "#fff", borderColor: "#16302E" },
-  primaryBtn: { background: "#1B6B63", color: "#fff", border: "none", borderRadius: 10, padding: "12px 16px", fontSize: 14, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", width: "100%", margin: "6px 0 16px" },
-  secondaryBtn: { background: "#fff", color: "#5A6560", border: "1px solid #DCD8CC", borderRadius: 10, padding: "12px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", flex: 1 },
-  safetyBtn: { background: "#B3542F", color: "#fff", border: "none", borderRadius: 12, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", width: "100%", margin: "10px 0 20px" },
+  filterChip: { border: "1px solid #DCE4DF", background: "#fff", color: "#5B6864", padding: "6px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer" },
+  filterChipActive: { background: "#0E2422", color: "#fff", borderColor: "#0E2422" },
+  primaryBtn: { background: "#128577", color: "#fff", border: "none", borderRadius: 12, padding: "12px 16px", fontSize: 14, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", width: "100%", margin: "6px 0 16px", boxShadow: "0 4px 12px rgba(18,133,119,0.25)" },
+  secondaryBtn: { background: "#fff", color: "#5B6864", border: "1px solid #DCE4DF", borderRadius: 12, padding: "12px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", flex: 1 },
+  safetyBtn: { background: "#E1483C", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", width: "100%", margin: "10px 0 20px", boxShadow: "0 6px 16px rgba(225,72,60,0.3)" },
   formGrid: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 },
   field: { display: "flex", flexDirection: "column", gap: 4 },
-  fieldLabel: { fontSize: 11, color: "#5A6560", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 },
-  input: { border: "1px solid #DCD8CC", borderRadius: 8, padding: "10px 12px", fontSize: 14, fontFamily: "inherit", background: "#fff" },
+  fieldLabel: { fontSize: 11, color: "#5B6864", fontWeight: 600, letterSpacing: 0.2 },
+  input: { border: "1px solid #DCE4DF", borderRadius: 10, padding: "10px 12px", fontSize: 14, fontFamily: "inherit", background: "#fff" },
   formActions: { display: "flex", gap: 10 },
-  dresserLine: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderBottom: "1px solid #F0EEE3" },
-  dresserRank: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, color: "#8A9490", fontSize: 12, width: 16 },
+  dresserLine: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderBottom: "1px solid #EEF1EC" },
+  dresserRank: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, color: "#8A9A96", fontSize: 12, width: 16 },
   photoRow: { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 },
-  photoChip: { border: "1px solid #DCD8CC", borderRadius: 20, padding: "8px 12px", fontSize: 11, fontWeight: 600, color: "#5A6560", cursor: "pointer", background: "#fff" },
-  photoChipDone: { background: "#E4F1EE", color: "#1B6B63", borderColor: "#1B6B63" },
+  photoChip: { border: "1px solid #DCE4DF", borderRadius: 20, padding: "8px 12px", fontSize: 11, fontWeight: 600, color: "#5B6864", cursor: "pointer", background: "#fff" },
+  photoChipDone: { background: "#E3F3EF", color: "#128577", borderColor: "#128577" },
   photoThumbWrap: { textAlign: "center", width: 90 },
-  photoThumb: { width: 90, height: 90, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: "1px solid #DCD8CC" },
-  photoThumbEmpty: { width: 90, height: 90, borderRadius: 8, border: "1px dashed #DCD8CC", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#8A9490", textAlign: "center" },
-  quoteSheet: { background: "#fff", border: "1px solid #E7E4D9", borderRadius: 12, padding: 20 },
-  quoteHeader: { display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #16302E", paddingBottom: 12 },
+  photoThumb: { width: 90, height: 90, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: "1px solid #DCE4DF" },
+  photoThumbEmpty: { width: 90, height: 90, borderRadius: 10, border: "1px dashed #DCE4DF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#8A9A96", textAlign: "center" },
+  quoteSheet: { background: "#fff", border: "1px solid #E3E7E2", borderRadius: 16, padding: 20 },
+  quoteHeader: { display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #0E2422", paddingBottom: 12 },
   quoteTable: { width: "100%", borderCollapse: "collapse", marginTop: 6, fontSize: 12 },
-  quoteTh: { textAlign: "left", borderBottom: "1px solid #DCD8CC", padding: "6px 4px", color: "#5A6560", fontWeight: 700 },
-  quoteTd: { borderBottom: "1px solid #F0EEE3", padding: "6px 4px" },
+  quoteTh: { textAlign: "left", borderBottom: "1px solid #DCE4DF", padding: "6px 4px", color: "#5B6864", fontWeight: 700 },
+  quoteTd: { borderBottom: "1px solid #EEF1EC", padding: "6px 4px", fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5 },
 };
