@@ -34,6 +34,16 @@ async function saveKey(key, value) {
   }
 }
 
+const BUSINESSES = [
+  { id: "bhagirathi", name: "Bhagirathi Agency", tagline: "Wound Care & NPWT" },
+  { id: "leelavac", name: "Leela VAC", tagline: "Wound Care & NPWT" },
+];
+// Bhagirathi keeps its original, unprefixed keys (that's the live production data already in Supabase).
+// Any other business gets its own namespaced keys so nothing overlaps or gets overwritten.
+function bkey(businessId, key) {
+  return businessId === "bhagirathi" ? key : `${businessId}-${key}`;
+}
+
 const uid = () => Math.random().toString(36).slice(2, 10);
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (d) =>
@@ -160,7 +170,7 @@ function estimateProfit(c, products) {
     return Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - cost - Number(c.doctorCommission || 0);
 }
 function photoKey(caseId, stage) { return `photo-${caseId}-${stage}`; }
-function locKey(name) { return `wca-loc-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`; }
+function locKey(businessId, name) { return `${bkey(businessId, "wca-loc")}-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`; }
 function mapsLink(lat, lng) { return `https://www.google.com/maps?q=${lat},${lng}`; }
 function waLink(number, text) { return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
 
@@ -295,6 +305,18 @@ function compressImage(file) {
 }
 
 export default function App() {
+  const [businessId, setBusinessId] = useState(() => {
+    try { return localStorage.getItem("wca-active-business") || "bhagirathi"; } catch (e) { return "bhagirathi"; }
+  });
+  const business = BUSINESSES.find((b) => b.id === businessId) || BUSINESSES[0];
+  const switchBusiness = (id) => {
+    if (id === businessId) return;
+    try { localStorage.setItem("wca-active-business", id); } catch (e) { /* ignore */ }
+    setRole(null);
+    setLoaded(false);
+    setBusinessId(id);
+  };
+
   const [role, setRole] = useState(null);
   const [pin, setPin] = useState(null);
   const [cases, setCases] = useState([]);
@@ -310,7 +332,7 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    document.title = "Bhagirathi Agency";
+    document.title = business.name;
     try {
       const dataUrl = "/bhagirathi-logo.png";
       [
@@ -324,22 +346,23 @@ export default function App() {
         link.href = dataUrl;
       });
     } catch (e) { /* icon injection best-effort only */ }
-  }, []);
+  }, [business.name]);
 
   useEffect(() => {
+    setLoaded(false);
     (async () => {
       const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock] = await Promise.all([
-        loadKey("wca-cases", []),
-        loadKey("wca-machines", []),
-        loadKey("wca-products", DEFAULT_PRODUCTS),
-        loadKey("wca-owner-pin", null),
-        loadKey("wca-dressers", []),
-        loadKey("wca-quotations", []),
-        loadKey("wca-dresser-pins", {}),
-        loadKey("wca-doctor-calls", []),
-        loadKey("wca-owner-logins", []),
-        loadKey("wca-dresser-profiles", {}),
-        loadKey("wca-dresser-stock-access", {}),
+        loadKey(bkey(businessId, "wca-cases"), []),
+        loadKey(bkey(businessId, "wca-machines"), []),
+        loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
+        loadKey(bkey(businessId, "wca-owner-pin"), null),
+        loadKey(bkey(businessId, "wca-dressers"), []),
+        loadKey(bkey(businessId, "wca-quotations"), []),
+        loadKey(bkey(businessId, "wca-dresser-pins"), {}),
+        loadKey(bkey(businessId, "wca-doctor-calls"), []),
+        loadKey(bkey(businessId, "wca-owner-logins"), []),
+        loadKey(bkey(businessId, "wca-dresser-profiles"), {}),
+        loadKey(bkey(businessId, "wca-dresser-stock-access"), {}),
       ]);
       setCases(c);
       setMachines(m);
@@ -353,24 +376,26 @@ export default function App() {
       setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
       {
         const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
-        const devashish = (drs || []).find((n) => n.trim().toLowerCase() === "devashish");
-        if (devashish && stockAccess[devashish] === undefined) stockAccess[devashish] = true;
+        if (businessId === "bhagirathi") {
+          const devashish = (drs || []).find((n) => n.trim().toLowerCase() === "devashish");
+          if (devashish && stockAccess[devashish] === undefined) stockAccess[devashish] = true;
+        }
         setDresserStockAccessState(stockAccess);
       }
       setLoaded(true);
     })();
-  }, []);
+  }, [businessId]);
 
-  useEffect(() => { if (loaded) saveKey("wca-cases", cases); }, [cases, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-machines", machines); }, [machines, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-products", products); }, [products, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-dressers", dressers); }, [dressers, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-quotations", quotations); }, [quotations, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-dresser-pins", dresserPins); }, [dresserPins, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-doctor-calls", doctorCalls); }, [doctorCalls, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-dresser-profiles", dresserProfiles); }, [dresserProfiles, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-owner-logins", ownerLogins); }, [ownerLogins, loaded]);
-  useEffect(() => { if (loaded) saveKey("wca-dresser-stock-access", dresserStockAccess); }, [dresserStockAccess, loaded]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-cases"), cases); }, [cases, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-machines"), machines); }, [machines, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-products"), products); }, [products, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dressers"), dressers); }, [dressers, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-quotations"), quotations); }, [quotations, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-pins"), dresserPins); }, [dresserPins, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-doctor-calls"), doctorCalls); }, [doctorCalls, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-profiles"), dresserProfiles); }, [dresserProfiles, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-owner-logins"), ownerLogins); }, [ownerLogins, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-stock-access"), dresserStockAccess); }, [dresserStockAccess, loaded, businessId]);
 
   const saveCase = (data, editingId) => {
     if (editingId) {
@@ -421,7 +446,7 @@ export default function App() {
     await saveKey(photoKey(caseId, stage), dataURL);
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, photoFlags: { ...(c.photoFlags || {}), [stage]: true } } : c));
   };
-  const setOwnerPin = (newPin) => { setPin(newPin); saveKey("wca-owner-pin", newPin); };
+  const setOwnerPin = (newPin) => { setPin(newPin); saveKey(bkey(businessId, "wca-owner-pin"), newPin); };
   const addDresser = (name, dresserPin) => {
     const trimmed = name.trim();
     if (!trimmed || dressers.some((d) => d.toLowerCase() === trimmed.toLowerCase())) return;
@@ -437,10 +462,10 @@ export default function App() {
     const loc = await getLocation();
     if (loc) {
       const entry = { ...loc, ts: new Date().toISOString() };
-      const existing = await loadKey(locKey(name), []);
+      const existing = await loadKey(locKey(businessId, name), []);
       const trail = Array.isArray(existing) ? existing : []; // migrate old single-object format
       const updated = [...trail, entry].slice(-100);
-      await saveKey(locKey(name), updated);
+      await saveKey(locKey(businessId, name), updated);
     }
     return loc;
   };
@@ -490,7 +515,7 @@ export default function App() {
   const addDoctorCall = (entry) => setDoctorCalls((prev) => [...prev, { id: uid(), date: todayISO(), ...entry }]);
 
   if (!loaded) {
-    return <div style={styles.loadingScreen}><div style={styles.loadingText}>Loading…</div></div>;
+    return <div style={styles.loadingScreen}><div style={styles.loadingText}>Loading {business.name}…</div></div>;
   }
 
   return (
@@ -505,6 +530,7 @@ export default function App() {
           onSetPin={setOwnerPin}
           onOwnerLogin={() => { logOwnerLogin(); setRole({ type: "owner" }); }}
           onDresserLogin={(name) => { setRole({ type: "dresser", name }); updateDresserLocation(name); }}
+          businesses={BUSINESSES} businessId={businessId} business={business} onSwitchBusiness={switchBusiness}
         />
       )}
       {role && role.type === "owner" && (
@@ -519,6 +545,7 @@ export default function App() {
           resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding}
           ownerLogins={ownerLogins}
           doctorCalls={doctorCalls}
+          businessId={businessId} business={business} businesses={BUSINESSES} onSwitchBusiness={switchBusiness}
           pin={pin} onChangePin={setOwnerPin}
           onLogout={() => setRole(null)}
         />
@@ -532,6 +559,7 @@ export default function App() {
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           canManageStock={!!dresserStockAccess[role.name]}
+          business={business}
           onLogout={() => setRole(null)}
         />
       )}
@@ -540,7 +568,7 @@ export default function App() {
 }
 
 // ================= ROLE GATE =================
-function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresserLogin }) {
+function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresserLogin, businesses, businessId, business, onSwitchBusiness }) {
   const [mode, setMode] = useState("dresser");
   const [input, setInput] = useState("");
   const [confirmInput, setConfirmInput] = useState("");
@@ -583,8 +611,18 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 
   return (
     <div style={styles.gateWrap}>
-      <img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={styles.brandMarkLg} onClick={handleLogoTap} />
-      <div style={styles.gateBrand}>Bhagirathi Agency</div>
+      {businesses && businesses.length > 1 && (
+        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 24, flexWrap: "wrap" }}>
+          {businesses.map((b) => (
+            <button key={b.id} onClick={() => onSwitchBusiness(b.id)}
+              style={{ ...styles.filterChip, ...(b.id === businessId ? styles.filterChipActive : {}) }}>
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <img src="/bhagirathi-logo.png" alt={business.name} style={styles.brandMarkLg} onClick={handleLogoTap} />
+      <div style={styles.gateBrand}>{business.name}</div>
       <div style={styles.brandSub}>Wound Care Tracker</div>
 
       {mode === "owner" && (
@@ -633,7 +671,7 @@ function RoleGate({ pin, dressers, dresserPins, onSetPin, onOwnerLogin, onDresse
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, ownerLogins, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -665,9 +703,9 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
     <>
       <header style={styles.header}>
         <div style={styles.headerInner}>
-          <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={styles.brandMarkImg} /></div>
+          <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt={business.name} style={styles.brandMarkImg} /></div>
           <div style={{ flex: 1 }}>
-            <div style={styles.brandName}>Bhagirathi Agency</div>
+            <div style={styles.brandName}>{business.name}</div>
             <div style={styles.brandSub}>Owner view</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
@@ -681,6 +719,17 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
           </div>
         )}
       </header>
+
+      {businesses && businesses.length > 1 && (
+        <div style={{ display: "flex", gap: 6, padding: "10px 16px 0", maxWidth: 640, margin: "0 auto", overflowX: "auto" }}>
+          {businesses.map((b) => (
+            <button key={b.id} onClick={() => onSwitchBusiness(b.id)}
+              style={{ ...styles.filterChip, ...(b.id === businessId ? styles.filterChipActive : {}) }}>
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <nav style={styles.nav}>
         {[["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["reports", "Reports", "reports"]].map(([key, label, icon]) => (
@@ -702,12 +751,12 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         )}
         {tab === "quotations" && (
           <QuotationsTab quotations={quotations} products={products} saveQuotation={saveQuotation}
-            deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} />
+            deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} businessName={business.name} />
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} />}
       </main>
     </>
   );
@@ -786,7 +835,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, business, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active");
 
@@ -828,10 +877,10 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           {profile && profile.photo ? (
             <img src={profile.photo} alt={name} style={{ width: 40, height: 40, borderRadius: 12, objectFit: "cover" }} />
           ) : (
-            <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={styles.brandMarkImg} /></div>
+            <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt={business.name} style={styles.brandMarkImg} /></div>
           )}
           <div style={{ flex: 1 }}>
-            <div style={styles.brandName}>Bhagirathi Agency</div>
+            <div style={styles.brandName}>{business.name}</div>
             <div style={styles.brandSub}>Hi, {name}</div>
           </div>
           <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
@@ -884,7 +933,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         <CollapsibleSection title="My Quotations">
           <QuotationsTab quotations={quotations} products={products} saveQuotation={saveQuotation}
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
-            creatorName={name} restrictToCreator />
+            creatorName={name} restrictToCreator businessName={business.name} />
         </CollapsibleSection>
 
         <CollapsibleSection title="Doctor Calls">
@@ -1476,7 +1525,7 @@ function Field({ label, children }) {
 
 // ---------------- Machines ----------------
 // ================= QUOTATIONS =================
-function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, setQuotationStatus, creatorName = "Owner", restrictToCreator = false }) {
+function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, setQuotationStatus, creatorName = "Owner", restrictToCreator = false, businessName = "Bhagirathi Agency" }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
@@ -1497,7 +1546,8 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
     return (
       <QuotationView q={viewing} onBack={() => setViewing(null)}
         onEdit={() => { setEditing(viewing); setViewing(null); setShowForm(true); }}
-        onStatus={(s) => { setQuotationStatus(viewing.id, s); setViewing({ ...viewing, status: s }); }} />
+        onStatus={(s) => { setQuotationStatus(viewing.id, s); setViewing({ ...viewing, status: s }); }}
+        businessName={businessName} />
     );
   }
 
@@ -1688,11 +1738,11 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
   );
 }
 
-function QuotationView({ q, onBack, onEdit, onStatus }) {
+function QuotationView({ q, onBack, onEdit, onStatus, businessName = "Bhagirathi Agency" }) {
   const { subtotal, discount, gstAmount, total } = quoteTotals(q);
   const sheetRef = useRef(null);
   const [busy, setBusy] = useState("");
-  const shareText = `Bhagirathi Agency — Quotation ${q.quoteNo}\nTo: ${q.customerName}\nTotal: ${fmtMoney(total)}\nValid till: ${fmtDate(q.validTill)}`;
+  const shareText = `${businessName} — Quotation ${q.quoteNo}\nTo: ${q.customerName}\nTotal: ${fmtMoney(total)}\nValid till: ${fmtDate(q.validTill)}`;
   const fileName = `Quotation-${(q.quoteNo || "BA").replace(/\//g, "-")}.pdf`;
 
   const makeFile = async () => {
@@ -1738,8 +1788,8 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
     try {
       const file = await makeFile();
       const pdfBase64 = await blobToBase64(file);
-      const subject = `Quotation ${q.quoteNo} — Bhagirathi Agency`;
-      const body = `Dear ${q.customerName || ""},\n\nPlease find attached our quotation ${q.quoteNo} dated ${fmtDate(q.date)}, valid till ${fmtDate(q.validTill)}.\nTotal: ${fmtMoney(total)}\n\nRegards,\nBhagirathi Agency`;
+      const subject = `Quotation ${q.quoteNo} — ${businessName}`;
+      const body = `Dear ${q.customerName || ""},\n\nPlease find attached our quotation ${q.quoteNo} dated ${fmtDate(q.date)}, valid till ${fmtDate(q.validTill)}.\nTotal: ${fmtMoney(total)}\n\nRegards,\n${businessName}`;
       const resp = await fetch("/api/send-quote-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1749,7 +1799,7 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
         const err = await resp.json().catch(() => ({}));
         throw new Error(err.error || "send failed");
       }
-      alert(`Quotation emailed to ${to} from bhagirathiagency@gmail.com.`);
+      alert(`Quotation emailed to ${to}.`);
     } catch (e) {
       // Backend not set up yet, or send failed — fall back to a manual mailto draft with the PDF downloaded.
       const file = await makeFile();
@@ -1757,8 +1807,8 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
       const a = document.createElement("a");
       a.href = url; a.download = fileName; a.click();
       URL.revokeObjectURL(url);
-      const subject = encodeURIComponent(`Quotation ${q.quoteNo} — Bhagirathi Agency`);
-      const body = encodeURIComponent(`Dear ${q.customerName || ""},\n\nPlease find attached our quotation ${q.quoteNo} dated ${fmtDate(q.date)}, valid till ${fmtDate(q.validTill)}.\nTotal: ${fmtMoney(total)}\n\nRegards,\nBhagirathi Agency`);
+      const subject = encodeURIComponent(`Quotation ${q.quoteNo} — ${businessName}`);
+      const body = encodeURIComponent(`Dear ${q.customerName || ""},\n\nPlease find attached our quotation ${q.quoteNo} dated ${fmtDate(q.date)}, valid till ${fmtDate(q.validTill)}.\nTotal: ${fmtMoney(total)}\n\nRegards,\n${businessName}`);
       window.location.href = `mailto:${encodeURIComponent(to)}?subject=${subject}&body=${body}`;
       alert("Couldn't auto-send (email sending isn't set up yet on the server). PDF downloaded — attach it to the email draft that just opened.");
     } finally { setBusy(""); }
@@ -1789,10 +1839,10 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
 
       <div style={styles.quoteSheet} ref={sheetRef}>
         <div style={styles.quoteHeader}>
-          <img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={{ width: 46, height: 46, objectFit: "contain" }} />
+          <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 46, height: 46, objectFit: "contain" }} />
           <div>
-            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17 }}>Bhagirathi Agency</div>
-            <div style={{ fontSize: 11, color: "#5B6864" }}>Wound Care & NPWT Supplies · Nashik, Maharashtra</div>
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17 }}>{businessName}</div>
+            <div style={{ fontSize: 11, color: "#5B6864" }}>Wound Care & NPWT Supplies</div>
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0", fontSize: 13 }}>
@@ -1828,7 +1878,7 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
         </div>
         {q.notes && <div style={{ marginTop: 16, fontSize: 12 }}><strong>Notes:</strong><br />{q.notes}</div>}
         {q.terms && <div style={{ marginTop: 16, fontSize: 11, color: "#5B6864", whiteSpace: "pre-line" }}><strong>Terms & Conditions</strong><br />{q.terms}</div>}
-        <div style={{ marginTop: 40, fontSize: 12 }}>For Bhagirathi Agency<br /><br /><br />Authorised Signatory</div>
+        <div style={{ marginTop: 40, fontSize: 12 }}>For {businessName}<br /><br /><br />Authorised Signatory</div>
       </div>
     </div>
   );
@@ -2033,6 +2083,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) 
   const remove = (id) => setProducts((prev) => prev.filter((p) => p.id !== id));
   const updateCost = (id, cost) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, costPrice: Number(cost) || 0 } : p));
   const updateMrp = (id, mrp) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, mrp: Number(mrp) || 0 } : p));
+  const updateAvailable = (id, qty) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, available: Math.max(0, Number(qty) || 0) } : p));
   const setField = (id, field, val) => setReceiveForm((prev) => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
   const doReceive = (id) => {
     const f = receiveForm[id] || {};
@@ -2154,6 +2205,11 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) 
                     </div>
                     {open && (
                       <div style={{ padding: "0 14px 14px" }}>
+                        <div style={styles.addPaymentRow}>
+                          <span style={styles.mutedSmall}>Available qty</span>
+                          <input type="number" style={styles.smallInput} defaultValue={p.available || 0} onBlur={(e) => updateAvailable(p.id, e.target.value)} />
+                          <span style={{ ...styles.mutedSmall, color: "#D9720A" }}>Fix a wrong entry directly here</span>
+                        </div>
                         <div style={styles.addPaymentRow}>
                           <span style={styles.mutedSmall}>Cost price ₹</span>
                           <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, e.target.value)} />
@@ -2409,7 +2465,7 @@ function SWOTGrid({ swot }) {
   );
 }
 
-function DoctorCommissionCard({ d }) {
+function DoctorCommissionCard({ d, businessName = "Bhagirathi Agency" }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const sheetRef = useRef(null);
@@ -2449,9 +2505,9 @@ function DoctorCommissionCard({ d }) {
           </button>
           <div ref={sheetRef} style={styles.quoteSheet}>
             <div style={styles.quoteHeader}>
-              <img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={{ width: 40, height: 40, objectFit: "contain" }} />
+              <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 40, height: 40, objectFit: "contain" }} />
               <div>
-                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 }}>Bhagirathi Agency</div>
+                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 }}>{businessName}</div>
                 <div style={{ fontSize: 11, color: "#5B6864" }}>Doctor Commission Statement</div>
               </div>
             </div>
@@ -2488,7 +2544,7 @@ function DoctorCommissionCard({ d }) {
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency" }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
 
@@ -2501,14 +2557,14 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     let cancelled = false;
     (async () => {
       const entries = await Promise.all(dresserNames.map(async (name) => {
-        const raw = await loadKey(locKey(name), []);
+        const raw = await loadKey(locKey(businessId, name), []);
         const trail = Array.isArray(raw) ? raw : (raw ? [raw] : []); // migrate old single-object format
         return [name, trail];
       }));
       if (!cancelled) setLocations(Object.fromEntries(entries));
     })();
     return () => { cancelled = true; };
-  }, [JSON.stringify(dresserNames)]);
+  }, [JSON.stringify(dresserNames), businessId]);
 
   const totalBilled = cases.reduce((s, c) => s + Number(c.totalAmount || 0), 0);
   const totalCollected = cases.reduce((s, c) => s + (c.payments || []).reduce((a, p) => a + Number(p.amount || 0), 0), 0);
@@ -2804,7 +2860,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   }, [dressers, cases, doctorCalls, quotations]);
 
   const sendSummary = () => {
-    let msg = `Bhagirathi Agency — Daily Summary\n`;
+    let msg = `${businessName} — Daily Summary\n`;
     msg += `Overdue changes: ${overdueCount}\nOutstanding: ${fmtMoney(outstandingTotal)}\n`;
     if (lowStock.length) msg += `Low stock: ${lowStock.map((p) => p.name).join(", ")}\n`;
     window.open(waLink(OWNER_WHATSAPP, msg), "_blank");
@@ -3024,7 +3080,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
             </div>
             <div style={styles.list}>
               {doctorCommissionMonthly.map((d) => (
-                <DoctorCommissionCard key={d.doctor} d={d} />
+                <DoctorCommissionCard key={d.doctor} d={d} businessName={businessName} />
               ))}
             </div>
           </>
