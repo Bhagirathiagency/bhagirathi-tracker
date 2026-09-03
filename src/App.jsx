@@ -1445,6 +1445,7 @@ function StockTab({ products, setProducts, receiveStock }) {
   const [initCost, setInitCost] = useState("");
   const [receiveForm, setReceiveForm] = useState({});
   const [variantInput, setVariantInput] = useState({});
+  const [openId, setOpenId] = useState(null);
 
   const addProduct = () => {
     if (!name.trim() || products.some((p) => p.name === name.trim())) return;
@@ -1486,49 +1487,58 @@ function StockTab({ products, setProducts, receiveStock }) {
 
       <SectionTitle>Inventory</SectionTitle>
       <div style={styles.list}>
-        {products.map((p) => (
+        {products.map((p) => {
+          const open = openId === p.id;
+          return (
           <div key={p.id} style={styles.card}>
-            <div style={styles.cardTop}>
+            <div style={styles.cardTop} onClick={() => setOpenId(open ? null : p.id)}>
               <div style={{ flex: 1 }}>
                 <div style={styles.cardTitle}>{p.name}</div>
-                <div style={styles.cardMeta}>{p.used || 0} used all-time</div>
+                <div style={styles.cardMeta}>
+                  {p.used || 0} used all-time{(p.variants || []).length > 0 ? ` · ${p.variants.length} size${p.variants.length > 1 ? "s" : ""}` : ""}
+                </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                 <span style={{ ...styles.badge, color: (p.available || 0) <= LOW_STOCK_THRESHOLD ? "#B3542F" : "#1B6B63", background: (p.available || 0) <= LOW_STOCK_THRESHOLD ? "#F5E4DC" : "#E4F1EE" }}>{p.available || 0} available</span>
-                <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => remove(p.id)}>Remove</button>
+                <span style={{ fontSize: 11, color: "#8A9490" }}>{open ? "▲ hide" : "▼ details"}</span>
               </div>
             </div>
-            <div style={{ padding: "0 14px 14px" }}>
-              <div style={styles.addPaymentRow}>
-                <span style={styles.mutedSmall}>Cost price ₹</span>
-                <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, e.target.value)} />
-              </div>
-              <div style={styles.addPaymentRow}>
-                <input type="number" placeholder="Qty received" value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setField(p.id, "qty", e.target.value)} style={styles.smallInput} />
-                <input type="text" placeholder="Company / supplier" value={(receiveForm[p.id] || {}).company || ""} onChange={(e) => setField(p.id, "company", e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
-                <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
-              </div>
-
-              <div style={{ marginTop: 10 }}>
-                <span style={styles.mutedSmall}>Sizes / variants (e.g. 300ml, 500ml, 1000ml)</span>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0" }}>
-                  {(p.variants || []).map((v) => (
-                    <span key={v} style={{ ...styles.photoChip, ...styles.photoChipDone, cursor: "default", display: "flex", alignItems: "center", gap: 6 }}>
-                      {v}
-                      <span style={{ cursor: "pointer", color: "#B3542F", fontWeight: 700 }} onClick={() => removeVariant(p.id, v)}>✕</span>
-                    </span>
-                  ))}
+            {open && (
+              <div style={{ padding: "0 14px 14px" }}>
+                <div style={styles.addPaymentRow}>
+                  <span style={styles.mutedSmall}>Cost price ₹</span>
+                  <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, e.target.value)} />
                 </div>
                 <div style={styles.addPaymentRow}>
-                  <input type="text" placeholder="Add size, e.g. 500ml" style={{ ...styles.smallInput, flex: 1 }}
-                    value={variantInput[p.id] || ""} onChange={(e) => setVariantInput((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                    onKeyDown={(e) => { if (e.key === "Enter") addVariant(p.id); }} />
-                  <button style={styles.smallBtn} onClick={() => addVariant(p.id)}>Add Size</button>
+                  <input type="number" placeholder="Qty received" value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setField(p.id, "qty", e.target.value)} style={styles.smallInput} />
+                  <input type="text" placeholder="Company / supplier" value={(receiveForm[p.id] || {}).company || ""} onChange={(e) => setField(p.id, "company", e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
+                  <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
                 </div>
+
+                <div style={{ marginTop: 10 }}>
+                  <span style={styles.mutedSmall}>Sizes / variants (e.g. 300ml, 500ml, 1000ml)</span>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0" }}>
+                    {(p.variants || []).map((v) => (
+                      <span key={v} style={{ ...styles.photoChip, ...styles.photoChipDone, cursor: "default", display: "flex", alignItems: "center", gap: 6 }}>
+                        {v}
+                        <span style={{ cursor: "pointer", color: "#B3542F", fontWeight: 700 }} onClick={() => removeVariant(p.id, v)}>✕</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div style={styles.addPaymentRow}>
+                    <input type="text" placeholder="Add size, e.g. 500ml" style={{ ...styles.smallInput, flex: 1 }}
+                      value={variantInput[p.id] || ""} onChange={(e) => setVariantInput((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === "Enter") addVariant(p.id); }} />
+                    <button style={styles.smallBtn} onClick={() => addVariant(p.id)}>Add Size</button>
+                  </div>
+                </div>
+
+                <button style={{ ...styles.linkBtn, color: "#B3542F", marginTop: 12 }} onClick={() => remove(p.id)}>Remove Product</button>
               </div>
-            </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
