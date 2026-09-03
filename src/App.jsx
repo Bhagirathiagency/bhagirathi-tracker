@@ -75,6 +75,33 @@ const PHOTO_STAGES = [
   { key: "application", label: "After Application" },
   { key: "completion", label: "Therapy Completion" },
 ];
+const QUOTE_STATUS = {
+  draft: { label: "Draft", color: "#5A6560", bg: "#EFEDE3" },
+  sent: { label: "Sent", color: "#3B5BA5", bg: "#E7ECF7" },
+  accepted: { label: "Accepted", color: "#1B6B63", bg: "#E4F1EE" },
+  rejected: { label: "Rejected", color: "#B3542F", bg: "#F5E4DC" },
+};
+const DEFAULT_TERMS =
+  "1. Prices are in INR and exclusive of GST unless stated otherwise.\n" +
+  "2. Delivery / installation within 3-5 working days of confirmation.\n" +
+  "3. Payment: 50% advance, balance on delivery/completion.\n" +
+  "4. Consumables billed as per actual usage beyond quoted quantity.\n" +
+  "5. This quotation is valid till the date mentioned above.";
+function nextQuoteNumber(quotations) {
+  const year = new Date().getFullYear();
+  const prefix = `BA/Q/${year}/`;
+  const seq = quotations.filter((q) => (q.quoteNo || "").startsWith(prefix)).length + 1;
+  return prefix + String(seq).padStart(3, "0");
+}
+function quoteTotals(q) {
+  const items = q.items || [];
+  const subtotal = items.reduce((s, it) => s + Number(it.qty || 0) * Number(it.rate || 0), 0);
+  const discount = Number(q.discount || 0);
+  const taxable = Math.max(0, subtotal - discount);
+  const gstAmount = (taxable * Number(q.gstPercent || 0)) / 100;
+  const total = taxable + gstAmount;
+  return { subtotal, discount, taxable, gstAmount, total };
+}
 
 function latestChange(c) {
   const list = c.dressingChanges || [];
@@ -159,6 +186,7 @@ export default function App() {
   const [machines, setMachines] = useState([]);
   const [products, setProducts] = useState(DEFAULT_PRODUCTS);
   const [dressers, setDressers] = useState([]);
+  const [quotations, setQuotations] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -180,18 +208,20 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [c, m, p, ownerPin, drs] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts] = await Promise.all([
         loadKey("wca-cases", []),
         loadKey("wca-machines", []),
         loadKey("wca-products", DEFAULT_PRODUCTS),
         loadKey("wca-owner-pin", null),
         loadKey("wca-dressers", []),
+        loadKey("wca-quotations", []),
       ]);
       setCases(c);
       setMachines(m);
       setProducts(normalizeProducts(p));
       setPin(ownerPin);
       setDressers(drs);
+      setQuotations(qts);
       setLoaded(true);
     })();
   }, []);
@@ -200,6 +230,7 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey("wca-machines", machines); }, [machines, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-products", products); }, [products, loaded]);
   useEffect(() => { if (loaded) saveKey("wca-dressers", dressers); }, [dressers, loaded]);
+  useEffect(() => { if (loaded) saveKey("wca-quotations", quotations); }, [quotations, loaded]);
 
   const saveCase = (data, editingId) => {
     if (editingId) {
@@ -255,6 +286,18 @@ export default function App() {
     }
     return loc;
   };
+  const saveQuotation = (data, editingId) => {
+    if (editingId) {
+      setQuotations((prev) => prev.map((q) => (q.id === editingId ? { ...q, ...data } : q)));
+      return editingId;
+    }
+    const id = uid();
+    setQuotations((prev) => [...prev, { id, status: "draft", createdAt: todayISO(), ...data }]);
+    return id;
+  };
+  const deleteQuotation = (id) => setQuotations((prev) => prev.filter((q) => q.id !== id));
+  const setQuotationStatus = (id, status) =>
+    setQuotations((prev) => prev.map((q) => (q.id === id ? { ...q, status } : q)));
   const receiveStock = (productId, qty, company) => {
     setProducts((prev) => prev.map((p) => p.id === productId ? {
       ...p,
@@ -286,6 +329,7 @@ export default function App() {
           products={products} setProducts={setProducts} receiveStock={receiveStock}
           dressers={dressers} addDresser={addDresser} removeDresser={removeDresser}
           saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange}
+          quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           pin={pin} onChangePin={setOwnerPin}
           onLogout={() => setRole(null)}
         />
@@ -362,7 +406,7 @@ function RoleGate({ pin, dressers, onSetPin, onOwnerLogin, onDresserLogin }) {
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, saveCase, deleteCase, addPayment, addDressingChange, pin, onChangePin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, saveCase, deleteCase, addPayment, addDressingChange, quotations, saveQuotation, deleteQuotation, setQuotationStatus, pin, onChangePin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -412,7 +456,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       </header>
 
       <nav style={styles.nav}>
-        {[["dashboard", "Overview"], ["cases", "Cases"], ["machines", "Machines"], ["stock", "Stock"], ["dressers", "Dressers"], ["reports", "Reports"]].map(([key, label]) => (
+        {[["dashboard", "Overview"], ["cases", "Cases"], ["quotations", "Quotes"], ["machines", "Machines"], ["stock", "Stock"], ["dressers", "Dressers"], ["reports", "Reports"]].map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>{label}</button>
         ))}
       </nav>
@@ -426,6 +470,10 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "cases" && (
           <CasesTab cases={cases} machines={machines} products={products} saveCase={saveCase} deleteCase={deleteCase}
             addPayment={addPayment} addDressingChange={addDressingChange} />
+        )}
+        {tab === "quotations" && (
+          <QuotationsTab quotations={quotations} products={products} saveQuotation={saveQuotation}
+            deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} />
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} />}
@@ -963,6 +1011,222 @@ function Field({ label, children }) {
 }
 
 // ---------------- Machines ----------------
+// ================= QUOTATIONS =================
+function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, setQuotationStatus }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
+  const [search, setSearch] = useState("");
+
+  const sorted = [...quotations].sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+  const filtered = sorted.filter((q) => {
+    const t = search.trim().toLowerCase();
+    if (!t) return true;
+    return (q.customerName || "").toLowerCase().includes(t) || (q.quoteNo || "").toLowerCase().includes(t);
+  });
+
+  if (viewing) {
+    return (
+      <QuotationView q={viewing} onBack={() => setViewing(null)}
+        onEdit={() => { setEditing(viewing); setViewing(null); setShowForm(true); }}
+        onStatus={(s) => { setQuotationStatus(viewing.id, s); setViewing({ ...viewing, status: s }); }} />
+    );
+  }
+
+  return (
+    <div>
+      {!showForm && (
+        <>
+          <button style={styles.primaryBtn} onClick={() => { setEditing(null); setShowForm(true); }}>+ New Quotation</button>
+          <input style={{ ...styles.input, marginBottom: 12 }} placeholder="Search by customer or quote no."
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+        </>
+      )}
+      {showForm && (
+        <QuotationForm products={products} initial={editing} quotations={quotations}
+          onCancel={() => { setShowForm(false); setEditing(null); }}
+          onSave={(data) => { saveQuotation(data, editing?.id); setShowForm(false); setEditing(null); }} />
+      )}
+      {!showForm && (
+        filtered.length === 0 ? <EmptyState text="No quotations yet" /> : (
+          <div style={styles.list}>
+            {filtered.map((q) => {
+              const { total } = quoteTotals(q);
+              const st = QUOTE_STATUS[q.status] || QUOTE_STATUS.draft;
+              return (
+                <div key={q.id} style={styles.card}>
+                  <div style={styles.cardTop} onClick={() => setViewing(q)}>
+                    <div style={{ flex: 1 }}>
+                      <div style={styles.cardTitle}>{q.customerName || "Untitled"}</div>
+                      <div style={styles.cardMeta}>{q.quoteNo} · {fmtDate(q.date)}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>{fmtMoney(total)}</div>
+                      <span style={{ ...styles.badge, color: st.color, background: st.bg }}>{st.label}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, padding: "0 14px 12px" }}>
+                    <button style={styles.linkBtn} onClick={() => setViewing(q)}>View / Print</button>
+                    <button style={styles.linkBtn} onClick={() => { setEditing(q); setShowForm(true); }}>Edit</button>
+                    <button style={{ ...styles.linkBtn, color: "#B3542F" }}
+                      onClick={() => { if (window.confirm("Delete this quotation?")) deleteQuotation(q.id); }}>Delete</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
+  const [form, setForm] = useState(initial || {
+    quoteNo: nextQuoteNumber(quotations),
+    date: todayISO(),
+    validTill: addDays(todayISO(), 15),
+    customerName: "", phone: "", address: "",
+    items: products[0] ? [{ id: uid(), name: products[0].name, qty: 1, rate: 0 }] : [{ id: uid(), name: "", qty: 1, rate: 0 }],
+    discount: 0, gstPercent: 0,
+    notes: "", terms: DEFAULT_TERMS,
+  });
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const setItem = (id, k, v) => setForm((f) => ({ ...f, items: f.items.map((it) => it.id === id ? { ...it, [k]: v } : it) }));
+  const addItem = () => setForm((f) => ({ ...f, items: [...f.items, { id: uid(), name: "", qty: 1, rate: 0 }] }));
+  const removeItem = (id) => setForm((f) => ({ ...f, items: f.items.filter((it) => it.id !== id) }));
+  const { subtotal, taxable, gstAmount, total } = quoteTotals(form);
+
+  return (
+    <div>
+      <datalist id="quote-product-names">
+        {products.map((p) => <option key={p.id} value={p.name} />)}
+      </datalist>
+      <div style={styles.formGrid}>
+        <div style={styles.field}><span style={styles.fieldLabel}>Customer Name</span>
+          <input style={styles.input} value={form.customerName} onChange={(e) => set("customerName", e.target.value)} placeholder="Patient / customer / hospital name" /></div>
+        <div style={styles.field}><span style={styles.fieldLabel}>Phone</span>
+          <input style={styles.input} value={form.phone} onChange={(e) => set("phone", e.target.value)} /></div>
+        <div style={styles.field}><span style={styles.fieldLabel}>Address</span>
+          <input style={styles.input} value={form.address} onChange={(e) => set("address", e.target.value)} /></div>
+        <div style={styles.detailGrid}>
+          <div style={styles.field}><span style={styles.fieldLabel}>Date</span>
+            <input type="date" style={styles.input} value={form.date} onChange={(e) => set("date", e.target.value)} /></div>
+          <div style={styles.field}><span style={styles.fieldLabel}>Valid Till</span>
+            <input type="date" style={styles.input} value={form.validTill} onChange={(e) => set("validTill", e.target.value)} /></div>
+        </div>
+
+        <SectionTitle>Items</SectionTitle>
+        {form.items.map((it) => (
+          <div key={it.id} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
+            <input style={{ ...styles.input, flex: 3 }} list="quote-product-names" placeholder="Item / product"
+              value={it.name} onChange={(e) => setItem(it.id, "name", e.target.value)} />
+            <input style={{ ...styles.input, flex: 1 }} type="number" placeholder="Qty"
+              value={it.qty} onChange={(e) => setItem(it.id, "qty", e.target.value)} />
+            <input style={{ ...styles.input, flex: 1.3 }} type="number" placeholder="Rate ₹"
+              value={it.rate} onChange={(e) => setItem(it.id, "rate", e.target.value)} />
+            <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => removeItem(it.id)}>✕</button>
+          </div>
+        ))}
+        <button style={styles.secondaryBtn} onClick={addItem}>+ Add Item</button>
+
+        <div style={styles.detailGrid}>
+          <div style={styles.field}><span style={styles.fieldLabel}>Discount (₹)</span>
+            <input style={styles.input} type="number" value={form.discount} onChange={(e) => set("discount", e.target.value)} /></div>
+          <div style={styles.field}><span style={styles.fieldLabel}>GST %</span>
+            <input style={styles.input} type="number" value={form.gstPercent} onChange={(e) => set("gstPercent", e.target.value)} /></div>
+        </div>
+
+        <div style={styles.notesBox}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>Subtotal</span><span>{fmtMoney(subtotal)}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>After discount</span><span>{fmtMoney(taxable)}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>GST</span><span>{fmtMoney(gstAmount)}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, marginTop: 4 }}><span>Total</span><span>{fmtMoney(total)}</span></div>
+        </div>
+
+        <div style={styles.field}><span style={styles.fieldLabel}>Notes (optional)</span>
+          <textarea style={{ ...styles.input, minHeight: 50 }} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></div>
+        <div style={styles.field}><span style={styles.fieldLabel}>Terms & Conditions</span>
+          <textarea style={{ ...styles.input, minHeight: 110 }} value={form.terms} onChange={(e) => set("terms", e.target.value)} /></div>
+      </div>
+      <div style={styles.formActions}>
+        <button style={styles.secondaryBtn} onClick={onCancel}>Cancel</button>
+        <button style={{ ...styles.smallBtn, flex: 1 }}
+          disabled={!form.customerName.trim()}
+          onClick={() => onSave({ ...form, items: form.items.filter((it) => it.name.trim()) })}>Save Quotation</button>
+      </div>
+    </div>
+  );
+}
+
+function QuotationView({ q, onBack, onEdit, onStatus }) {
+  const { subtotal, discount, gstAmount, total } = quoteTotals(q);
+  const shareText = `Bhagirathi Agency — Quotation ${q.quoteNo}\nTo: ${q.customerName}\nTotal: ${fmtMoney(total)}\nValid till: ${fmtDate(q.validTill)}`;
+
+  return (
+    <div>
+      <div className="no-print" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+        <button style={styles.linkBtn} onClick={onBack}>← Back</button>
+        <div style={{ flex: 1 }} />
+        {Object.keys(QUOTE_STATUS).map((s) => (
+          <button key={s} onClick={() => onStatus(s)}
+            style={{ ...styles.filterChip, ...(q.status === s ? styles.filterChipActive : {}) }}>{QUOTE_STATUS[s].label}</button>
+        ))}
+      </div>
+      <div className="no-print" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button style={styles.secondaryBtn} onClick={onEdit}>Edit</button>
+        <button style={{ ...styles.smallBtn, flex: 1 }} onClick={() => window.print()}>Download as PDF</button>
+        <button style={{ ...styles.smallBtn, background: "#25D366", flex: 1 }}
+          onClick={() => window.open(waLink(q.phone ? q.phone.replace(/\D/g, "") : OWNER_WHATSAPP, shareText), "_blank")}>Share</button>
+      </div>
+
+      <div style={styles.quoteSheet}>
+        <div style={styles.quoteHeader}>
+          <img src="/bhagirathi-logo.png" alt="Bhagirathi Agency" style={{ width: 46, height: 46, objectFit: "contain" }} />
+          <div>
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17 }}>Bhagirathi Agency</div>
+            <div style={{ fontSize: 11, color: "#5A6560" }}>Wound Care & NPWT Supplies · Nashik, Maharashtra</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0", fontSize: 13 }}>
+          <div><strong>Quotation No.</strong><br />{q.quoteNo}</div>
+          <div><strong>Date</strong><br />{fmtDate(q.date)}</div>
+          <div><strong>Valid Till</strong><br />{fmtDate(q.validTill)}</div>
+        </div>
+        <div style={{ marginBottom: 14, fontSize: 13 }}>
+          <strong>To:</strong> {q.customerName}<br />
+          {q.phone && <>{q.phone}<br /></>}
+          {q.address}
+        </div>
+        <table style={styles.quoteTable}>
+          <thead><tr><th style={styles.quoteTh}>#</th><th style={styles.quoteTh}>Item</th><th style={styles.quoteTh}>Qty</th><th style={styles.quoteTh}>Rate</th><th style={styles.quoteTh}>Amount</th></tr></thead>
+          <tbody>
+            {(q.items || []).map((it, i) => (
+              <tr key={it.id}>
+                <td style={styles.quoteTd}>{i + 1}</td>
+                <td style={styles.quoteTd}>{it.name}</td>
+                <td style={styles.quoteTd}>{it.qty}</td>
+                <td style={styles.quoteTd}>{fmtMoney(it.rate)}</td>
+                <td style={styles.quoteTd}>{fmtMoney(Number(it.qty || 0) * Number(it.rate || 0))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{ marginLeft: "auto", width: 220, marginTop: 10, fontSize: 13 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}><span>Subtotal</span><span>{fmtMoney(subtotal)}</span></div>
+          {discount > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Discount</span><span>-{fmtMoney(discount)}</span></div>}
+          {Number(q.gstPercent) > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>GST ({q.gstPercent}%)</span><span>{fmtMoney(gstAmount)}</span></div>}
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid #DCD8CC", marginTop: 4, paddingTop: 4 }}><span>Total</span><span>{fmtMoney(total)}</span></div>
+        </div>
+        {q.notes && <div style={{ marginTop: 16, fontSize: 12 }}><strong>Notes:</strong><br />{q.notes}</div>}
+        {q.terms && <div style={{ marginTop: 16, fontSize: 11, color: "#5A6560", whiteSpace: "pre-line" }}><strong>Terms & Conditions</strong><br />{q.terms}</div>}
+        <div style={{ marginTop: 40, fontSize: 12 }}>For Bhagirathi Agency<br /><br /><br />Authorised Signatory</div>
+      </div>
+    </div>
+  );
+}
+
 function MachinesTab({ machines, setMachines, machineInUse, cases }) {
   const [showForm, setShowForm] = useState(false);
   const [serial, setSerial] = useState("");
@@ -1449,4 +1713,9 @@ const styles = {
   photoThumbWrap: { textAlign: "center", width: 90 },
   photoThumb: { width: 90, height: 90, objectFit: "cover", borderRadius: 8, cursor: "pointer", border: "1px solid #DCD8CC" },
   photoThumbEmpty: { width: 90, height: 90, borderRadius: 8, border: "1px dashed #DCD8CC", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#8A9490", textAlign: "center" },
+  quoteSheet: { background: "#fff", border: "1px solid #E7E4D9", borderRadius: 12, padding: 20 },
+  quoteHeader: { display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #16302E", paddingBottom: 12 },
+  quoteTable: { width: "100%", borderCollapse: "collapse", marginTop: 6, fontSize: 12 },
+  quoteTh: { textAlign: "left", borderBottom: "1px solid #DCD8CC", padding: "6px 4px", color: "#5A6560", fontWeight: 700 },
+  quoteTd: { borderBottom: "1px solid #F0EEE3", padding: "6px 4px" },
 };
