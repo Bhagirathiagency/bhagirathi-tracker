@@ -126,8 +126,8 @@ function normalizeProducts(raw) {
   if (!Array.isArray(raw)) return DEFAULT_PRODUCTS;
   return raw.map((p) =>
     typeof p === "string"
-      ? { id: uid(), name: p, available: 0, used: 0, costPrice: 0, receipts: [] }
-      : { available: 0, used: 0, costPrice: 0, receipts: [], ...p }
+      ? { id: uid(), name: p, available: 0, used: 0, costPrice: 0, receipts: [], variants: [] }
+      : { available: 0, used: 0, costPrice: 0, receipts: [], variants: [], ...p, variants: Array.isArray(p.variants) ? p.variants : [] }
   );
 }
 function getCaseProducts(c) {
@@ -147,6 +147,14 @@ function photoKey(caseId, stage) { return `photo-${caseId}-${stage}`; }
 function locKey(name) { return `wca-loc-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`; }
 function mapsLink(lat, lng) { return `https://www.google.com/maps?q=${lat},${lng}`; }
 function waLink(number, text) { return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 async function quotePdfBlob(node) {
   const canvas = await html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
   const imgData = canvas.toDataURL("image/png");
@@ -1109,22 +1117,30 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
     date: todayISO(),
     validTill: addDays(todayISO(), 15),
     customerName: "", phone: "", address: "",
-    items: [{ id: uid(), name: "", qty: 1, rate: 0, custom: products.length === 0 }],
+    items: [{ id: uid(), name: "", productName: "", variant: "", qty: 1, rate: 0, custom: products.length === 0 }],
     discount: 0, gstPercent: 0,
     notes: "", terms: DEFAULT_TERMS,
   });
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setItem = (id, k, v) => setForm((f) => ({ ...f, items: f.items.map((it) => it.id === id ? { ...it, [k]: v } : it) }));
-  const addItem = () => setForm((f) => ({ ...f, items: [...f.items, { id: uid(), name: "", qty: 1, rate: 0, custom: products.length === 0 } ] }));
+  const addItem = () => setForm((f) => ({ ...f, items: [...f.items, { id: uid(), name: "", productName: "", variant: "", qty: 1, rate: 0, custom: products.length === 0 } ] }));
   const removeItem = (id) => setForm((f) => ({ ...f, items: f.items.filter((it) => it.id !== id) }));
   const pickFromStock = (id, name) => {
     const prod = products.find((p) => p.name === name);
     setForm((f) => ({
       ...f,
       items: f.items.map((it) => it.id === id ? {
-        ...it, name, custom: false,
+        ...it, name, productName: name, variant: "", custom: false,
         rate: Number(it.rate) > 0 ? it.rate : (prod ? prod.costPrice || 0 : it.rate),
+      } : it),
+    }));
+  };
+  const pickVariant = (id, variant) => {
+    setForm((f) => ({
+      ...f,
+      items: f.items.map((it) => it.id === id ? {
+        ...it, variant, name: variant ? `${it.productName} (${variant})` : it.productName,
       } : it),
     }));
   };
@@ -1137,6 +1153,8 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
           <input style={styles.input} value={form.customerName} onChange={(e) => set("customerName", e.target.value)} placeholder="Patient / customer / hospital name" /></div>
         <div style={styles.field}><span style={styles.fieldLabel}>Phone</span>
           <input style={styles.input} value={form.phone} onChange={(e) => set("phone", e.target.value)} /></div>
+        <div style={styles.field}><span style={styles.fieldLabel}>Email</span>
+          <input style={styles.input} type="email" value={form.email || ""} onChange={(e) => set("email", e.target.value)} placeholder="customer@example.com" /></div>
         <div style={styles.field}><span style={styles.fieldLabel}>Address</span>
           <input style={styles.input} value={form.address} onChange={(e) => set("address", e.target.value)} /></div>
         <div style={styles.detailGrid}>
@@ -1147,36 +1165,52 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
         </div>
 
         <SectionTitle>Items</SectionTitle>
-        {form.items.map((it) => (
-          <div key={it.id} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center", flexWrap: "wrap" }}>
-            {it.custom ? (
-              <div style={{ display: "flex", flex: 3, minWidth: 160, gap: 4, alignItems: "center" }}>
-                <input style={{ ...styles.input, flex: 1 }} placeholder="Custom item name"
-                  value={it.name} onChange={(e) => setItem(it.id, "name", e.target.value)} />
-                {products.length > 0 && (
-                  <button style={{ ...styles.linkBtn, fontSize: 11 }} onClick={() => setItem(it.id, "custom", false)}>stock</button>
-                )}
+        {form.items.map((it) => {
+          const selectedProduct = products.find((p) => p.name === it.productName);
+          const hasVariants = selectedProduct && (selectedProduct.variants || []).length > 0;
+          return (
+          <div key={it.id} style={{ marginBottom: 6, border: "1px solid #F0EEE3", borderRadius: 8, padding: 6 }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              {it.custom ? (
+                <div style={{ display: "flex", flex: 3, minWidth: 160, gap: 4, alignItems: "center" }}>
+                  <input style={{ ...styles.input, flex: 1 }} placeholder="Custom item name"
+                    value={it.name} onChange={(e) => setItem(it.id, "name", e.target.value)} />
+                  {products.length > 0 && (
+                    <button style={{ ...styles.linkBtn, fontSize: 11 }} onClick={() => setItem(it.id, "custom", false)}>stock</button>
+                  )}
+                </div>
+              ) : (
+                <select style={{ ...styles.input, flex: 3, minWidth: 160 }} value={it.productName || ""}
+                  onChange={(e) => e.target.value === "__new__" ? setItem(it.id, "custom", true) : pickFromStock(it.id, e.target.value)}>
+                  <option value="" disabled>Select item…</option>
+                  <optgroup label="From Stock">
+                    {products.map((p) => (
+                      <option key={p.id} value={p.name}>{p.name} ({p.available || 0} in stock)</option>
+                    ))}
+                  </optgroup>
+                  <option value="__new__">+ New item (not in stock)</option>
+                </select>
+              )}
+              <input style={{ ...styles.input, flex: 1, minWidth: 60 }} type="number" placeholder="Qty"
+                value={it.qty} onChange={(e) => setItem(it.id, "qty", e.target.value)} />
+              <input style={{ ...styles.input, flex: 1.3, minWidth: 70 }} type="number" placeholder="Rate ₹"
+                value={it.rate} onChange={(e) => setItem(it.id, "rate", e.target.value)} />
+              <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => removeItem(it.id)}>✕</button>
+            </div>
+            {hasVariants && (
+              <div style={{ marginTop: 6 }}>
+                <select style={{ ...styles.input, maxWidth: 220 }} value={it.variant || ""}
+                  onChange={(e) => pickVariant(it.id, e.target.value)}>
+                  <option value="">Select size / variant…</option>
+                  {selectedProduct.variants.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
-            ) : (
-              <select style={{ ...styles.input, flex: 3, minWidth: 160 }} value={it.name}
-                onChange={(e) => e.target.value === "__new__" ? setItem(it.id, "custom", true) : pickFromStock(it.id, e.target.value)}>
-                <option value="" disabled>Select item…</option>
-                <optgroup label="From Stock">
-                  {products.map((p) => (
-                    <option key={p.id} value={p.name}>{p.name} ({p.available || 0} in stock)</option>
-                  ))}
-                </optgroup>
-                <option value="__new__">+ New item (not in stock)</option>
-              </select>
             )}
-            <input style={{ ...styles.input, flex: 1, minWidth: 60 }} type="number" placeholder="Qty"
-              value={it.qty} onChange={(e) => setItem(it.id, "qty", e.target.value)} />
-            <input style={{ ...styles.input, flex: 1.3, minWidth: 70 }} type="number" placeholder="Rate ₹"
-              value={it.rate} onChange={(e) => setItem(it.id, "rate", e.target.value)} />
-            <button style={{ ...styles.linkBtn, color: "#B3542F" }} onClick={() => removeItem(it.id)}>✕</button>
           </div>
-        ))}
+          );
+        })}
         <button style={styles.secondaryBtn} onClick={addItem}>+ Add Item</button>
+
 
         <div style={styles.detailGrid}>
           <div style={styles.field}><span style={styles.fieldLabel}>Discount (₹)</span>
@@ -1251,21 +1285,35 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
   };
 
   const emailPdf = async () => {
+    const to = (q.email || "").trim() || window.prompt("Customer email address to send this quotation to:", "");
+    if (!to) return;
     setBusy("email");
     try {
       const file = await makeFile();
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: `Quotation ${q.quoteNo}`, text: shareText });
-      } else {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement("a");
-        a.href = url; a.download = fileName; a.click();
-        URL.revokeObjectURL(url);
-        const subject = encodeURIComponent(`Quotation ${q.quoteNo} — Bhagirathi Agency`);
-        const body = encodeURIComponent(`Dear ${q.customerName || ""},\n\nPlease find attached our quotation ${q.quoteNo} dated ${fmtDate(q.date)}, valid till ${fmtDate(q.validTill)}.\nTotal: ${fmtMoney(total)}\n\nRegards,\nBhagirathi Agency`);
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
-        alert("PDF downloaded. Attach the downloaded file to the email draft that just opened — email links can't attach files automatically.");
+      const pdfBase64 = await blobToBase64(file);
+      const subject = `Quotation ${q.quoteNo} — Bhagirathi Agency`;
+      const body = `Dear ${q.customerName || ""},\n\nPlease find attached our quotation ${q.quoteNo} dated ${fmtDate(q.date)}, valid till ${fmtDate(q.validTill)}.\nTotal: ${fmtMoney(total)}\n\nRegards,\nBhagirathi Agency`;
+      const resp = await fetch("/api/send-quote-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to, subject, text: body, pdfBase64, filename: fileName }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || "send failed");
       }
+      alert(`Quotation emailed to ${to} from bhagirathiagency@gmail.com.`);
+    } catch (e) {
+      // Backend not set up yet, or send failed — fall back to a manual mailto draft with the PDF downloaded.
+      const file = await makeFile();
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url; a.download = fileName; a.click();
+      URL.revokeObjectURL(url);
+      const subject = encodeURIComponent(`Quotation ${q.quoteNo} — Bhagirathi Agency`);
+      const body = encodeURIComponent(`Dear ${q.customerName || ""},\n\nPlease find attached our quotation ${q.quoteNo} dated ${fmtDate(q.date)}, valid till ${fmtDate(q.validTill)}.\nTotal: ${fmtMoney(total)}\n\nRegards,\nBhagirathi Agency`);
+      window.location.href = `mailto:${encodeURIComponent(to)}?subject=${subject}&body=${body}`;
+      alert("Couldn't auto-send (email sending isn't set up yet on the server). PDF downloaded — attach it to the email draft that just opened.");
     } finally { setBusy(""); }
   };
 
@@ -1308,6 +1356,7 @@ function QuotationView({ q, onBack, onEdit, onStatus }) {
         <div style={{ marginBottom: 14, fontSize: 13 }}>
           <strong>To:</strong> {q.customerName}<br />
           {q.phone && <>{q.phone}<br /></>}
+          {q.email && <>{q.email}<br /></>}
           {q.address}
         </div>
         <table style={styles.quoteTable}>
@@ -1395,10 +1444,11 @@ function StockTab({ products, setProducts, receiveStock }) {
   const [initQty, setInitQty] = useState("");
   const [initCost, setInitCost] = useState("");
   const [receiveForm, setReceiveForm] = useState({});
+  const [variantInput, setVariantInput] = useState({});
 
   const addProduct = () => {
     if (!name.trim() || products.some((p) => p.name === name.trim())) return;
-    setProducts((prev) => [...prev, { id: uid(), name: name.trim(), available: Number(initQty) || 0, used: 0, costPrice: Number(initCost) || 0, receipts: [] }]);
+    setProducts((prev) => [...prev, { id: uid(), name: name.trim(), available: Number(initQty) || 0, used: 0, costPrice: Number(initCost) || 0, receipts: [], variants: [] }]);
     setName(""); setInitQty(""); setInitCost("");
   };
   const remove = (id) => setProducts((prev) => prev.filter((p) => p.id !== id));
@@ -1411,6 +1461,16 @@ function StockTab({ products, setProducts, receiveStock }) {
     receiveStock(id, qty, f.company);
     setReceiveForm((prev) => ({ ...prev, [id]: { qty: "", company: "" } }));
   };
+  const addVariant = (id) => {
+    const val = (variantInput[id] || "").trim();
+    if (!val) return;
+    setProducts((prev) => prev.map((p) => p.id === id
+      ? { ...p, variants: (p.variants || []).includes(val) ? p.variants : [...(p.variants || []), val] }
+      : p));
+    setVariantInput((prev) => ({ ...prev, [id]: "" }));
+  };
+  const removeVariant = (id, v) => setProducts((prev) => prev.map((p) => p.id === id
+    ? { ...p, variants: (p.variants || []).filter((x) => x !== v) } : p));
 
   return (
     <div>
@@ -1447,6 +1507,24 @@ function StockTab({ products, setProducts, receiveStock }) {
                 <input type="number" placeholder="Qty received" value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setField(p.id, "qty", e.target.value)} style={styles.smallInput} />
                 <input type="text" placeholder="Company / supplier" value={(receiveForm[p.id] || {}).company || ""} onChange={(e) => setField(p.id, "company", e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
                 <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
+              </div>
+
+              <div style={{ marginTop: 10 }}>
+                <span style={styles.mutedSmall}>Sizes / variants (e.g. 300ml, 500ml, 1000ml)</span>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0" }}>
+                  {(p.variants || []).map((v) => (
+                    <span key={v} style={{ ...styles.photoChip, ...styles.photoChipDone, cursor: "default", display: "flex", alignItems: "center", gap: 6 }}>
+                      {v}
+                      <span style={{ cursor: "pointer", color: "#B3542F", fontWeight: 700 }} onClick={() => removeVariant(p.id, v)}>✕</span>
+                    </span>
+                  ))}
+                </div>
+                <div style={styles.addPaymentRow}>
+                  <input type="text" placeholder="Add size, e.g. 500ml" style={{ ...styles.smallInput, flex: 1 }}
+                    value={variantInput[p.id] || ""} onChange={(e) => setVariantInput((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === "Enter") addVariant(p.id); }} />
+                  <button style={styles.smallBtn} onClick={() => addVariant(p.id)}>Add Size</button>
+                </div>
               </div>
             </div>
           </div>
