@@ -675,38 +675,40 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
       <main style={styles.main}>
         <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
 
-        <SectionTitle>Cases on Therapy</SectionTitle>
-        {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
-          <div style={styles.list}>
-            {myCasesActive.map((c) => (
-              <DresserCaseRow key={c.id} c={c} dresserName={name}
-                onAddDressingChange={(e) => addDressingChange(c.id, e)}
-                onCapturePhoto={(stage, dataURL) => capturePhoto(c.id, stage, dataURL)} />
-            ))}
-          </div>
-        )}
+        <CollapsibleSection title="Cases on Therapy" defaultOpen>
+          {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
+            <div style={styles.list}>
+              {myCasesActive.map((c) => (
+                <DresserCaseRow key={c.id} c={c} dresserName={name}
+                  onAddDressingChange={(e) => addDressingChange(c.id, e)}
+                  onCapturePhoto={(stage, dataURL) => capturePhoto(c.id, stage, dataURL)} />
+              ))}
+            </div>
+          )}
+        </CollapsibleSection>
 
-        <SectionTitle>Your Reporting</SectionTitle>
-        <div style={styles.cardGrid}>
-          <div style={{ ...styles.statCard, cursor: "default", borderColor: "#12857733" }}>
-            <div style={{ ...styles.statValue, color: "#128577" }}>{myChanges.length}</div>
-            <div style={styles.statLabel}>Total dressings logged</div>
+        <CollapsibleSection title="Your Reporting">
+          <div style={styles.cardGrid}>
+            <div style={{ ...styles.statCard, cursor: "default", borderColor: "#12857733" }}>
+              <div style={{ ...styles.statValue, color: "#128577" }}>{myChanges.length}</div>
+              <div style={styles.statLabel}>Total dressings logged</div>
+            </div>
+            <div style={{ ...styles.statCard, cursor: "default", borderColor: myOutstandingTotal > 0 ? "#E1483C33" : "#12857733" }}>
+              <div style={{ ...styles.statValue, color: myOutstandingTotal > 0 ? "#E1483C" : "#128577" }}>{fmtMoney(myOutstandingTotal)}</div>
+              <div style={styles.statLabel}>Outstanding on your cases</div>
+            </div>
           </div>
-          <div style={{ ...styles.statCard, cursor: "default", borderColor: myOutstandingTotal > 0 ? "#E1483C33" : "#12857733" }}>
-            <div style={{ ...styles.statValue, color: myOutstandingTotal > 0 ? "#E1483C" : "#128577" }}>{fmtMoney(myOutstandingTotal)}</div>
-            <div style={styles.statLabel}>Outstanding on your cases</div>
-          </div>
-        </div>
-        {myChanges.length === 0 ? <EmptyState text="Your dressing changes will show up here." /> : (
-          <div style={styles.card}>
-            {myChanges.slice(0, 15).map((e) => (
-              <div key={e.id} style={styles.dresserLine}>
-                <span style={{ flex: 1 }}>{e.patientName}</span>
-                <span style={styles.mutedSmall}>{fmtDate(e.date)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+          {myChanges.length === 0 ? <EmptyState text="Your dressing changes will show up here." /> : (
+            <div style={styles.card}>
+              {myChanges.slice(0, 15).map((e) => (
+                <div key={e.id} style={styles.dresserLine}>
+                  <span style={{ flex: 1 }}>{e.patientName}</span>
+                  <span style={styles.mutedSmall}>{fmtDate(e.date)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CollapsibleSection>
       </main>
     </>
   );
@@ -792,31 +794,30 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
       </div>
 
       {lowStock.length > 0 && (
-        <>
-          <SectionTitle>Stock Alerts</SectionTitle>
+        <CollapsibleSection title="Stock Alerts" right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{lowStock.length}</span>}>
           <div style={styles.card}>
             {lowStock.map((p) => (
               <div key={p.id} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{p.name}</span><span style={{ color: "#E1483C", fontSize: 12, fontWeight: 700 }}>{p.available || 0} left</span></div>
             ))}
           </div>
-        </>
+        </CollapsibleSection>
       )}
 
       {dresserStats.length > 0 && (
-        <>
-          <SectionTitle>Dresser Workload</SectionTitle>
+        <CollapsibleSection title="Dresser Workload">
           <div style={styles.card}>
             {dresserStats.map((d, i) => (
               <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span><span style={styles.mutedSmall}>{d.count} dressing{d.count > 1 ? "s" : ""}</span></div>
             ))}
           </div>
-        </>
+        </CollapsibleSection>
       )}
 
-      <SectionTitle>Recent Cases</SectionTitle>
-      {recentCases.length === 0 ? <EmptyState text="No cases yet. Add your first case from the Cases tab." /> : (
-        <div style={styles.list}>{recentCases.map((c) => <CaseRow key={c.id} c={c} products={products} compact />)}</div>
-      )}
+      <CollapsibleSection title="Recent Cases" defaultOpen>
+        {recentCases.length === 0 ? <EmptyState text="No cases yet. Add your first case from the Cases tab." /> : (
+          <div style={styles.list}>{recentCases.map((c) => <CaseRow key={c.id} c={c} products={products} compact />)}</div>
+        )}
+      </CollapsibleSection>
     </div>
   );
 }
