@@ -64,7 +64,7 @@ const fmtRelative = (iso) => {
 };
 
 const STATUS = {
-  active: { label: "On Therapy", color: "#128577", bg: "#E3F3EF" },
+  active: { label: "On Therapy", color: "#D9720A", bg: "#FBEAD3" },
   stopped: { label: "Stopped", color: "#8A5A2B", bg: "#F5EBDC" },
   reapplied: { label: "Reapplied", color: "#3B5BA5", bg: "#E7ECF7" },
 };
@@ -81,7 +81,7 @@ const PHOTO_STAGES = [
 const QUOTE_STATUS = {
   draft: { label: "Draft", color: "#5B6864", bg: "#EEF1EC" },
   sent: { label: "Sent", color: "#3B5BA5", bg: "#E7ECF7" },
-  accepted: { label: "Accepted", color: "#128577", bg: "#E3F3EF" },
+  accepted: { label: "Accepted", color: "#D9720A", bg: "#FBEAD3" },
   rejected: { label: "Rejected", color: "#E1483C", bg: "#FCE7E4" },
 };
 const DEFAULT_TERMS =
@@ -708,12 +708,12 @@ function DresserShell({ name, cases, machines, products, saveCase, addDressingCh
 
         <CollapsibleSection title="Your Reporting">
           <div style={styles.cardGrid}>
-            <div style={{ ...styles.statCard, cursor: "default", borderColor: "#12857733" }}>
-              <div style={{ ...styles.statValue, color: "#128577" }}>{myChanges.length}</div>
+            <div style={{ ...styles.statCard, cursor: "default", borderColor: "#D9720A33" }}>
+              <div style={{ ...styles.statValue, color: "#D9720A" }}>{myChanges.length}</div>
               <div style={styles.statLabel}>Total dressings logged</div>
             </div>
-            <div style={{ ...styles.statCard, cursor: "default", borderColor: myOutstandingTotal > 0 ? "#E1483C33" : "#12857733" }}>
-              <div style={{ ...styles.statValue, color: myOutstandingTotal > 0 ? "#E1483C" : "#128577" }}>{fmtMoney(myOutstandingTotal)}</div>
+            <div style={{ ...styles.statCard, cursor: "default", borderColor: myOutstandingTotal > 0 ? "#E1483C33" : "#D9720A33" }}>
+              <div style={{ ...styles.statValue, color: myOutstandingTotal > 0 ? "#E1483C" : "#D9720A" }}>{fmtMoney(myOutstandingTotal)}</div>
               <div style={styles.statLabel}>Outstanding on your cases</div>
             </div>
           </div>
@@ -883,7 +883,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
   return (
     <div>
       <div style={styles.cardGrid}>
-        <StatCard label="Active Cases" value={activeCount} accent="#128577" icon="cases" onClick={() => setTab("cases")} />
+        <StatCard label="Active Cases" value={activeCount} accent="#D9720A" icon="cases" onClick={() => setTab("cases")} />
         <StatCard label="Change Due / Overdue" value={overdueCount} accent="#E1483C" icon="reports" onClick={() => setTab("cases")} />
         <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#D98D2B" icon="quotes" onClick={() => setTab("cases")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
@@ -1660,7 +1660,7 @@ function MachinesTab({ machines, setMachines, machineInUse, cases }) {
                     <div style={styles.cardMeta}>{m.model}</div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                    <span style={{ ...styles.badge, color: inUse ? "#128577" : "#5B6864", background: inUse ? "#E3F3EF" : "#EEF0EE" }}>{inUse ? "In Use" : "Available"}</span>
+                    <span style={{ ...styles.badge, color: inUse ? "#D9720A" : "#5B6864", background: inUse ? "#FBEAD3" : "#EEF0EE" }}>{inUse ? "In Use" : "Available"}</span>
                     <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
                   </div>
                 </div>
@@ -1747,7 +1747,7 @@ function StockTab({ products, setProducts, receiveStock }) {
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                <span style={{ ...styles.badge, color: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#E1483C" : "#128577", background: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#FCE7E4" : "#E3F3EF" }}>{p.available || 0} available</span>
+                <span style={{ ...styles.badge, color: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#E1483C" : "#D9720A", background: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#FCE7E4" : "#FBEAD3" }}>{p.available || 0} available</span>
                 <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
               </div>
             </div>
@@ -1853,7 +1853,7 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                   {dresserPins[d] ? (
-                    <span style={{ ...styles.badge, color: "#128577", background: "#E3F3EF" }}>PIN protected</span>
+                    <span style={{ ...styles.badge, color: "#D9720A", background: "#FBEAD3" }}>PIN protected</span>
                   ) : (
                     <span style={{ ...styles.badge, color: "#E1483C", background: "#FCE7E4" }}>No PIN</span>
                   )}
@@ -1915,7 +1915,7 @@ function CollapsibleSection({ title, defaultOpen, right, children }) {
           {right}
           {open && (
             <span onClick={download} title="Download this report as PDF"
-              style={{ display: "flex", alignItems: "center", color: busy ? "#8A9A96" : "#128577", cursor: busy ? "default" : "pointer" }}>
+              style={{ display: "flex", alignItems: "center", color: busy ? "#8A9A96" : "#D9720A", cursor: busy ? "default" : "pointer" }}>
               <Icon name="download" size={15} />
             </span>
           )}
@@ -2161,7 +2161,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       <SectionTitle>Revenue</SectionTitle>
       <div style={styles.cardGrid}>
         <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(totalBilled)}</div><div style={styles.statLabel}>Total Billed</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(totalCollected)}</div><div style={styles.statLabel}>Total Collected</div></div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#D9720A" }}>{fmtMoney(totalCollected)}</div><div style={styles.statLabel}>Total Collected</div></div>
         <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(outstandingTotal)}</div><div style={styles.statLabel}>Outstanding</div></div>
         <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#3B5BA5" }}>{fmtMoney(totalProfit)}</div><div style={styles.statLabel}>Est. Profit</div></div>
       </div>
@@ -2174,7 +2174,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
       <button style={styles.primaryBtn} onClick={sendSummary}>Send Summary on WhatsApp</button>
 
-      <CollapsibleSection title="Profit & Loss Statement" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</span>}>
+      <CollapsibleSection title="Profit & Loss Statement" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: pnlTotals.profit >= 0 ? "#D9720A" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</span>}>
         <div style={styles.filterRow}>
           {[["daily", "Daily"], ["weekly", "Weekly"], ["monthly", "Monthly"], ["yearly", "Yearly"]].map(([key, label]) => (
             <button key={key} onClick={() => setPnlGranularity(key)}
@@ -2187,7 +2187,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(pnlTotals.revenue + pnlTotals.rental)}</div><div style={styles.statLabel}>Total Revenue</div></div>
               <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(pnlTotals.cost + pnlTotals.commission)}</div><div style={styles.statLabel}>Total Cost + Commission</div></div>
               <div style={{ ...styles.reportCard, gridColumn: "1 / -1" }}>
-                <div style={{ ...styles.statValue, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</div>
+                <div style={{ ...styles.statValue, color: pnlTotals.profit >= 0 ? "#D9720A" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</div>
                 <div style={styles.statLabel}>Net Profit / Loss</div>
               </div>
             </div>
@@ -2200,7 +2200,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                   <YAxis tick={{ fontSize: 10, fill: "#8A9A96" }} width={40} />
                   <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="Revenue" stroke="#128577" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Revenue" stroke="#D9720A" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="Cost" stroke="#E1483C" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="Profit" stroke="#3B5BA5" strokeWidth={2} dot={false} />
                 </LineChart>
@@ -2212,7 +2212,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                 <div key={r.key} style={styles.cardExpanded}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontWeight: 700 }}>{pnlPeriodLabel(r.key, pnlGranularity)}</span>
-                    <span style={{ fontWeight: 700, color: r.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(r.profit)}</span>
+                    <span style={{ fontWeight: 700, color: r.profit >= 0 ? "#D9720A" : "#E1483C" }}>{fmtMoney(r.profit)}</span>
                   </div>
                   <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5B6864", flexWrap: "wrap" }}>
                     <span>{r.cases} case{r.cases > 1 ? "s" : ""}</span>
@@ -2255,7 +2255,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
             <div key={co.company} style={{ ...styles.card, marginBottom: 10 }}>
               <div style={{ padding: "12px 14px", borderBottom: "1px solid #EEF1EC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700 }}>{co.company}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#128577" }}>Est. sales {fmtMoney(co.estSales)}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#D9720A" }}>Est. sales {fmtMoney(co.estSales)}</span>
               </div>
               {co.productList.map((p) => (
                 <div key={p.name} style={styles.dresserLine}>
@@ -2270,12 +2270,12 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         </CollapsibleSection>
       )}
 
-      <CollapsibleSection title="Machine Rental Collections" right={rentalTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#128577" }}>{fmtMoney(rentalTotal)}</span> : null}>
+      <CollapsibleSection title="Machine Rental Collections" right={rentalTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#D9720A" }}>{fmtMoney(rentalTotal)}</span> : null}>
         {rentedCases.length === 0 ? <EmptyState text="No machine rental amounts logged on any case yet." /> : (
           <>
             <div style={styles.card}>
               {rentalByDresser.map((d) => (
-                <div key={d.dresserName} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{d.dresserName}</span><span style={{ fontWeight: 700, color: "#128577" }}>{fmtMoney(d.amount)}</span></div>
+                <div key={d.dresserName} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{d.dresserName}</span><span style={{ fontWeight: 700, color: "#D9720A" }}>{fmtMoney(d.amount)}</span></div>
               ))}
             </div>
             <div style={{ ...styles.mutedSmall, margin: "10px 0 4px" }}>Recent cases with rental</div>
@@ -2421,7 +2421,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                   <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="billed" name="Billed" fill="#3B5BA5" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="collected" name="Collected" fill="#128577" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="collected" name="Collected" fill="#D9720A" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -2430,7 +2430,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                 <div key={m.month} style={styles.dresserLine}>
                   <span style={{ flex: 1, fontWeight: 600 }}>{m.month}</span>
                   <span style={styles.mutedSmall}>Billed {fmtMoney(m.billed)}</span>
-                  <span style={{ ...styles.mutedSmall, color: "#128577" }}>Collected {fmtMoney(m.collected)}</span>
+                  <span style={{ ...styles.mutedSmall, color: "#D9720A" }}>Collected {fmtMoney(m.collected)}</span>
                 </div>
               ))}
             </div>
@@ -2528,30 +2528,30 @@ const fontImport = `
 `;
 
 const styles = {
-  app: { fontFamily: "'Inter', -apple-system, sans-serif", background: "#F4F7F5", minHeight: "100vh", color: "#182322", paddingBottom: 40 },
-  loadingScreen: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F4F7F5" },
+  app: { fontFamily: "'Inter', -apple-system, sans-serif", background: "#FBF6EC", minHeight: "100vh", color: "#182322", paddingBottom: 40 },
+  loadingScreen: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FBF6EC" },
   loadingText: { fontFamily: "'Space Grotesk', sans-serif", color: "#5B6864", fontWeight: 600 },
-  header: { background: "linear-gradient(135deg, #0E2422 0%, #128577 100%)", padding: "18px 16px", borderRadius: "0 0 20px 20px", boxShadow: "0 8px 24px rgba(14,36,34,0.18)" },
+  header: { background: "linear-gradient(135deg, #6E0F1A 0%, #D9720A 100%)", padding: "18px 16px", borderRadius: "0 0 20px 20px", boxShadow: "0 8px 24px rgba(14,36,34,0.18)" },
   headerInner: { display: "flex", alignItems: "center", gap: 12, maxWidth: 640, margin: "0 auto" },
   brandMark: { width: 40, height: 40, borderRadius: 12, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   brandMarkImg: { width: "82%", height: "82%", objectFit: "contain" },
   brandMarkLg: { width: 68, height: 68, borderRadius: 18, objectFit: "contain", margin: "60px auto 14px", cursor: "pointer", boxShadow: "0 8px 20px rgba(14,36,34,0.12)" },
-  gateBrand: { textAlign: "center", color: "#0E2422", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 19 },
-  brandName: { color: "#F4F7F5", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 },
-  brandSub: { color: "#A9CFC7", fontSize: 12, letterSpacing: 0.2, textAlign: "center" },
+  gateBrand: { textAlign: "center", color: "#6E0F1A", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 19 },
+  brandName: { color: "#FBF6EC", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 },
+  brandSub: { color: "#EBCB94", fontSize: 12, letterSpacing: 0.2, textAlign: "center" },
   logoutBtn: { display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.22)", color: "#DCEFEA", borderRadius: 20, padding: "6px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer" },
   pinPanel: { maxWidth: 640, margin: "12px auto 0", background: "#fff", borderRadius: 14, padding: 14 },
   gateWrap: { maxWidth: 360, margin: "0 auto", padding: "0 20px", textAlign: "center" },
   gateOptions: { display: "flex", flexDirection: "column", gap: 10, marginTop: 40 },
-  gateBtn: { background: "#128577", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", boxShadow: "0 6px 16px rgba(18,133,119,0.28)" },
-  gateBtnAlt: { background: "#fff", color: "#128577", border: "1px solid #CFE4DF", boxShadow: "none" },
+  gateBtn: { background: "#D9720A", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", boxShadow: "0 6px 16px rgba(18,133,119,0.28)" },
+  gateBtnAlt: { background: "#fff", color: "#D9720A", border: "1px solid #CFE4DF", boxShadow: "none" },
   gateForm: { display: "flex", flexDirection: "column", gap: 10, marginTop: 30, textAlign: "left" },
   gateHint: { fontSize: 12, color: "#5B6864", textAlign: "center", marginBottom: 6 },
   gateInput: { border: "1px solid #DCE4DF", borderRadius: 12, padding: "12px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff", textAlign: "center" },
   gateError: { color: "#E1483C", fontSize: 12, textAlign: "center" },
   nav: { display: "flex", gap: 6, padding: "10px 16px", maxWidth: 640, margin: "0 auto", overflowX: "auto" },
   navBtn: { display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #E3E7E2", background: "#fff", color: "#5B6864", padding: "8px 14px", borderRadius: 20, fontSize: 13, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
-  navBtnActive: { background: "#128577", color: "#fff", borderColor: "#128577", boxShadow: "0 4px 10px rgba(18,133,119,0.3)" },
+  navBtnActive: { background: "#D9720A", color: "#fff", borderColor: "#D9720A", boxShadow: "0 4px 10px rgba(18,133,119,0.3)" },
   main: { maxWidth: 640, margin: "0 auto", padding: "8px 16px" },
   cardGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, margin: "10px 0 22px" },
   statCard: { textAlign: "left", border: "1px solid", background: "#fff", borderRadius: 16, padding: "16px 14px", cursor: "pointer", boxShadow: "0 1px 2px rgba(14,36,34,0.04), 0 8px 20px rgba(14,36,34,0.05)" },
@@ -2568,26 +2568,26 @@ const styles = {
   cardMeta: { fontSize: 12, color: "#5B6864", marginTop: 2 },
   badge: { fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 20 },
   dueTag: { fontSize: 11, color: "#E1483C", fontWeight: 700 },
-  paidTag: { fontSize: 11, color: "#128577", fontWeight: 700 },
+  paidTag: { fontSize: 11, color: "#D9720A", fontWeight: 700 },
   overdueTag: { fontSize: 11, color: "#fff", background: "#E1483C", fontWeight: 700, padding: "3px 8px", borderRadius: 20 },
   cardExpanded: { borderTop: "1px solid #EEF1EC", padding: 14 },
   detailGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 },
   detailLabel: { fontSize: 10, color: "#8A9A96", textTransform: "uppercase", letterSpacing: 0.5 },
   detailValue: { fontSize: 14, fontWeight: 600, marginTop: 2 },
-  notesBox: { background: "#F4F7F5", borderRadius: 10, padding: 10, marginBottom: 10 },
+  notesBox: { background: "#FBF6EC", borderRadius: 10, padding: 10, marginBottom: 10 },
   notesText: { fontSize: 13, marginTop: 4 },
   paymentsSection: { marginTop: 6 },
   paymentLine: { display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, padding: "6px 0", borderBottom: "1px solid #EEF1EC" },
   mutedSmall: { fontSize: 12, color: "#8A9A96" },
   addPaymentRow: { display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" },
   smallInput: { border: "1px solid #DCE4DF", borderRadius: 9, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", minWidth: 90 },
-  smallBtn: { background: "#128577", color: "#fff", border: "none", borderRadius: 9, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  smallBtn: { background: "#D9720A", color: "#fff", border: "none", borderRadius: 9, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" },
   actionRow: { display: "flex", gap: 16, marginTop: 12 },
-  linkBtn: { background: "none", border: "none", color: "#128577", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, textDecoration: "none" },
+  linkBtn: { background: "none", border: "none", color: "#D9720A", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, textDecoration: "none" },
   filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 },
   filterChip: { border: "1px solid #DCE4DF", background: "#fff", color: "#5B6864", padding: "6px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer" },
-  filterChipActive: { background: "#0E2422", color: "#fff", borderColor: "#0E2422" },
-  primaryBtn: { background: "#128577", color: "#fff", border: "none", borderRadius: 12, padding: "12px 16px", fontSize: 14, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", width: "100%", margin: "6px 0 16px", boxShadow: "0 4px 12px rgba(18,133,119,0.25)" },
+  filterChipActive: { background: "#6E0F1A", color: "#fff", borderColor: "#6E0F1A" },
+  primaryBtn: { background: "#D9720A", color: "#fff", border: "none", borderRadius: 12, padding: "12px 16px", fontSize: 14, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", width: "100%", margin: "6px 0 16px", boxShadow: "0 4px 12px rgba(18,133,119,0.25)" },
   secondaryBtn: { background: "#fff", color: "#5B6864", border: "1px solid #DCE4DF", borderRadius: 12, padding: "12px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", flex: 1 },
   safetyBtn: { background: "#E1483C", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer", width: "100%", margin: "10px 0 20px", boxShadow: "0 6px 16px rgba(225,72,60,0.3)" },
   formGrid: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 },
@@ -2599,12 +2599,12 @@ const styles = {
   dresserRank: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, color: "#8A9A96", fontSize: 12, width: 16 },
   photoRow: { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 },
   photoChip: { border: "1px solid #DCE4DF", borderRadius: 20, padding: "8px 12px", fontSize: 11, fontWeight: 600, color: "#5B6864", cursor: "pointer", background: "#fff" },
-  photoChipDone: { background: "#E3F3EF", color: "#128577", borderColor: "#128577" },
+  photoChipDone: { background: "#FBEAD3", color: "#D9720A", borderColor: "#D9720A" },
   photoThumbWrap: { textAlign: "center", width: 90 },
   photoThumb: { width: 90, height: 90, objectFit: "cover", borderRadius: 10, cursor: "pointer", border: "1px solid #DCE4DF" },
   photoThumbEmpty: { width: 90, height: 90, borderRadius: 10, border: "1px dashed #DCE4DF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#8A9A96", textAlign: "center" },
   quoteSheet: { background: "#fff", border: "1px solid #E3E7E2", borderRadius: 16, padding: 20 },
-  quoteHeader: { display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #0E2422", paddingBottom: 12 },
+  quoteHeader: { display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #6E0F1A", paddingBottom: 12 },
   quoteTable: { width: "100%", borderCollapse: "collapse", marginTop: 6, fontSize: 12 },
   quoteTh: { textAlign: "left", borderBottom: "1px solid #DCE4DF", padding: "6px 4px", color: "#5B6864", fontWeight: 700 },
   quoteTd: { borderBottom: "1px solid #EEF1EC", padding: "6px 4px", fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5 },
