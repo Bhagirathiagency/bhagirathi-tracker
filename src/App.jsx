@@ -331,6 +331,7 @@ export default function App() {
   const [quotations, setQuotations] = useState([]);
   const [doctorCalls, setDoctorCalls] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [challans, setChallans] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [dresserBusinessAccess, setDresserBusinessAccessState] = useState({});
   const [businessAccessLoaded, setBusinessAccessLoaded] = useState(false);
@@ -379,7 +380,7 @@ export default function App() {
   useEffect(() => {
     setLoaded(false);
     (async () => {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals] = await Promise.all([
         loadKey(bkey(businessId, "wca-cases"), []),
         loadKey(bkey(businessId, "wca-machines"), []),
         loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
@@ -393,6 +394,7 @@ export default function App() {
         loadKey(bkey(businessId, "wca-dresser-stock-access"), {}),
         loadKey(bkey(businessId, "wca-expenses"), []),
         loadKey(bkey(businessId, "wca-accountant-pin"), null),
+        loadKey(bkey(businessId, "wca-challans"), []),
       ]);
       setCases(c);
       setMachines(m);
@@ -406,6 +408,7 @@ export default function App() {
       setOwnerLogins(Array.isArray(olog) ? olog : []);
       setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
       setExpenses(Array.isArray(exps) ? exps : []);
+      setChallans(Array.isArray(chals) ? chals : []);
       {
         const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
         if (businessId === "bhagirathi") {
@@ -418,6 +421,7 @@ export default function App() {
     })();
   }, [businessId]);
 
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-challans"), challans); }, [challans, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-cases"), cases); }, [cases, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-machines"), machines); }, [machines, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-products"), products); }, [products, loaded, businessId]);
@@ -474,6 +478,68 @@ export default function App() {
         ? { ...p, available: Math.max(0, (p.available || 0) - qty), used: (p.used || 0) + qty }
         : p));
     }
+  };
+  const createChallan = (entry) => {
+    const year = new Date().getFullYear();
+    const prefix = `DC/${year}/`;
+    setChallans((prev) => {
+      const seq = prev.filter((c) => (c.challanNo || "").startsWith(prefix)).length + 1;
+      const challanNo = prefix + String(seq).padStart(3, "0");
+      return [...prev, {
+        id: uid(), challanNo, date: todayISO(), status: "open",
+        patientName: entry.patientName, caseId: entry.caseId || null, dresserName: entry.dresserName || "",
+        items: (entry.items || []).map((it) => ({ id: uid(), productName: it.productName, qtyIssued: Number(it.qtyIssued) || 0, rate: Number(it.rate) || 0, qtyUsed: 0, qtyReturned: 0 })),
+      }];
+    });
+    // Goods physically leave the shop the moment the challan is issued.
+    (entry.items || []).forEach((it) => {
+      const qty = Number(it.qtyIssued) || 0;
+      if (qty <= 0) return;
+      setProducts((prev) => prev.map((p) => p.name === it.productName ? { ...p, available: Math.max(0, (p.available || 0) - qty) } : p));
+    });
+  };
+
+  const settleChallan = (challanId, usedByProduct) => {
+    setChallans((prev) => prev.map((ch) => {
+      if (ch.id !== challanId) return ch;
+      const items = ch.items.map((it) => {
+        const usedQty = Math.max(0, Math.min(it.qtyIssued, Number(usedByProduct[it.productName] || 0)));
+        return { ...it, qtyUsed: usedQty, qtyReturned: it.qtyIssued - usedQty };
+      });
+      return { ...ch, items, status: "settled", settledDate: todayISO() };
+    }));
+    // Returned goods go back on the shelf; used goods count as consumed stock.
+    const ch = challans.find((c) => c.id === challanId);
+    if (!ch) return;
+    let totalUsedValue = 0;
+    ch.items.forEach((it) => {
+      const usedQty = Math.max(0, Math.min(it.qtyIssued, Number(usedByProduct[it.productName] || 0)));
+      const returnedQty = it.qtyIssued - usedQty;
+      totalUsedValue += usedQty * (it.rate || 0);
+      setProducts((prev) => prev.map((p) => p.name === it.productName
+        ? { ...p, available: (p.available || 0) + returnedQty, used: (p.used || 0) + usedQty }
+        : p));
+    });
+    // Only charge/invoice the portion actually used — nothing used means nothing billed.
+    if (ch.caseId && totalUsedValue > 0) {
+      setCases((prev) => prev.map((c) => c.id === ch.caseId ? { ...c, totalAmount: Number(c.totalAmount || 0) + totalUsedValue } : c));
+    }
+  };
+  const deleteChallan = (id) => setChallans((prev) => prev.filter((c) => c.id !== id));
+
+  const generateInvoiceNumber = (caseId) => {
+    let assigned = null;
+    setCases((prev) => {
+      const existing = prev.find((c) => c.id === caseId);
+      if (existing && existing.invoiceNo) { assigned = existing.invoiceNo; return prev; }
+      const year = new Date().getFullYear();
+      const prefix = `INV/${year}/`;
+      const seq = prev.filter((c) => (c.invoiceNo || "").startsWith(prefix)).length + 1;
+      const invoiceNo = prefix + String(seq).padStart(3, "0");
+      assigned = invoiceNo;
+      return prev.map((c) => c.id === caseId ? { ...c, invoiceNo } : c);
+    });
+    return assigned;
   };
   const capturePhoto = async (caseId, stage, dataURL) => {
     await saveKey(photoKey(caseId, stage), dataURL);
@@ -580,6 +646,8 @@ export default function App() {
           dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess}
           dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess}
           saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
+          generateInvoiceNumber={generateInvoiceNumber}
+          challans={challans} createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding}
           ownerLogins={ownerLogins}
@@ -736,7 +804,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -801,7 +869,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.nav}>
-        {[["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["reports", "Reports", "reports"]].map(([key, label, icon]) => (
+        {[["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["reports", "Reports", "reports"]].map(([key, label, icon]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
             <Icon name={icon} size={16} />{label}
           </button>
@@ -816,7 +884,13 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         )}
         {tab === "cases" && (
           <CasesTab cases={cases} machines={machines} products={products} saveCase={saveCase} deleteCase={deleteCase}
-            addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem} />
+            addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
+            generateInvoiceNumber={generateInvoiceNumber} businessName={business.name} />
+        )}
+        {tab === "challans" && (
+          <ChallansTab challans={challans} products={products} cases={cases}
+            createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
+            businessName={business.name} />
         )}
         {tab === "quotations" && (
           <QuotationsTab quotations={quotations} products={products} saveQuotation={saveQuotation}
@@ -2250,6 +2324,225 @@ const PACK_NAME_CLEANUP = {
   "prevena 125 45ml canister 5/pk": "Prevena 125 45ml Canister",
   "prevena plus 150ml canister 5/pk": "Prevena Plus 150ml Canister",
 };
+
+// ================= DELIVERY CHALLANS =================
+function ChallansTab({ challans, products, cases, createChallan, settleChallan, deleteChallan, businessName = "Bhagirathi Agency" }) {
+  const [showForm, setShowForm] = useState(false);
+  const [patientName, setPatientName] = useState("");
+  const [caseId, setCaseId] = useState("");
+  const [dresserName, setDresserName] = useState("");
+  const [items, setItems] = useState([{ productName: "", qty: 1, rate: 0 }]);
+  const [openId, setOpenId] = useState(null);
+  const [settleQtys, setSettleQtys] = useState({});
+  const [viewingPdf, setViewingPdf] = useState(null);
+  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
+  const activeCases = cases.filter((c) => c.status === "active");
+
+  const setItem = (i, field, val) => setItems((prev) => prev.map((it, idx) => idx === i ? { ...it, [field]: val } : it));
+  const addRow = () => setItems((prev) => [...prev, { productName: "", qty: 1, rate: 0 }]);
+  const removeRow = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
+
+  const submit = () => {
+    if (!patientName.trim()) return;
+    const validItems = items.filter((it) => it.productName && Number(it.qty) > 0)
+      .map((it) => ({ productName: it.productName, qtyIssued: Number(it.qty), rate: Number(it.rate) || 0 }));
+    if (validItems.length === 0) return;
+    const linkedCase = cases.find((c) => c.id === caseId);
+    createChallan({ patientName: patientName.trim(), caseId: caseId || null, dresserName: dresserName.trim() || (linkedCase ? linkedCase.dresserName : ""), items: validItems });
+    setPatientName(""); setCaseId(""); setDresserName(""); setItems([{ productName: "", qty: 1, rate: 0 }]); setShowForm(false);
+  };
+
+  const openChallans = [...challans].filter((c) => c.status === "open").sort((a, b) => new Date(b.date) - new Date(a.date));
+  const settledChallans = [...challans].filter((c) => c.status === "settled").sort((a, b) => new Date(b.settledDate || b.date) - new Date(a.settledDate || a.date));
+
+  const doSettle = (ch) => {
+    const usedByProduct = {};
+    ch.items.forEach((it) => { usedByProduct[it.productName] = Number((settleQtys[ch.id] || {})[it.productName] || 0); });
+    settleChallan(ch.id, usedByProduct);
+    setOpenId(null);
+  };
+
+  if (viewingPdf) {
+    return <ChallanPdfView ch={viewingPdf} onBack={() => setViewingPdf(null)} businessName={businessName} />;
+  }
+
+  return (
+    <div>
+      <div style={styles.emptyState2}>
+        Issue products against a delivery challan. Later, settle it with how much was actually used — only the used portion gets billed, the rest returns to stock automatically. If nothing's used, nothing's charged.
+      </div>
+
+      {!showForm ? (
+        <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Delivery Challan</button>
+      ) : (
+        <div style={styles.formGrid}>
+          <Field label="Patient / Site Name"><input style={styles.input} value={patientName} onChange={(e) => setPatientName(e.target.value)} /></Field>
+          <Field label="Link to Case (optional)">
+            <select style={styles.input} value={caseId} onChange={(e) => setCaseId(e.target.value)}>
+              <option value="">— Not linked to a case —</option>
+              {activeCases.map((c) => <option key={c.id} value={c.id}>{c.patientName} ({fmtDate(c.applicationDate)})</option>)}
+            </select>
+          </Field>
+          <Field label="Dresser Carrying Goods"><input style={styles.input} value={dresserName} onChange={(e) => setDresserName(e.target.value)} /></Field>
+
+          <SectionTitle>Items Issued</SectionTitle>
+          {items.map((it, i) => (
+            <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <select style={{ ...styles.input, flex: 2, minWidth: 140 }} value={it.productName} onChange={(e) => setItem(i, "productName", e.target.value)}>
+                <option value="">Select product…</option>
+                {productsByCompany.map(([company, prods]) => (
+                  <optgroup key={company} label={company}>
+                    {prods.map((p) => <option key={p.id} value={p.name}>{p.name} ({p.available || 0} avail)</option>)}
+                  </optgroup>
+                ))}
+              </select>
+              <input type="number" placeholder="Qty" style={{ ...styles.input, width: 70 }} value={it.qty} onChange={(e) => setItem(i, "qty", e.target.value)} />
+              <input type="number" placeholder="Rate ₹" style={{ ...styles.input, width: 90 }} value={it.rate} onChange={(e) => setItem(i, "rate", e.target.value)} />
+              <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => removeRow(i)}>✕</button>
+            </div>
+          ))}
+          <button style={styles.secondaryBtn} onClick={addRow}>+ Add Item</button>
+          <div style={styles.formActions}>
+            <button style={styles.secondaryBtn} onClick={() => setShowForm(false)}>Cancel</button>
+            <button style={{ ...styles.primaryBtn, flex: 1 }} onClick={submit}>Issue Challan</button>
+          </div>
+        </div>
+      )}
+
+      <SectionTitle>Open Challans</SectionTitle>
+      {openChallans.length === 0 ? <EmptyState text="No open challans." /> : (
+        <div style={styles.list}>
+          {openChallans.map((ch) => {
+            const open = openId === ch.id;
+            return (
+              <div key={ch.id} style={styles.card}>
+                <div style={styles.cardTop} onClick={() => setOpenId(open ? null : ch.id)}>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.cardTitle}>{ch.patientName}</div>
+                    <div style={styles.cardMeta}>{ch.challanNo} · {fmtDate(ch.date)} · {ch.items.length} item{ch.items.length > 1 ? "s" : ""}</div>
+                  </div>
+                  <span style={{ ...styles.badge, color: "#D98D2B", background: "#FBF0DE" }}>Open</span>
+                </div>
+                {open && (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setViewingPdf(ch)}>View / Download Challan PDF</button>
+                    <div style={styles.mutedSmall}>Enter how much was actually used per item — the rest returns to stock automatically.</div>
+                    {ch.items.map((it) => (
+                      <div key={it.id} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+                        <span style={{ flex: 1, fontSize: 13 }}>{it.productName} <span style={styles.mutedSmall}>(issued {it.qtyIssued})</span></span>
+                        <input type="number" min="0" max={it.qtyIssued} placeholder="Used qty" style={{ ...styles.smallInput, width: 90 }}
+                          value={(settleQtys[ch.id] || {})[it.productName] ?? ""}
+                          onChange={(e) => setSettleQtys((prev) => ({ ...prev, [ch.id]: { ...(prev[ch.id] || {}), [it.productName]: e.target.value } }))} />
+                      </div>
+                    ))}
+                    <button style={{ ...styles.smallBtn, width: "100%", marginTop: 12 }} onClick={() => doSettle(ch)}>Settle Challan</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <SectionTitle>Settled Challans</SectionTitle>
+      {settledChallans.length === 0 ? <EmptyState text="No settled challans yet." /> : (
+        <div style={styles.list}>
+          {settledChallans.map((ch) => {
+            const totalUsed = ch.items.reduce((s, it) => s + it.qtyUsed * (it.rate || 0), 0);
+            return (
+              <div key={ch.id} style={styles.card}>
+                <div style={{ padding: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div style={styles.cardTitle}>{ch.patientName}</div>
+                    <span style={{ fontWeight: 700, color: totalUsed > 0 ? "#D9720A" : "#8A9A96" }}>{totalUsed > 0 ? fmtMoney(totalUsed) : "No charge"}</span>
+                  </div>
+                  <div style={styles.cardMeta}>{ch.challanNo} · settled {fmtDate(ch.settledDate)}</div>
+                  {ch.items.map((it) => (
+                    <div key={it.id} style={{ ...styles.mutedSmall, marginTop: 4 }}>
+                      {it.productName}: {it.qtyUsed} used, {it.qtyReturned} returned
+                    </div>
+                  ))}
+                  <button style={{ ...styles.linkBtn, marginTop: 8 }} onClick={() => setViewingPdf(ch)}>View / Download Challan PDF</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChallanPdfView({ ch, onBack, businessName }) {
+  const sheetRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const totalIssued = ch.items.reduce((s, it) => s + it.qtyIssued * (it.rate || 0), 0);
+
+  const downloadPdf = async () => {
+    setBusy(true);
+    try {
+      const blob = await quotePdfBlob(sheetRef.current);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${ch.challanNo.replace(/\//g, "-")}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div>
+      <div className="no-print" style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <button style={styles.linkBtn} onClick={onBack}>← Back</button>
+        <div style={{ flex: 1 }} />
+        <button style={{ ...styles.smallBtn, flex: 1 }} disabled={busy} onClick={downloadPdf}>{busy ? "Preparing…" : "Download PDF"}</button>
+      </div>
+      <div style={styles.quoteSheet} ref={sheetRef}>
+        <div style={styles.quoteHeader}>
+          <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 46, height: 46, objectFit: "contain" }} />
+          <div>
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17 }}>{businessName}</div>
+            <div style={{ fontSize: 11, color: "#5B6864" }}>Delivery Challan</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0", fontSize: 13 }}>
+          <div><strong>Challan No.</strong><br />{ch.challanNo}</div>
+          <div><strong>Date</strong><br />{fmtDate(ch.date)}</div>
+          <div><strong>Status</strong><br />{ch.status === "settled" ? "Settled" : "Open"}</div>
+        </div>
+        <div style={{ marginBottom: 14, fontSize: 13 }}>
+          <strong>To:</strong> {ch.patientName}<br />
+          {ch.dresserName && <>Carried by: {ch.dresserName}</>}
+        </div>
+        <table style={styles.quoteTable}>
+          <thead><tr>
+            <th style={styles.quoteTh}>#</th><th style={styles.quoteTh}>Item</th><th style={styles.quoteTh}>Qty Issued</th>
+            {ch.status === "settled" && <><th style={styles.quoteTh}>Used</th><th style={styles.quoteTh}>Returned</th></>}
+            <th style={styles.quoteTh}>Rate</th><th style={styles.quoteTh}>Value</th>
+          </tr></thead>
+          <tbody>
+            {ch.items.map((it, i) => (
+              <tr key={it.id}>
+                <td style={styles.quoteTd}>{i + 1}</td>
+                <td style={styles.quoteTd}>{it.productName}</td>
+                <td style={styles.quoteTd}>{it.qtyIssued}</td>
+                {ch.status === "settled" && <><td style={styles.quoteTd}>{it.qtyUsed}</td><td style={styles.quoteTd}>{it.qtyReturned}</td></>}
+                <td style={styles.quoteTd}>{fmtMoney(it.rate)}</td>
+                <td style={styles.quoteTd}>{fmtMoney(it.qtyIssued * (it.rate || 0))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{ textAlign: "right", marginTop: 10, fontWeight: 700, fontSize: 13 }}>Total value of goods issued: {fmtMoney(totalIssued)}</div>
+        {ch.status === "settled" && (
+          <div style={{ textAlign: "right", marginTop: 4, fontWeight: 700, fontSize: 13, color: "#D9720A" }}>
+            Billable (used only): {fmtMoney(ch.items.reduce((s, it) => s + it.qtyUsed * (it.rate || 0), 0))}
+          </div>
+        )}
+        <div style={{ marginTop: 40, fontSize: 12 }}>For {businessName}<br /><br /><br />Authorised Signatory</div>
+      </div>
+    </div>
+  );
+}
 
 function StockTab({ products, setProducts, receiveStock, actorName = "Owner" }) {
   const [name, setName] = useState("");
