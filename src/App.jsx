@@ -515,7 +515,25 @@ export default function App() {
 
   const saveCase = (data, editingId) => {
     if (editingId) {
+      const existing = cases.find((c) => c.id === editingId);
+      const oldLines = existing ? getCaseProductLines(existing) : [];
+      const newLines = getCaseProductLines(data);
+      const names = new Set([...oldLines.map((l) => l.name), ...newLines.map((l) => l.name)]);
+      const deltas = {};
+      names.forEach((n) => {
+        const oldQty = (oldLines.find((l) => l.name === n) || {}).qty || 0;
+        const newQty = (newLines.find((l) => l.name === n) || {}).qty || 0;
+        if (newQty !== oldQty) deltas[n] = newQty - oldQty;
+      });
       setCases((prev) => prev.map((c) => (c.id === editingId ? { ...c, ...data } : c)));
+      if (Object.keys(deltas).length) {
+        setProducts((prev) => prev.map((p) => {
+          const delta = deltas[p.name];
+          if (!delta) return p;
+          // Positive delta = more used than before, subtract extra from stock. Negative = give stock back.
+          return { ...p, available: Math.max(0, (p.available || 0) - delta), used: Math.max(0, (p.used || 0) + delta) };
+        }));
+      }
       return;
     }
     const initialEntry = { id: uid(), date: data.applicationDate, dresserName: data.dresserName, protocolDays: data.protocolDays, note: "Initial application" };
