@@ -1528,22 +1528,22 @@ function ProductsUsedPicker({ products, selected, onChange }) {
           {prods.map((p) => {
             const line = current.find((it) => it.name === p.name);
             const checked = !!line;
-            const qty = line ? line.qty : 1;
+            const qty = line ? line.qty : 0;
             return (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, flex: 1 }}>
                   <input type="checkbox" checked={checked} onChange={(e) => {
                     const next = e.target.checked
-                      ? [...current.filter((it) => it.name !== p.name), { name: p.name, qty: 1 }]
+                      ? [...current.filter((it) => it.name !== p.name), { name: p.name, qty: 0 }]
                       : current.filter((it) => it.name !== p.name);
                     onChange(next);
                   }} />
                   {p.name} <span style={{ color: "#8A9A96", fontSize: 11 }}>({p.available || 0} avail)</span>
                 </label>
                 {checked && (
-                  <input type="number" min="1" max={p.available || undefined} placeholder="Qty" style={{ ...styles.smallInput, width: 55 }} value={qty}
+                  <input type="number" min="0" max={p.available || undefined} placeholder="Qty" style={{ ...styles.smallInput, width: 55 }} value={qty}
                     onChange={(e) => {
-                      const q = Math.max(1, Number(e.target.value) || 1);
+                      const q = Math.max(0, Number(e.target.value) || 0);
                       onChange(current.map((it) => it.name === p.name ? { name: p.name, qty: q } : it));
                     }} />
                 )}
@@ -1617,7 +1617,7 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
           <div style={styles.mutedSmall}>Products used at this visit (select what was actually used, single or multiple)</div>
           <ProductsUsedPicker products={products} selected={changeProducts} onChange={setChangeProducts} />
           <button style={{ ...styles.smallBtn, width: "100%", marginTop: 8 }} onClick={() => {
-            onAddDressingChange({ date: todayISO(), dresserName, protocolDays, note, products: changeProducts });
+            onAddDressingChange({ date: todayISO(), dresserName, protocolDays, note, products: changeProducts.filter((p) => Number(p.qty) > 0) });
             setNote(""); setChangeProducts([]); setOpen(false);
           }}>Log Today's Change</button>
 
@@ -1867,7 +1867,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
                 <ProductsUsedPicker products={products} selected={changeProducts} onChange={setChangeProducts} />
                 <button style={{ ...styles.smallBtn, width: "100%", marginTop: 8 }} onClick={() => {
                   if (!changeDresser.trim()) return;
-                  onAddDressingChange({ date: todayISO(), dresserName: changeDresser.trim(), protocolDays: changeProtocol, note: changeNote, products: changeProducts });
+                  onAddDressingChange({ date: todayISO(), dresserName: changeDresser.trim(), protocolDays: changeProtocol, note: changeNote, products: changeProducts.filter((p) => Number(p.qty) > 0) });
                   setChangeNote(""); setChangeProducts([]);
                 }}>Log Change</button>
               </div>
@@ -1953,7 +1953,8 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
 
   const submit = () => {
     if (!form.patientName.trim() || !form.doctorName.trim()) return;
-    onSave({ ...form, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: form.machineSerial ? (Number(form.protocolDays) || 5) : 0 });
+    const cleanedProducts = (form.products || []).filter((it) => (typeof it === "string" ? true : Number(it.qty) > 0));
+    onSave({ ...form, products: cleanedProducts, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: form.machineSerial ? (Number(form.protocolDays) || 5) : 0 });
   };
 
   return (
@@ -1976,7 +1977,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
                   const current = form.products || [];
                   const line = current.find((it) => (typeof it === "string" ? it === p.name : it.name === p.name));
                   const checked = !!line;
-                  const qty = line ? (typeof line === "string" ? 1 : Number(line.qty) || 1) : 1;
+                  const qty = line ? (typeof line === "string" ? 1 : Number(line.qty) || 0) : 0;
                   return (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
                       <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, flex: 1 }}>
@@ -1985,7 +1986,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
                           checked={checked}
                           onChange={(e) => {
                             const next = e.target.checked
-                              ? [...current.filter((it) => (typeof it === "string" ? it !== p.name : it.name !== p.name)), { name: p.name, qty: 1 }]
+                              ? [...current.filter((it) => (typeof it === "string" ? it !== p.name : it.name !== p.name)), { name: p.name, qty: 0 }]
                               : current.filter((it) => (typeof it === "string" ? it !== p.name : it.name !== p.name));
                             set("products", next);
                           }}
@@ -1994,9 +1995,9 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
                       </label>
                       {checked && (
                         <input
-                          type="number" min="1" max={p.available || undefined} style={{ ...styles.smallInput, width: 55 }} value={qty} placeholder="Qty"
+                          type="number" min="0" max={p.available || undefined} style={{ ...styles.smallInput, width: 55 }} value={qty} placeholder="Qty"
                           onChange={(e) => {
-                            const q = Math.max(1, Number(e.target.value) || 1);
+                            const q = Math.max(0, Number(e.target.value) || 0);
                             const next = current.map((it) => (typeof it === "string" ? it === p.name : it.name === p.name) ? { name: p.name, qty: q } : it);
                             set("products", next);
                           }}
