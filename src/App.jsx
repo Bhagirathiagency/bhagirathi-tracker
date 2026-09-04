@@ -3699,6 +3699,34 @@ function DoctorCommissionCard({ d, businessName = "Bhagirathi Agency" }) {
   );
 }
 
+function OutstandingHospitalRow({ h, businessName, addPayment, readOnly }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={styles.card}>
+      <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
+        <div style={{ flex: 1 }}>
+          <div style={styles.cardTitle}>{h.hospital}</div>
+          <div style={styles.cardMeta}>{h.patients} patient{h.patients > 1 ? "s" : ""}</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          <span style={{ fontWeight: 800, fontSize: 16, color: "#E1483C" }}>{fmtMoney(h.balance)}</span>
+          <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ patients"}</span>
+        </div>
+      </div>
+      {open && (
+        <div style={{ padding: "0 14px 14px" }}>
+          <div style={{ ...styles.mutedSmall, marginBottom: 8 }}>Tap a patient below to record a payment against their bill.</div>
+          <div style={styles.list}>
+            {h.cases.map((c) => (
+              <OutstandingPatientRow key={c.id} c={c} businessName={businessName} addPayment={addPayment} readOnly={readOnly} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OutstandingPatientRow({ c, businessName, addPayment, readOnly }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
@@ -3964,9 +3992,10 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       .filter((c) => c.billTo === "Hospital")
       .forEach((c) => {
         const hospital = (c.hospitalName || "Unnamed Hospital").trim() || "Unnamed Hospital";
-        if (!tally[hospital]) tally[hospital] = { hospital, balance: 0, patients: 0 };
+        if (!tally[hospital]) tally[hospital] = { hospital, balance: 0, patients: 0, cases: [] };
         tally[hospital].balance += c.balance;
         tally[hospital].patients += 1;
+        tally[hospital].cases.push(c);
       });
     return Object.values(tally).sort((a, b) => b.balance - a.balance);
   }, [outstandingByPatient]);
@@ -4477,13 +4506,9 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
       <CollapsibleSection title="Outstanding by Hospital" defaultOpen={outstandingByHospital.length > 0}>
         {outstandingByHospital.length === 0 ? <EmptyState text="No hospital-billed outstanding balances." /> : (
-          <div style={styles.card}>
+          <div style={styles.list}>
             {outstandingByHospital.map((h) => (
-              <div key={h.hospital} style={styles.dresserLine}>
-                <span style={{ flex: 1, fontWeight: 600 }}>{h.hospital}</span>
-                <span style={styles.mutedSmall}>{h.patients} patient{h.patients > 1 ? "s" : ""}</span>
-                <span style={{ ...styles.mutedSmall, color: "#E1483C", fontWeight: 600 }}>{fmtMoney(h.balance)}</span>
-              </div>
+              <OutstandingHospitalRow key={h.hospital} h={h} businessName={businessName} addPayment={addPayment} readOnly={readOnly} />
             ))}
           </div>
         )}
