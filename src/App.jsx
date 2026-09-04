@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import * as XLSX from "xlsx";
 
 function playNotifyChime() {
@@ -76,6 +76,10 @@ const addDays = (dateStr, days) => {
   return d.toISOString().slice(0, 10);
 };
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+function firstDayOfMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
 const nowTimeHM = () => new Date().toTimeString().slice(0, 5);
 const fmtTime = (t) => {
   if (!t) return "";
@@ -1297,6 +1301,18 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
     .filter((c) => c.due <= addDays(todayISO(), 1))
     .sort((a, b) => b.overdue - a.overdue), [myCasesActive, name]);
 
+  const monthStart = firstDayOfMonth();
+  const isMine = (n) => (n || "").trim().toLowerCase() === name.trim().toLowerCase();
+  const monthlyDoctorVisits = useMemo(() => (doctorCalls || []).filter((d) => isMine(d.dresserName) && d.date >= monthStart).length, [doctorCalls, name, monthStart]);
+  const monthlyCasesDone = useMemo(() => cases.filter((c) => isMine(c.dresserName) && c.applicationDate >= monthStart).length, [cases, name, monthStart]);
+  const monthlyMaterialDelivered = useMemo(() => (challans || []).filter((ch) => isMine(ch.dresserName) && ch.date >= monthStart).length, [challans, name, monthStart]);
+  const monthlyPieData = [
+    { name: "Doctor Visits", value: monthlyDoctorVisits, color: "#D9720A" },
+    { name: "Cases Done", value: monthlyCasesDone, color: "#128577" },
+    { name: "Material Delivered", value: monthlyMaterialDelivered, color: "#3B5BA5" },
+  ];
+  const monthlyPieTotal = monthlyDoctorVisits + monthlyCasesDone + monthlyMaterialDelivered;
+
   useEffect(() => {
     const interval = setInterval(() => { updateDresserLocation(name); }, 5 * 60 * 1000);
     return () => clearInterval(interval);
@@ -1400,6 +1416,26 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             </div>
           </CollapsibleSection>
         )}
+
+        <CollapsibleSection title="This Month's Activity">
+          {monthlyPieTotal === 0 ? <EmptyState text="No activity logged yet this month." /> : (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={monthlyPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
+                    {monthlyPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ display: "flex", justifyContent: "space-around", marginTop: 8, fontSize: 12, color: "#5B6864" }}>
+                <span>Since {fmtDate(monthStart)}</span>
+                <span style={{ fontWeight: 700 }}>{monthlyPieTotal} total activities</span>
+              </div>
+            </>
+          )}
+        </CollapsibleSection>
 
         <CollapsibleSection title="Cases on Therapy" defaultOpen>
           {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
