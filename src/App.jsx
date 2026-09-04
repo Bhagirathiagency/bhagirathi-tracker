@@ -372,6 +372,7 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [challans, setChallans] = useState([]);
   const [doctorsList, setDoctorsList] = useState([]);
+  const [discussionTopics, setDiscussionTopics] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [dresserBusinessAccess, setDresserBusinessAccessState] = useState({});
   const [businessAccessLoaded, setBusinessAccessLoaded] = useState(false);
@@ -421,7 +422,7 @@ export default function App() {
   const loadBusinessData = async (silent) => {
     if (silent) setRefreshing(true); else setLoaded(false);
     try {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals, docsList] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals, docsList, topics] = await Promise.all([
         loadKey(bkey(businessId, "wca-cases"), []),
         loadKey(bkey(businessId, "wca-machines"), []),
         loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
@@ -437,6 +438,7 @@ export default function App() {
         loadKey(bkey(businessId, "wca-accountant-pin"), null),
         loadKey(bkey(businessId, "wca-challans"), []),
         loadKey(bkey(businessId, "wca-doctors"), []),
+        loadKey(bkey(businessId, "wca-discussion-topics"), null),
       ]);
       setCases(c);
       setMachines(m);
@@ -452,6 +454,7 @@ export default function App() {
       setExpenses(Array.isArray(exps) ? exps : []);
       setChallans(Array.isArray(chals) ? chals : []);
       setDoctorsList(Array.isArray(docsList) ? docsList : []);
+      setDiscussionTopics(Array.isArray(topics) ? topics : ["VAC Therapy", "Oxygen Therapy", "Matriderm", "Wound Dressing", "General Consultation"]);
       {
         const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
         if (businessId === "bhagirathi") {
@@ -481,6 +484,7 @@ export default function App() {
 
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-challans"), challans); }, [challans, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-doctors"), doctorsList); }, [doctorsList, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-discussion-topics"), discussionTopics); }, [discussionTopics, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-cases"), cases); }, [cases, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-machines"), machines); }, [machines, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-products"), products); }, [products, loaded, businessId]);
@@ -653,6 +657,12 @@ export default function App() {
   const addDoctorMaster = (entry) => setDoctorsList((prev) => [...prev, { id: uid(), ...entry }]);
   const updateDoctorMaster = (id, patch) => setDoctorsList((prev) => prev.map((d) => d.id === id ? { ...d, ...patch } : d));
   const removeDoctorMaster = (id) => setDoctorsList((prev) => prev.filter((d) => d.id !== id));
+  const addDiscussionTopic = (topic) => {
+    const t = topic.trim();
+    if (!t) return;
+    setDiscussionTopics((prev) => prev.some((x) => x.toLowerCase() === t.toLowerCase()) ? prev : [...prev, t]);
+  };
+  const removeDiscussionTopic = (topic) => setDiscussionTopics((prev) => prev.filter((t) => t !== topic));
 
   const generateInvoiceNumber = (caseId) => {
     let assigned = null;
@@ -807,6 +817,7 @@ export default function App() {
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
           doctorsList={doctorsList}
+          discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           canManageStock={!!dresserStockAccess[role.name]}
           challans={challans} createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
@@ -1286,7 +1297,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const [savedConfirm, setSavedConfirm] = useState(false);
   useEffect(() => {
@@ -1480,7 +1491,8 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         </CollapsibleSection>
 
         <CollapsibleSection title="Doctor Calls">
-          <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} doctorsList={doctorsList} />
+          <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} doctorsList={doctorsList}
+            discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic} />
         </CollapsibleSection>
 
         {canManageStock && (
@@ -1500,14 +1512,14 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
   );
 }
 
-function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList }) {
+function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList, discussionTopics, addDiscussionTopic, removeDiscussionTopic }) {
   const [doctorName, setDoctorName] = useState("");
   const [doctorMobile, setDoctorMobile] = useState("");
   const [speciality, setSpeciality] = useState("");
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [newTopic, setNewTopic] = useState("");
   const [date, setDate] = useState(todayISO());
   const [notes, setNotes] = useState("");
-  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
 
   const myCalls = useMemo(
     () => doctorCalls.filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
@@ -1517,6 +1529,13 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList
 
   const toggleProduct = (pName) => {
     setSelectedProducts((prev) => prev.includes(pName) ? prev.filter((n) => n !== pName) : [...prev, pName]);
+  };
+  const addCustomTopic = () => {
+    const t = newTopic.trim();
+    if (!t) return;
+    addDiscussionTopic(t);
+    setSelectedProducts((prev) => prev.includes(t) ? prev : [...prev, t]);
+    setNewTopic("");
   };
 
   const submit = () => {
@@ -1544,19 +1563,24 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList
         </Field>
         <Field label="Doctor Mobile Number"><input type="tel" style={styles.input} value={doctorMobile} onChange={(e) => setDoctorMobile(e.target.value)} placeholder="10-digit number" /></Field>
         <Field label="Speciality"><input style={styles.input} value={speciality} onChange={(e) => setSpeciality(e.target.value)} placeholder="e.g. General Surgeon, Orthopedician" /></Field>
-        <Field label="Product(s) Discussed">
+        <Field label="Topic(s) Discussed">
           <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 220, overflowY: "auto" }}>
-            {products.length === 0 ? <span style={styles.mutedSmall}>No products in stock yet.</span> : productsByCompany.map(([company, prods]) => (
-              <div key={company}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9A96", margin: "6px 0 2px" }}>{company}</div>
-                {prods.map((p) => (
-                  <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, padding: "3px 0" }}>
-                    <input type="checkbox" checked={selectedProducts.includes(p.name)} onChange={() => toggleProduct(p.name)} />
-                    {p.name}
-                  </label>
-                ))}
+            {(discussionTopics || []).length === 0 ? <span style={styles.mutedSmall}>No topics yet — add one below.</span> : (discussionTopics || []).map((topic) => (
+              <div key={topic} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, flex: 1 }}>
+                  <input type="checkbox" checked={selectedProducts.includes(topic)} onChange={() => toggleProduct(topic)} />
+                  {topic}
+                </label>
+                {removeDiscussionTopic && (
+                  <button style={{ ...styles.linkBtn, color: "#E1483C", fontSize: 11 }} onClick={() => removeDiscussionTopic(topic)}>✕</button>
+                )}
               </div>
             ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+            <input type="text" placeholder="Add a topic (e.g. Hyperbaric Oxygen)" style={{ ...styles.smallInput, flex: 1 }} value={newTopic}
+              onChange={(e) => setNewTopic(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addCustomTopic(); }} />
+            <button style={styles.smallBtn} onClick={addCustomTopic}>Add</button>
           </div>
         </Field>
         <Field label="Date"><input type="date" style={styles.input} value={date} onChange={(e) => setDate(e.target.value)} /></Field>
