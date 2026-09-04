@@ -946,6 +946,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
   const activeCount = cases.filter((c) => c.status === "active").length;
   const machinesInUseCount = machines.filter((m) => machineInUse(m.serial)).length;
   const overdueCount = cases.filter((c) => overdueDays(c) > 0).length;
+  const dueSoonCount = cases.filter((c) => c.status === "active" && nextDueDate(c) <= addDays(todayISO(), 1)).length;
 
   const dresserStats = useMemo(() => {
     const tally = {};
@@ -1012,7 +1013,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       <main style={styles.main}>
         {tab === "dashboard" && (
           <Dashboard cases={cases} machines={machines} outstandingTotal={outstandingTotal} activeCount={activeCount}
-            machinesInUseCount={machinesInUseCount} overdueCount={overdueCount} dresserStats={dresserStats} lowStock={lowStock}
+            machinesInUseCount={machinesInUseCount} overdueCount={overdueCount} dueSoonCount={dueSoonCount} dresserStats={dresserStats} lowStock={lowStock}
             products={products} setTab={setTab} />
         )}
         {tab === "cases" && (
@@ -1708,7 +1709,7 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
 }
 
 // ---------------- Dashboard ----------------
-function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInUseCount, overdueCount, dresserStats, lowStock, products, setTab }) {
+function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInUseCount, overdueCount, dueSoonCount, dresserStats, lowStock, products, setTab }) {
   const recentCases = [...cases].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)).slice(0, 5);
 
   const todaysVisits = useMemo(() => {
@@ -1724,7 +1725,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
     <div>
       <div style={styles.cardGrid}>
         <StatCard label="Active Cases" value={activeCount} accent="#D9720A" icon="cases" onClick={() => setTab("cases")} />
-        <StatCard label="Change Due / Overdue" value={overdueCount} accent="#E1483C" icon="reports" onClick={() => setTab("cases")} />
+        <StatCard label="Change Due / Overdue" value={dueSoonCount} accent="#E1483C" icon="reports" onClick={() => setTab("cases")} />
         <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#D98D2B" icon="quotes" onClick={() => setTab("cases")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
       </div>
