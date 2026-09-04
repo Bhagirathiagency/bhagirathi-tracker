@@ -1552,38 +1552,49 @@ function ProductsUsedPicker({ products, selected, onChange }) {
     const visible = products.filter((p) => (p.available || 0) > 0 || selectedNames.has(p.name));
     return groupProductsByCompany(visible);
   }, [products, current]);
+  const [company, setCompany] = useState("");
+  useEffect(() => {
+    if (!company && productsByCompany.length > 0) setCompany(productsByCompany[0][0]);
+  }, [productsByCompany]); // eslint-disable-line
+  const selectedCount = current.filter((it) => Number(it.qty) > 0).length;
+  const activeGroup = productsByCompany.find(([c]) => c === company);
+  const prods = activeGroup ? activeGroup[1] : [];
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 200, overflowY: "auto", marginTop: 8 }}>
-      {productsByCompany.map(([company, prods]) => (
-        <div key={company}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9A96", margin: "6px 0 2px" }}>{company}</div>
-          {prods.map((p) => {
-            const line = current.find((it) => it.name === p.name);
-            const checked = !!line;
-            const qty = line ? line.qty : 0;
-            return (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, flex: 1 }}>
-                  <input type="checkbox" checked={checked} onChange={(e) => {
-                    const next = e.target.checked
-                      ? [...current.filter((it) => it.name !== p.name), { name: p.name, qty: 0 }]
-                      : current.filter((it) => it.name !== p.name);
-                    onChange(next);
+    <div style={{ border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, marginTop: 8 }}>
+      <select style={{ ...styles.smallInput, width: "100%", marginBottom: 6 }} value={company} onChange={(e) => setCompany(e.target.value)}>
+        {productsByCompany.map(([c]) => <option key={c} value={c}>{c}</option>)}
+      </select>
+      {selectedCount > 0 && (
+        <div style={{ ...styles.mutedSmall, marginBottom: 6 }}>{selectedCount} item{selectedCount > 1 ? "s" : ""} selected (across companies)</div>
+      )}
+      <div style={{ maxHeight: 180, overflowY: "auto" }}>
+        {prods.map((p) => {
+          const line = current.find((it) => it.name === p.name);
+          const checked = !!line;
+          const qty = line ? line.qty : 0;
+          return (
+            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, flex: 1 }}>
+                <input type="checkbox" checked={checked} onChange={(e) => {
+                  const next = e.target.checked
+                    ? [...current.filter((it) => it.name !== p.name), { name: p.name, qty: 0 }]
+                    : current.filter((it) => it.name !== p.name);
+                  onChange(next);
+                }} />
+                {p.name} <span style={{ color: "#8A9A96", fontSize: 11 }}>({p.available || 0} avail)</span>
+              </label>
+              {checked && (
+                <input type="number" min="0" max={p.available || undefined} placeholder="Qty" style={{ ...styles.smallInput, width: 55 }} value={qty}
+                  onChange={(e) => {
+                    const q = Math.max(0, Number(e.target.value) || 0);
+                    onChange(current.map((it) => it.name === p.name ? { name: p.name, qty: q } : it));
                   }} />
-                  {p.name} <span style={{ color: "#8A9A96", fontSize: 11 }}>({p.available || 0} avail)</span>
-                </label>
-                {checked && (
-                  <input type="number" min="0" max={p.available || undefined} placeholder="Qty" style={{ ...styles.smallInput, width: 55 }} value={qty}
-                    onChange={(e) => {
-                      const q = Math.max(0, Number(e.target.value) || 0);
-                      onChange(current.map((it) => it.name === p.name ? { name: p.name, qty: q } : it));
-                    }} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ))}
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1962,6 +1973,10 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
     billTo: "Patient", hospitalName: "", totalAmount: "", amountReceived: "", machineRentalAmount: "", notes: "",
   });
   const [customProtocol, setCustomProtocol] = useState(!PROTOCOLS.includes(Number(form.protocolDays)));
+  const [pickerCompany, setPickerCompany] = useState("");
+  useEffect(() => {
+    if (!pickerCompany && productsByCompany.length > 0) setPickerCompany(productsByCompany[0][0]);
+  }, [productsByCompany]); // eslint-disable-line
   const [amountTouched, setAmountTouched] = useState(!!initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -2001,45 +2016,55 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         </Field>
         <Field label="Dresser Name (applied by)"><input style={styles.input} value={form.dresserName} onChange={(e) => set("dresserName", e.target.value)} /></Field>
                 <Field label="Product(s)">
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 260, overflowY: "auto" }}>
-            {productsByCompany.map(([company, prods]) => (
-              <div key={company}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9A96", margin: "6px 0 2px" }}>{company}</div>
-                {prods.map((p) => {
-                  const current = form.products || [];
-                  const line = current.find((it) => (typeof it === "string" ? it === p.name : it.name === p.name));
-                  const checked = !!line;
-                  const qty = line ? (typeof line === "string" ? 1 : Number(line.qty) || 0) : 0;
-                  return (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, flex: 1 }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            const next = e.target.checked
-                              ? [...current.filter((it) => (typeof it === "string" ? it !== p.name : it.name !== p.name)), { name: p.name, qty: 0 }]
-                              : current.filter((it) => (typeof it === "string" ? it !== p.name : it.name !== p.name));
-                            set("products", next);
-                          }}
-                        />
-                        {p.name} <span style={{ color: "#8A9A96", fontSize: 12 }}>({p.available || 0} available)</span>
-                      </label>
-                      {checked && (
-                        <input
-                          type="number" min="0" max={p.available || undefined} style={{ ...styles.smallInput, width: 55 }} value={qty} placeholder="Qty"
-                          onChange={(e) => {
-                            const q = Math.max(0, Number(e.target.value) || 0);
-                            const next = current.map((it) => (typeof it === "string" ? it === p.name : it.name === p.name) ? { name: p.name, qty: q } : it);
-                            set("products", next);
-                          }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+          <div style={{ border: "1px solid #DCE4DF", borderRadius: 10, padding: 8 }}>
+            <select style={{ ...styles.input, marginBottom: 6 }} value={pickerCompany} onChange={(e) => setPickerCompany(e.target.value)}>
+              {productsByCompany.map(([company]) => <option key={company} value={company}>{company}</option>)}
+            </select>
+            {(() => {
+              const current = form.products || [];
+              const selectedCount = current.filter((it) => (typeof it === "string" ? true : Number(it.qty) > 0)).length;
+              const activeGroup = productsByCompany.find(([c]) => c === pickerCompany);
+              const prods = activeGroup ? activeGroup[1] : [];
+              return (
+                <>
+                  {selectedCount > 0 && <div style={{ ...styles.mutedSmall, marginBottom: 6 }}>{selectedCount} item{selectedCount > 1 ? "s" : ""} selected (across companies)</div>}
+                  <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                    {prods.map((p) => {
+                      const line = current.find((it) => (typeof it === "string" ? it === p.name : it.name === p.name));
+                      const checked = !!line;
+                      const qty = line ? (typeof line === "string" ? 1 : Number(line.qty) || 0) : 0;
+                      return (
+                        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, flex: 1 }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const next = e.target.checked
+                                  ? [...current.filter((it) => (typeof it === "string" ? it !== p.name : it.name !== p.name)), { name: p.name, qty: 0 }]
+                                  : current.filter((it) => (typeof it === "string" ? it !== p.name : it.name !== p.name));
+                                set("products", next);
+                              }}
+                            />
+                            {p.name} <span style={{ color: "#8A9A96", fontSize: 12 }}>({p.available || 0} available)</span>
+                          </label>
+                          {checked && (
+                            <input
+                              type="number" min="0" max={p.available || undefined} style={{ ...styles.smallInput, width: 55 }} value={qty} placeholder="Qty"
+                              onChange={(e) => {
+                                const q = Math.max(0, Number(e.target.value) || 0);
+                                const next = current.map((it) => (typeof it === "string" ? it === p.name : it.name === p.name) ? { name: p.name, qty: q } : it);
+                                set("products", next);
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </Field>
         <Field label="Machine Serial No.">
