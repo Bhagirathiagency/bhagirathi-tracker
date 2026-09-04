@@ -6,6 +6,25 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
+function playNotifyChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    [[880, 0], [660, 0.12]].forEach(([freq, delay]) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + delay);
+      gain.gain.exponentialRampToValueAtTime(0.2, now + delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.28);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + delay);
+      osc.stop(now + delay + 0.3);
+    });
+  } catch (e) { /* audio not available — silently skip */ }
+}
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -77,6 +96,7 @@ const STATUS = {
   active: { label: "VAC Therapy Applied", color: "#D9720A", bg: "#FBEAD3" },
   stopped: { label: "VAC Therapy Stop", color: "#8A5A2B", bg: "#F5EBDC" },
   reapplied: { label: "VAC Therapy Continue", color: "#3B5BA5", bg: "#E7ECF7" },
+  na: { label: "N/A (No VAC Therapy)", color: "#5B6864", bg: "#EEF0EE" },
 };
 const PROTOCOLS = [5, 7];
 const PAY_MODES = ["Cash", "Online", "Credit"];
@@ -156,15 +176,20 @@ function groupProductsByCompany(products) {
   });
   return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
 }
+function getCaseProductLines(c) {
+  if (Array.isArray(c.products) && c.products.length) {
+    return c.products.map((p) => typeof p === "string" ? { name: p, qty: 1 } : { name: p.name, qty: Number(p.qty) || 1 });
+  }
+  return c.product ? [{ name: c.product, qty: 1 }] : [];
+}
 function getCaseProducts(c) {
-  if (Array.isArray(c.products) && c.products.length) return c.products;
-  return c.product ? [c.product] : [];
+  return getCaseProductLines(c).map((l) => l.name);
 }
 function estimateProfit(c, products) {
-  const names = getCaseProducts(c);
-  const cost = names.reduce((sum, name) => {
-    const prod = products.find((p) => p.name === name);
-    return sum + (prod ? Number(prod.costPrice || 0) : 0);
+  const lines = getCaseProductLines(c);
+  const cost = lines.reduce((sum, line) => {
+    const prod = products.find((p) => p.name === line.name);
+    return sum + (prod ? Number(prod.costPrice || 0) * line.qty : 0);
   }, 0);
 
     return Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - cost - Number(c.doctorCommission || 0);
@@ -318,6 +343,7 @@ export default function App() {
   };
 
   const [role, setRole] = useState(null);
+  const [activityToast, setActivityToast] = useState(null);
   const [pin, setPin] = useState(null);
   const [accountantPin, setAccountantPinState] = useState(null);
   const [cases, setCases] = useState([]);
@@ -434,6 +460,38 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-owner-logins"), ownerLogins); }, [ownerLogins, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-stock-access"), dresserStockAccess); }, [dresserStockAccess, loaded, businessId]);
 
+  // Owner-only: chime + toast when a dresser logs new activity from another device/session, via Supabase Realtime.
+  // Requires Realtime replication enabled on the app_kv table in Supabase (Database → Replication).
+  useEffect(() => {
+    if (!loaded || !role || role.type !== "owner") return;
+    const relevantKeys = {
+      [bkey(businessId, "wca-cases")]: { setter: setCases, label: "case activity" },
+      [bkey(businessId, "wca-doctor-calls")]: { setter: setDoctorCalls, label: "a doctor call" },
+      [bkey(businessId, "wca-quotations")]: { setter: setQuotations, label: "a quotation" },
+      [bkey(businessId, "wca-challans")]: { setter: setChallans, label: "a delivery challan" },
+    };
+    const channel = supabase
+      .channel(`owner-activity-${businessId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "app_kv" }, (payload) => {
+        const key = payload.new && payload.new.key;
+        const entry = relevantKeys[key];
+        if (!entry) return;
+        const newValue = payload.new.value;
+        if (!Array.isArray(newValue)) return;
+        entry.setter((prev) => {
+          if (Array.isArray(prev) && newValue.length > prev.length) {
+            playNotifyChime();
+            setActivityToast(`New ${entry.label} logged`);
+            setTimeout(() => setActivityToast(null), 5000);
+            return newValue;
+          }
+          return prev;
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loaded, role, businessId]);
+
   const saveCase = (data, editingId) => {
     if (editingId) {
       setCases((prev) => prev.map((c) => (c.id === editingId ? { ...c, ...data } : c)));
@@ -445,18 +503,24 @@ export default function App() {
       ? [{ id: uid(), amount: initialAmountReceived, mode: "Cash", note: "Initial payment", date: data.applicationDate }]
       : [];
     setCases((prev) => [...prev, { id: uid(), payments: initialPayments, dressingChanges: [initialEntry], photoFlags: {}, ...data }]);
-     const usedNames = getCaseProducts(data);
-    if (usedNames.length) {
-      setProducts((prev) => prev.map((p) => usedNames.includes(p.name) ? { ...p, available: Math.max(0, (p.available || 0) - 1), used: (p.used || 0) + 1 } : p));
+    const usedLines = getCaseProductLines(data);
+    if (usedLines.length) {
+      setProducts((prev) => prev.map((p) => {
+        const line = usedLines.find((l) => l.name === p.name);
+        return line ? { ...p, available: Math.max(0, (p.available || 0) - line.qty), used: (p.used || 0) + line.qty } : p;
+      }));
     }
   };
 
    const deleteCase = (id) => {
     const target = cases.find((c) => c.id === id);
     setCases((prev) => prev.filter((c) => c.id !== id));
-    const usedNames = target ? getCaseProducts(target) : [];
-    if (usedNames.length) {
-      setProducts((prev) => prev.map((p) => usedNames.includes(p.name) ? { ...p, available: (p.available || 0) + 1, used: Math.max(0, (p.used || 0) - 1) } : p));
+    const usedLines = target ? getCaseProductLines(target) : [];
+    if (usedLines.length) {
+      setProducts((prev) => prev.map((p) => {
+        const line = usedLines.find((l) => l.name === p.name);
+        return line ? { ...p, available: (p.available || 0) + line.qty, used: Math.max(0, (p.used || 0) - line.qty) } : p;
+      }));
     }
   };
 
@@ -624,6 +688,16 @@ export default function App() {
     <div style={styles.app}>
       <style>{fontImport}</style>
       <style>{printStyles}</style>
+      {activityToast && (
+        <div style={{
+          position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 999,
+          background: "#0E2422", color: "#fff", padding: "10px 18px", borderRadius: 20,
+          fontSize: 13, fontWeight: 600, boxShadow: "0 8px 24px rgba(14,36,34,0.3)",
+          display: "flex", alignItems: "center", gap: 8, cursor: "pointer",
+        }} onClick={() => setActivityToast(null)}>
+          <Icon name="reports" size={15} /> {activityToast}
+        </div>
+      )}
       {!role && (
         <RoleGate
           pin={pin}
@@ -1145,7 +1219,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
   const myTodaysVisits = useMemo(() => myCasesActive
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
     .map((c) => ({ ...c, due: nextDueDate(c), overdue: overdueDays(c) }))
-    .filter((c) => c.due <= todayISO())
+    .filter((c) => c.due <= addDays(todayISO(), 1))
     .sort((a, b) => b.overdue - a.overdue), [myCasesActive, name]);
 
   useEffect(() => {
@@ -1215,13 +1289,13 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
 
         {myTodaysVisits.length > 0 && (
-          <CollapsibleSection title="Today's Visits" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
+          <CollapsibleSection title="Today's & Tomorrow's Visits" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
             <div style={styles.card}>
               {myTodaysVisits.map((c) => (
                 <div key={c.id} style={styles.dresserLine}>
                   <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: c.overdue > 0 ? "#E1483C" : "#D98D2B" }}>
-                    {c.overdue > 0 ? `${c.overdue}d overdue` : "Due today"}
+                  <span style={{ fontSize: 11, fontWeight: 700, color: c.overdue > 0 ? "#E1483C" : c.due === todayISO() ? "#D98D2B" : "#3B5BA5" }}>
+                    {c.overdue > 0 ? `${c.overdue}d overdue` : c.due === todayISO() ? "Due today" : "Due tomorrow"}
                   </span>
                 </div>
               ))}
@@ -1437,7 +1511,7 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
       <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.cardTitle}>{c.patientName}</div>
-          <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProducts(c).join(", ")}</div>
+          <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")}</div>
           <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {c.protocolDays || 5}-day protocol</div>
           <div style={styles.mutedSmall}>{doneCount}/3 photos captured</div>
         </div>
@@ -1485,10 +1559,11 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
   const recentCases = [...cases].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)).slice(0, 5);
 
   const todaysVisits = useMemo(() => {
+    const tomorrow = addDays(todayISO(), 1);
     return cases
       .filter((c) => c.status === "active")
       .map((c) => ({ ...c, due: nextDueDate(c), overdue: overdueDays(c) }))
-      .filter((c) => c.due <= todayISO())
+      .filter((c) => c.due <= tomorrow)
       .sort((a, b) => b.overdue - a.overdue || new Date(a.due) - new Date(b.due));
   }, [cases]);
 
@@ -1502,14 +1577,14 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
       </div>
 
       {todaysVisits.length > 0 && (
-        <CollapsibleSection title="Today's Visits" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{todaysVisits.length}</span>}>
+        <CollapsibleSection title="Today's & Tomorrow's Visits" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{todaysVisits.length}</span>}>
           <div style={styles.card}>
             {todaysVisits.map((c) => (
               <div key={c.id} style={styles.dresserLine}>
                 <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
                 <span style={styles.mutedSmall}>{c.dresserName || "Unassigned"}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: c.overdue > 0 ? "#E1483C" : "#D98D2B" }}>
-                  {c.overdue > 0 ? `${c.overdue}d overdue` : "Due today"}
+                <span style={{ fontSize: 11, fontWeight: 700, color: c.overdue > 0 ? "#E1483C" : c.due === todayISO() ? "#D98D2B" : "#3B5BA5" }}>
+                  {c.overdue > 0 ? `${c.overdue}d overdue` : c.due === todayISO() ? "Due today" : "Due tomorrow"}
                 </span>
               </div>
             ))}
@@ -1644,7 +1719,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
       <div style={styles.cardTop} onClick={() => !compact && setOpen((o) => !o)}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.cardTitle}>{c.patientName}</div>
-          <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProducts(c).join(", ")} · {c.protocolDays || 5}-day protocol</div>
+          <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")} · {c.protocolDays || 5}-day protocol</div>
           <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {fmtDate(c.applicationDate)}{c.applicationTime ? ` ${fmtTime(c.applicationTime)}` : ""} · {days}d</div>
           {c.dresserName && <div style={styles.cardMeta}>Dresser: {c.dresserName} · Bill to: {c.billTo || "Patient"}{c.billTo === "Hospital" && c.hospitalName ? ` (${c.hospitalName})` : ""}</div>}
         </div>
@@ -1739,7 +1814,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
 
           <div style={styles.actionRow}>
             <button style={styles.linkBtn} onClick={onEdit}>Edit</button>
-            <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={onDelete}>Delete</button>
+            <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => { if (window.confirm(`Delete ${c.patientName}'s case permanently? This removes all history, payments, and photos.`)) onDelete(); }}>Delete</button>
           </div>
         </div>
       )}
@@ -1755,7 +1830,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
   const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
   const [form, setForm] = useState(initial || {
     patientName: "", patientMobile: "", doctorName: "", doctorCommission: "", dresserName: presetDresserName || "", protocolDays: 5,
-       machineSerial: "", products: products[0] ? [products[0].name] : [],
+       machineSerial: "", products: products[0] ? [{ name: products[0].name, qty: 1 }] : [],
     applicationDate: todayISO(), applicationTime: nowTimeHM(), status: "active", endDate: "",
     billTo: "Patient", hospitalName: "", totalAmount: "", amountReceived: "", machineRentalAmount: "", notes: "",
   });
@@ -1804,26 +1879,43 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
           )}
         </Field>
                 <Field label="Product(s)">
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 220, overflowY: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 260, overflowY: "auto" }}>
             {productsByCompany.map(([company, prods]) => (
               <div key={company}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9A96", margin: "6px 0 2px" }}>{company}</div>
-                {prods.map((p) => (
-                  <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, padding: "3px 0" }}>
-                    <input
-                      type="checkbox"
-                      checked={(form.products || []).includes(p.name)}
-                      onChange={(e) => {
-                        const current = form.products || [];
-                        const next = e.target.checked
-                          ? [...current, p.name]
-                          : current.filter((n) => n !== p.name);
-                        set("products", next);
-                      }}
-                    />
-                    {p.name}
-                  </label>
-                ))}
+                {prods.map((p) => {
+                  const current = form.products || [];
+                  const line = current.find((it) => (typeof it === "string" ? it === p.name : it.name === p.name));
+                  const checked = !!line;
+                  const qty = line ? (typeof line === "string" ? 1 : Number(line.qty) || 1) : 1;
+                  return (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, flex: 1 }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...current.filter((it) => (typeof it === "string" ? it !== p.name : it.name !== p.name)), { name: p.name, qty: 1 }]
+                              : current.filter((it) => (typeof it === "string" ? it !== p.name : it.name !== p.name));
+                            set("products", next);
+                          }}
+                        />
+                        {p.name}
+                      </label>
+                      {checked && (
+                        <input
+                          type="number" min="1" style={{ ...styles.smallInput, width: 55 }} value={qty}
+                          onChange={(e) => {
+                            const q = Math.max(1, Number(e.target.value) || 1);
+                            const next = current.map((it) => (typeof it === "string" ? it === p.name : it.name === p.name) ? { name: p.name, qty: q } : it);
+                            set("products", next);
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
@@ -1846,6 +1938,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             <option value="active">VAC Therapy Applied</option>
             <option value="stopped">VAC Therapy Stop</option>
             <option value="reapplied">VAC Therapy Continue</option>
+            <option value="na">N/A (No VAC Therapy)</option>
           </select>
         </Field>
         {form.status !== "active" && (
@@ -2340,7 +2433,7 @@ function MachinesTab({ machines, setMachines, machineInUse, cases, businessId })
                     ) : (
                       <div style={styles.mutedSmall}>Not currently assigned to a case.</div>
                     )}
-                    <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => removeMachine(m.id)}>Remove Machine</button>
+                    <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => { if (window.confirm("Remove this machine?")) removeMachine(m.id); }}>Remove Machine</button>
                   </div>
                 )}
               </div>
@@ -2901,7 +2994,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
                           </div>
                         </div>
 
-                        <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => remove(p.id)}>Remove Product</button>
+                        <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => { if (window.confirm("Remove this product from stock? This does not undo past case usage.")) remove(p.id); }}>Remove Product</button>
                       </div>
                     )}
                   </div>
@@ -3034,7 +3127,7 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
                       </div>
                     </div>
                   )}
-                  <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => removeDresser(d)}>Remove Dresser</button>
+                  <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => { if (window.confirm(`Remove ${d} as a dresser? Their login access will be revoked.`)) removeDresser(d); }}>Remove Dresser</button>
                 </div>
               )}
             </div>
@@ -3437,6 +3530,19 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       .sort((a, b) => b.revenue - a.revenue);
   }, [cases]);
 
+  const casesAboveMRP = useMemo(() => {
+    return cases.map((c) => {
+      const lines = getCaseProductLines(c);
+      const mrpTotal = lines.reduce((s, line) => {
+        const prod = products.find((p) => p.name === line.name);
+        return s + (prod ? Number(prod.mrp || 0) * line.qty : 0);
+      }, 0);
+      const extra = Number(c.totalAmount || 0) - mrpTotal;
+      return { ...c, mrpTotal, extra };
+    }).filter((c) => c.mrpTotal > 0 && c.extra > 0).sort((a, b) => b.extra - a.extra);
+  }, [cases, products]);
+  const aboveMrpTotal = useMemo(() => casesAboveMRP.reduce((s, c) => s + c.extra, 0), [casesAboveMRP]);
+
   const outstandingByPatient = useMemo(() => {
     return cases
       .map((c) => {
@@ -3722,7 +3828,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                   <span style={{ flex: 1, fontWeight: 600 }}>{e.category}{e.note ? ` · ${e.note}` : ""}</span>
                   <span style={styles.mutedSmall}>{fmtDate(e.date)}</span>
                   <span style={{ fontWeight: 700 }}>{fmtMoney(e.amount)}</span>
-                  {!readOnly && <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => deleteExpense(e.id)}>✕</button>}
+                  {!readOnly && <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => { if (window.confirm("Delete this expense entry?")) deleteExpense(e.id); }}>✕</button>}
                 </div>
               ))}
             </div>
@@ -3888,6 +3994,32 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                     <div style={styles.cardMeta}>{c.speciality || "—"} · {c.doctorMobile || "no number"} · by {c.dresserName || "Unassigned"}</div>
                     {(c.products || []).length > 0 && <div style={{ ...styles.mutedSmall, marginTop: 6 }}>Discussed: {c.products.join(", ")}</div>}
                     {c.notes && <div style={{ ...styles.notesText, marginTop: 6 }}>{c.notes}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Amount Earned Above MRP" right={aboveMrpTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#128577" }}>{fmtMoney(aboveMrpTotal)}</span> : null}>
+        <div style={{ ...styles.emptyState2, marginBottom: 8 }}>Cases billed for more than the standard MRP of the products used — the extra amount is pure margin above list price.</div>
+        {casesAboveMRP.length === 0 ? <EmptyState text="No cases currently billed above MRP." /> : (
+          <>
+            <div style={{ ...styles.card, marginBottom: 12 }}>
+              <div style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 700 }}>Total premium earned</span><span style={{ fontWeight: 700, color: "#128577" }}>{fmtMoney(aboveMrpTotal)}</span></div>
+            </div>
+            <div style={styles.card}>
+              {casesAboveMRP.map((c) => (
+                <div key={c.id} style={styles.cardExpanded}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontWeight: 700 }}>{c.patientName}</span>
+                    <span style={{ fontWeight: 700, color: "#128577" }}>+{fmtMoney(c.extra)}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5B6864", flexWrap: "wrap" }}>
+                    <span>Billed {fmtMoney(c.totalAmount)}</span>
+                    <span>MRP {fmtMoney(c.mrpTotal)}</span>
+                    <span>{fmtDate(c.applicationDate)}</span>
                   </div>
                 </div>
               ))}
