@@ -845,7 +845,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 
   const handleLogoTap = () => {
     const next = tapCount + 1;
-    if (next >= 5) { setMode("owner"); setError(""); setTapCount(0); }
+    if (next >= 5) { playNotifyChime(); setMode("owner"); setError(""); setTapCount(0); }
     else setTapCount(next);
   };
 
