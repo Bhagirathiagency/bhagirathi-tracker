@@ -2535,7 +2535,7 @@ function MachinesTab({ machines, setMachines, machineInUse, cases, businessId })
             const activeCase = cases.find((c) => c.machineSerial === m.serial && c.status === "active");
             const open = openId === m.id;
             return (
-              <div key={m.id} style={styles.card}>
+              <div key={m.id} style={{ ...styles.card, background: inUse ? "#FBEAD3" : "#E3F3EF", border: `1px solid ${inUse ? "#D9720A" : "#128577"}` }}>
                 <div style={styles.cardTop} onClick={() => setOpenId(open ? null : m.id)}>
                   <div style={{ flex: 1 }}>
                     <div style={styles.cardTitle}>{m.serial}</div>
