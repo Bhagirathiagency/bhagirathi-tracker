@@ -411,45 +411,58 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const loadBusinessData = async (silent) => {
     if (silent) setRefreshing(true); else setLoaded(false);
-    const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals] = await Promise.all([
-      loadKey(bkey(businessId, "wca-cases"), []),
-      loadKey(bkey(businessId, "wca-machines"), []),
-      loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
-      loadKey(bkey(businessId, "wca-owner-pin"), null),
-      loadKey(bkey(businessId, "wca-dressers"), []),
-      loadKey(bkey(businessId, "wca-quotations"), []),
-      loadKey(bkey(businessId, "wca-dresser-pins"), {}),
-      loadKey(bkey(businessId, "wca-doctor-calls"), []),
-      loadKey(bkey(businessId, "wca-owner-logins"), []),
-      loadKey(bkey(businessId, "wca-dresser-profiles"), {}),
-      loadKey(bkey(businessId, "wca-dresser-stock-access"), {}),
-      loadKey(bkey(businessId, "wca-expenses"), []),
-      loadKey(bkey(businessId, "wca-accountant-pin"), null),
-      loadKey(bkey(businessId, "wca-challans"), []),
-    ]);
-    setCases(c);
-    setMachines(m);
-    setProducts(normalizeProducts(p));
-    setPin(ownerPin);
-    setAccountantPinState(acctPin);
-    setDressers(drs);
-    setQuotations(qts);
-    setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
-    setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
-    setOwnerLogins(Array.isArray(olog) ? olog : []);
-    setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
-    setExpenses(Array.isArray(exps) ? exps : []);
-    setChallans(Array.isArray(chals) ? chals : []);
-    {
-      const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
-      if (businessId === "bhagirathi") {
-        const devashish = (drs || []).find((n) => n.trim().toLowerCase() === "devashish");
-        if (devashish && stockAccess[devashish] === undefined) stockAccess[devashish] = true;
+    try {
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals] = await Promise.all([
+        loadKey(bkey(businessId, "wca-cases"), []),
+        loadKey(bkey(businessId, "wca-machines"), []),
+        loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
+        loadKey(bkey(businessId, "wca-owner-pin"), null),
+        loadKey(bkey(businessId, "wca-dressers"), []),
+        loadKey(bkey(businessId, "wca-quotations"), []),
+        loadKey(bkey(businessId, "wca-dresser-pins"), {}),
+        loadKey(bkey(businessId, "wca-doctor-calls"), []),
+        loadKey(bkey(businessId, "wca-owner-logins"), []),
+        loadKey(bkey(businessId, "wca-dresser-profiles"), {}),
+        loadKey(bkey(businessId, "wca-dresser-stock-access"), {}),
+        loadKey(bkey(businessId, "wca-expenses"), []),
+        loadKey(bkey(businessId, "wca-accountant-pin"), null),
+        loadKey(bkey(businessId, "wca-challans"), []),
+      ]);
+      setCases(c);
+      setMachines(m);
+      setProducts(normalizeProducts(p));
+      setPin(ownerPin);
+      setAccountantPinState(acctPin);
+      setDressers(drs);
+      setQuotations(qts);
+      setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
+      setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
+      setOwnerLogins(Array.isArray(olog) ? olog : []);
+      setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
+      setExpenses(Array.isArray(exps) ? exps : []);
+      setChallans(Array.isArray(chals) ? chals : []);
+      {
+        const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
+        if (businessId === "bhagirathi") {
+          const devashish = (drs || []).find((n) => n.trim().toLowerCase() === "devashish");
+          if (devashish && stockAccess[devashish] === undefined) stockAccess[devashish] = true;
+        }
+        setDresserStockAccessState(stockAccess);
       }
-      setDresserStockAccessState(stockAccess);
+      if (silent) {
+        setActivityToast("✓ Refreshed");
+        setTimeout(() => setActivityToast(null), 2000);
+      }
+    } catch (e) {
+      console.error("Refresh failed", e);
+      if (silent) {
+        setActivityToast("Refresh failed — check connection");
+        setTimeout(() => setActivityToast(null), 3000);
+      }
+    } finally {
+      setLoaded(true);
+      if (silent) setRefreshing(false);
     }
-    setLoaded(true);
-    if (silent) setRefreshing(false);
   };
 
   useEffect(() => { loadBusinessData(false); }, [businessId]); // eslint-disable-line
@@ -704,6 +717,7 @@ export default function App() {
   return (
     <div style={styles.app}>
       <style>{fontImport}</style>
+      <style>{`@keyframes wca-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } .wca-spinning { animation: wca-spin 0.7s linear infinite; display: inline-flex; }`}</style>
       <style>{printStyles}</style>
       {activityToast && (
         <div style={{
@@ -937,7 +951,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button style={styles.logoutBtn} onClick={refreshData} disabled={refreshing}>
-              <Icon name="refresh" size={15} /> {refreshing ? "…" : "Refresh"}
+              <span className={refreshing ? "wca-spinning" : ""}><Icon name="refresh" size={15} /></span> {refreshing ? "Refreshing…" : "Refresh"}
             </button>
             <button style={styles.logoutBtn} onClick={() => setShowPinForm((s) => !s)}><Icon name="pin" size={15} /> PIN</button>
             <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
@@ -1290,7 +1304,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button style={styles.logoutBtn} onClick={refreshData} disabled={refreshing}>
-              <Icon name="refresh" size={15} /> {refreshing ? "…" : "Refresh"}
+              <span className={refreshing ? "wca-spinning" : ""}><Icon name="refresh" size={15} /></span> {refreshing ? "Refreshing…" : "Refresh"}
             </button>
             <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
           </div>
