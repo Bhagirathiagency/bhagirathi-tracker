@@ -96,7 +96,7 @@ const STATUS = {
   active: { label: "VAC Therapy Applied", color: "#D9720A", bg: "#FBEAD3" },
   stopped: { label: "VAC Therapy Stop", color: "#8A5A2B", bg: "#F5EBDC" },
   reapplied: { label: "VAC Therapy Continue", color: "#3B5BA5", bg: "#E7ECF7" },
-  na: { label: "N/A (No VAC Therapy)", color: "#5B6864", bg: "#EEF0EE" },
+  na: { label: "Material Supplied", color: "#5B6864", bg: "#EEF0EE" },
 };
 const PROTOCOLS = [5, 7];
 const PAY_MODES = ["Cash", "Online", "Credit"];
@@ -2107,9 +2107,9 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             <option value="active">VAC Therapy Applied</option>
             <option value="stopped">VAC Therapy Stop</option>
             <option value="reapplied">VAC Therapy Continue</option>
-            <option value="na">N/A (No VAC Therapy)</option>
+            <option value="na">Material Supplied</option>
           </select>
-          {!form.machineSerial && <span style={styles.mutedSmall}>Select a machine to set a VAC therapy status</span>}
+          {!form.machineSerial && <span style={styles.mutedSmall}>No machine selected — this case is recorded as Material Supplied</span>}
         </Field>
         {form.status !== "active" && (
           <Field label={form.status === "stopped" ? "Stop Date" : "Reapply Date"}>
