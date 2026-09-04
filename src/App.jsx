@@ -54,6 +54,7 @@ async function saveKey(key, value) {
   }
 }
 
+const PDF_FONT = "Arial, Helvetica, sans-serif";
 const BUSINESSES = [
   { id: "bhagirathi", name: "Bhagirathi Agency", tagline: "Wound Care & NPWT Supplies", address: "Shop No.1, Malhar Bunglow, Opp. Atal Bihari Vajpayee School, Bankar Chowk, Kathe Lane, Nashik-422011", phone: "7507777127", email: "bhagirathiagency@gmail.com", gstin: "27AAWFB2771R1ZG", dlNo: "MH-NZ1-373839, 20B-373840, 21B-373841, 20D-373842" },
   { id: "leelavac", name: "Leela Medical", tagline: "Wound Care & NPWT Supplies", address: "Room No.01, Shop No.804, Opp. Waiting Area, 8th Floor, S.K. Empire, Nr. Ved Mandir, Mico Circle, Tidke Colony, Nashik", phone: "9673069779", email: "jmhnsk@gmail.com", gstin: "27DAJPS2132H2ZL", dlNo: "MH-NZ1-583399, MH-NZ1-583400" },
@@ -2508,7 +2509,7 @@ function QuotationView({ q, onBack, onEdit, onStatus, businessName = "Bhagirathi
         </button>
       </div>
 
-      <div style={styles.quoteSheet} ref={sheetRef}>
+      <div style={{ ...styles.quoteSheet, fontFamily: PDF_FONT }} ref={sheetRef}>
         <Letterhead businessName={businessName} docType="Quotation"
           meta={<div style={{ fontSize: 11, color: "#5B6864" }}>{q.quoteNo}</div>} />
         <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0", fontSize: 13 }}>
@@ -2947,7 +2948,7 @@ function ChallanPdfView({ ch, onBack, businessName }) {
         <div style={{ flex: 1 }} />
         <button style={{ ...styles.smallBtn, flex: 1 }} disabled={busy} onClick={downloadPdf}>{busy ? "Preparing…" : "Download PDF"}</button>
       </div>
-      <div style={styles.quoteSheet} ref={sheetRef}>
+      <div style={{ ...styles.quoteSheet, fontFamily: PDF_FONT }} ref={sheetRef}>
         <Letterhead businessName={businessName} docType="Delivery Challan"
           meta={<div style={{ fontSize: 11, color: "#5B6864" }}>{ch.challanNo}</div>} />
         <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0", fontSize: 13 }}>
@@ -3455,11 +3456,11 @@ function SWOTGrid({ swot }) {
 function Letterhead({ businessName = "Bhagirathi Agency", docType, meta }) {
   const b = BUSINESSES.find((x) => x.name === businessName) || {};
   return (
-    <div style={{ borderBottom: "3px solid #D9720A", paddingBottom: 14, marginBottom: 16 }}>
+    <div style={{ borderBottom: "3px solid #D9720A", paddingBottom: 14, marginBottom: 16, fontFamily: PDF_FONT }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 58, height: 58, objectFit: "contain" }} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 21, color: "#0E2422" }}>{businessName}</div>
+          <div style={{ fontFamily: PDF_FONT, fontWeight: 700, fontSize: 21, color: "#0E2422" }}>{businessName}</div>
           {b.address && <div style={{ fontSize: 10.5, color: "#5B6864", marginTop: 2 }}>{b.address}</div>}
           {(b.phone || b.email) && (
             <div style={{ fontSize: 10.5, color: "#5B6864" }}>
@@ -3474,7 +3475,7 @@ function Letterhead({ businessName = "Bhagirathi Agency", docType, meta }) {
         </div>
         {docType && (
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: "#D9720A", textTransform: "uppercase", letterSpacing: 0.5 }}>{docType}</div>
+            <div style={{ fontFamily: PDF_FONT, fontWeight: 700, fontSize: 15, color: "#D9720A", textTransform: "uppercase", letterSpacing: 0.5 }}>{docType}</div>
             {meta}
           </div>
         )}
@@ -3521,7 +3522,7 @@ function DoctorCommissionCard({ d, businessName = "Bhagirathi Agency" }) {
           <button style={{ ...styles.smallBtn, width: "100%", marginBottom: 12 }} disabled={busy} onClick={downloadPdf}>
             {busy ? "Preparing…" : "Download Commission Statement PDF"}
           </button>
-          <div ref={sheetRef} style={styles.quoteSheet}>
+          <div ref={sheetRef} style={{ ...styles.quoteSheet, fontFamily: PDF_FONT }}>
             <Letterhead businessName={businessName} docType="Commission Statement" />
             <div style={{ margin: "12px 0", fontSize: 13 }}>
               <strong>Doctor:</strong> {d.doctor}<br />
@@ -4562,5 +4563,5 @@ const styles = {
   quoteHeader: { display: "flex", alignItems: "center", gap: 12, borderBottom: "2px solid #6E0F1A", paddingBottom: 12 },
   quoteTable: { width: "100%", borderCollapse: "collapse", marginTop: 6, fontSize: 12 },
   quoteTh: { textAlign: "left", borderBottom: "1px solid #DCE4DF", padding: "6px 4px", color: "#5B6864", fontWeight: 700 },
-  quoteTd: { borderBottom: "1px solid #EEF1EC", padding: "6px 4px", fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5 },
+  quoteTd: { borderBottom: "1px solid #EEF1EC", padding: "6px 4px", fontFamily: PDF_FONT, fontSize: 11.5 },
 };
