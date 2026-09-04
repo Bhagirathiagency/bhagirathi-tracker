@@ -1974,9 +1974,6 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
   });
   const [customProtocol, setCustomProtocol] = useState(!PROTOCOLS.includes(Number(form.protocolDays)));
   const [pickerCompany, setPickerCompany] = useState("");
-  useEffect(() => {
-    if (!pickerCompany && productsByCompany.length > 0) setPickerCompany(productsByCompany[0][0]);
-  }, [productsByCompany]); // eslint-disable-line
   const [amountTouched, setAmountTouched] = useState(!!initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -1986,6 +1983,10 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
     const visible = products.filter((p) => (p.available || 0) > 0 || selectedNames.has(p.name));
     return groupProductsByCompany(visible);
   }, [products, form.products]);
+
+  useEffect(() => {
+    if (!pickerCompany && productsByCompany.length > 0) setPickerCompany(productsByCompany[0][0]);
+  }, [productsByCompany]); // eslint-disable-line
 
   const mrpTotal = useMemo(
     () => (form.products || []).reduce((s, n) => s + Number(products.find((p) => p.name === n)?.mrp || 0), 0),
