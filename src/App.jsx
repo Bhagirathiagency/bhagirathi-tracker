@@ -1974,6 +1974,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
   });
   const [customProtocol, setCustomProtocol] = useState(!PROTOCOLS.includes(Number(form.protocolDays)));
   const [pickerCompany, setPickerCompany] = useState("");
+  const [formError, setFormError] = useState("");
   const [amountTouched, setAmountTouched] = useState(!!initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -2001,6 +2002,8 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
 
   const submit = () => {
     if (!form.patientName.trim() || !form.doctorName.trim()) return;
+    if (!form.patientMobile || !form.patientMobile.trim()) { setFormError("Patient mobile number is required — enter it before proceeding."); return; }
+    setFormError("");
     const cleanedProducts = (form.products || []).filter((it) => (typeof it === "string" ? true : Number(it.qty) > 0));
     onSave({ ...form, products: cleanedProducts, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: form.machineSerial ? (Number(form.protocolDays) || 5) : 0, status: form.machineSerial ? form.status : "na" });
   };
@@ -2010,7 +2013,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
       <SectionTitle>{initial ? "Edit Case" : "New Case"}</SectionTitle>
       <div style={styles.formGrid}>
         <Field label="Patient Name"><input style={styles.input} value={form.patientName} onChange={(e) => set("patientName", e.target.value)} /></Field>
-        <Field label="Patient Mobile Number"><input type="tel" style={styles.input} value={form.patientMobile} onChange={(e) => set("patientMobile", e.target.value)} placeholder="10-digit number" /></Field>
+        <Field label="Patient Mobile Number *"><input type="tel" style={styles.input} value={form.patientMobile} onChange={(e) => set("patientMobile", e.target.value)} placeholder="10-digit number — required" /></Field>
         <Field label="Doctor Name"><input style={styles.input} value={form.doctorName} onChange={(e) => set("doctorName", e.target.value)} /></Field>
         <Field label="Doctor Commission (₹, optional)">
           <input type="number" style={styles.input} value={form.doctorCommission} onChange={(e) => set("doctorCommission", e.target.value)} placeholder="0 if none" />
@@ -2140,6 +2143,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         <Field label="Amount Received (₹)"><input type="number" style={styles.input} value={form.amountReceived} onChange={(e) => set("amountReceived", e.target.value)} placeholder="0 if none yet" /></Field>
         <Field label="Notes"><textarea style={{ ...styles.input, minHeight: 60 }} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
       </div>
+      {formError && <div style={{ color: "#E1483C", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{formError}</div>}
       <div style={styles.formActions}>
         <button style={styles.secondaryBtn} onClick={onCancel}>Cancel</button>
         <button style={styles.primaryBtn} onClick={submit}>Save Case</button>
