@@ -1922,7 +1922,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
 
   const submit = () => {
     if (!form.patientName.trim() || !form.doctorName.trim()) return;
-    onSave({ ...form, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: Number(form.protocolDays) || 5 });
+    onSave({ ...form, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: form.machineSerial ? (Number(form.protocolDays) || 5) : 0 });
   };
 
   return (
@@ -1936,20 +1936,6 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
           <input type="number" style={styles.input} value={form.doctorCommission} onChange={(e) => set("doctorCommission", e.target.value)} placeholder="0 if none" />
         </Field>
         <Field label="Dresser Name (applied by)"><input style={styles.input} value={form.dresserName} onChange={(e) => set("dresserName", e.target.value)} /></Field>
-        <Field label="Therapy Protocol">
-          {!customProtocol ? (
-            <select style={styles.input} value={form.protocolDays} onChange={(e) => { if (e.target.value === "custom") setCustomProtocol(true); else set("protocolDays", e.target.value === "na" ? 0 : Number(e.target.value)); }}>
-              {PROTOCOLS.map((p) => <option key={p} value={p}>Every {p} days</option>)}
-              <option value="na">N/A</option>
-              <option value="custom">Custom…</option>
-            </select>
-          ) : (
-            <div style={{ display: "flex", gap: 6 }}>
-              <input type="number" style={styles.input} value={form.protocolDays} onChange={(e) => set("protocolDays", e.target.value)} placeholder="Days" />
-              <button type="button" style={styles.smallBtn} onClick={() => { setCustomProtocol(false); set("protocolDays", 5); }}>Use standard</button>
-            </div>
-          )}
-        </Field>
                 <Field label="Product(s)">
           <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 260, overflowY: "auto" }}>
             {productsByCompany.map(([company, prods]) => (
@@ -2001,6 +1987,22 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         {form.machineSerial && (
           <Field label="Machine Rental Amount (₹)">
             <input type="number" style={styles.input} value={form.machineRentalAmount} onChange={(e) => set("machineRentalAmount", e.target.value)} placeholder="0 if no rental charged" />
+          </Field>
+        )}
+        {form.machineSerial && (
+          <Field label="Therapy Protocol">
+            {!customProtocol ? (
+              <select style={styles.input} value={form.protocolDays} onChange={(e) => { if (e.target.value === "custom") setCustomProtocol(true); else set("protocolDays", e.target.value === "na" ? 0 : Number(e.target.value)); }}>
+                {PROTOCOLS.map((p) => <option key={p} value={p}>Every {p} days</option>)}
+                <option value="na">N/A</option>
+                <option value="custom">Custom…</option>
+              </select>
+            ) : (
+              <div style={{ display: "flex", gap: 6 }}>
+                <input type="number" style={styles.input} value={form.protocolDays} onChange={(e) => set("protocolDays", e.target.value)} placeholder="Days" />
+                <button type="button" style={styles.smallBtn} onClick={() => { setCustomProtocol(false); set("protocolDays", 5); }}>Use standard</button>
+              </div>
+            )}
           </Field>
         )}
         <Field label="Application Date"><input type="date" style={styles.input} value={form.applicationDate} onChange={(e) => set("applicationDate", e.target.value)} /></Field>
