@@ -1457,7 +1457,7 @@ function AdditionalItemsBlock({ c, products, onAddAdditionalItem }) {
   const [extraCharge, setExtraCharge] = useState("");
   const [note, setNote] = useState("");
   const items = c.additionalItems || [];
-  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
+  const productsByCompany = useMemo(() => groupProductsByCompany(products.filter((p) => (p.available || 0) > 0)), [products]);
 
   const submit = () => {
     if (!name) return;
@@ -1484,11 +1484,11 @@ function AdditionalItemsBlock({ c, products, onAddAdditionalItem }) {
           <option value="">Select item…</option>
           {productsByCompany.map(([company, prods]) => (
             <optgroup key={company} label={company}>
-              {prods.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+              {prods.map((p) => <option key={p.id} value={p.name}>{p.name} ({p.available || 0} avail)</option>)}
             </optgroup>
           ))}
         </select>
-        <input type="number" min="1" style={{ ...styles.smallInput, width: 55 }} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Qty" />
+        <input type="number" min="1" max={products.find((p) => p.name === name)?.available || undefined} style={{ ...styles.smallInput, width: 55 }} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Qty" />
         <input type="number" style={{ ...styles.smallInput, width: 90 }} value={extraCharge} onChange={(e) => setExtraCharge(e.target.value)} placeholder="Extra ₹" />
       </div>
       <input type="text" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)}
@@ -1499,8 +1499,12 @@ function AdditionalItemsBlock({ c, products, onAddAdditionalItem }) {
 }
 
 function ProductsUsedPicker({ products, selected, onChange }) {
-  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
   const current = selected || [];
+  const productsByCompany = useMemo(() => {
+    const selectedNames = new Set(current.map((it) => it.name));
+    const visible = products.filter((p) => (p.available || 0) > 0 || selectedNames.has(p.name));
+    return groupProductsByCompany(visible);
+  }, [products, current]);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 200, overflowY: "auto", marginTop: 8 }}>
       {productsByCompany.map(([company, prods]) => (
@@ -1519,10 +1523,10 @@ function ProductsUsedPicker({ products, selected, onChange }) {
                       : current.filter((it) => it.name !== p.name);
                     onChange(next);
                   }} />
-                  {p.name}
+                  {p.name} <span style={{ color: "#8A9A96", fontSize: 11 }}>({p.available || 0} avail)</span>
                 </label>
                 {checked && (
-                  <input type="number" min="1" style={{ ...styles.smallInput, width: 55 }} value={qty}
+                  <input type="number" min="1" max={p.available || undefined} placeholder="Qty" style={{ ...styles.smallInput, width: 55 }} value={qty}
                     onChange={(e) => {
                       const q = Math.max(1, Number(e.target.value) || 1);
                       onChange(current.map((it) => it.name === p.name ? { name: p.name, qty: q } : it));
@@ -1898,7 +1902,6 @@ function Detail({ label, value, highlight }) {
 }
 
 function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName }) {
-  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
   const [form, setForm] = useState(initial || {
     patientName: "", patientMobile: "", doctorName: "", doctorCommission: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: products[0] ? [{ name: products[0].name, qty: 1 }] : [],
@@ -1908,6 +1911,13 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
   const [customProtocol, setCustomProtocol] = useState(!PROTOCOLS.includes(Number(form.protocolDays)));
   const [amountTouched, setAmountTouched] = useState(!!initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Only show products that currently have stock — plus anything already selected on this case, so editing doesn't silently drop it.
+  const productsByCompany = useMemo(() => {
+    const selectedNames = new Set((form.products || []).map((it) => (typeof it === "string" ? it : it.name)));
+    const visible = products.filter((p) => (p.available || 0) > 0 || selectedNames.has(p.name));
+    return groupProductsByCompany(visible);
+  }, [products, form.products]);
 
   const mrpTotal = useMemo(
     () => (form.products || []).reduce((s, n) => s + Number(products.find((p) => p.name === n)?.mrp || 0), 0),
@@ -1959,11 +1969,11 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
                             set("products", next);
                           }}
                         />
-                        {p.name}
+                        {p.name} <span style={{ color: "#8A9A96", fontSize: 12 }}>({p.available || 0} available)</span>
                       </label>
                       {checked && (
                         <input
-                          type="number" min="1" style={{ ...styles.smallInput, width: 55 }} value={qty}
+                          type="number" min="1" max={p.available || undefined} style={{ ...styles.smallInput, width: 55 }} value={qty} placeholder="Qty"
                           onChange={(e) => {
                             const q = Math.max(1, Number(e.target.value) || 1);
                             const next = current.map((it) => (typeof it === "string" ? it === p.name : it.name === p.name) ? { name: p.name, qty: q } : it);
