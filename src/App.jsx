@@ -3253,27 +3253,29 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [speciality, setSpeciality] = useState("");
+  const [doctorClass, setDoctorClass] = useState("A");
   const [openId, setOpenId] = useState(null);
   const [edits, setEdits] = useState({});
 
   const caseCountFor = (docName) => cases.filter((c) => (c.doctorName || "").trim().toLowerCase() === docName.trim().toLowerCase()).length;
+  const classInfo = { A: { color: "#128577", bg: "#E3F3EF" }, B: { color: "#D98D2B", bg: "#FBF0DE" }, C: { color: "#E1483C", bg: "#FCE7E4" } };
 
   const submit = () => {
     if (!name.trim()) return;
     if (doctorsList.some((d) => d.name.trim().toLowerCase() === name.trim().toLowerCase())) { alert("This doctor is already in the list."); return; }
-    addDoctorMaster({ name: name.trim(), mobile: mobile.trim(), speciality: speciality.trim() });
-    setName(""); setMobile(""); setSpeciality("");
+    addDoctorMaster({ name: name.trim(), mobile: mobile.trim(), speciality: speciality.trim(), doctorClass });
+    setName(""); setMobile(""); setSpeciality(""); setDoctorClass("A");
   };
 
-  const startEdit = (d) => setEdits((prev) => ({ ...prev, [d.id]: { name: d.name, mobile: d.mobile || "", speciality: d.speciality || "" } }));
+  const startEdit = (d) => setEdits((prev) => ({ ...prev, [d.id]: { name: d.name, mobile: d.mobile || "", speciality: d.speciality || "", doctorClass: d.doctorClass || "A" } }));
   const saveEdit = (id) => {
     const e = edits[id];
     if (!e || !e.name.trim()) return;
-    updateDoctorMaster(id, { name: e.name.trim(), mobile: e.mobile.trim(), speciality: e.speciality.trim() });
+    updateDoctorMaster(id, { name: e.name.trim(), mobile: e.mobile.trim(), speciality: e.speciality.trim(), doctorClass: e.doctorClass });
     setEdits((prev) => { const next = { ...prev }; delete next[id]; return next; });
   };
 
-  const sorted = [...doctorsList].sort((a, b) => a.name.localeCompare(b.name));
+  const sorted = [...doctorsList].sort((a, b) => (a.doctorClass || "A").localeCompare(b.doctorClass || "A") || a.name.localeCompare(b.name));
 
   return (
     <div>
@@ -3282,9 +3284,16 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
         <Field label="Doctor Name"><input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} /></Field>
         <Field label="Mobile Number"><input type="tel" style={styles.input} value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="10-digit number" /></Field>
         <Field label="Speciality"><input style={styles.input} value={speciality} onChange={(e) => setSpeciality(e.target.value)} placeholder="e.g. General Surgeon, Orthopedician" /></Field>
+        <Field label="Class (support for business)">
+          <select style={styles.input} value={doctorClass} onChange={(e) => setDoctorClass(e.target.value)}>
+            <option value="A">A Class</option>
+            <option value="B">B Class</option>
+            <option value="C">C Class</option>
+          </select>
+        </Field>
         <button style={styles.primaryBtn} onClick={submit}>Add Doctor</button>
       </div>
-      <div style={styles.emptyState2}>This is the master list of referring doctors who give business — used to autocomplete Doctor Name across cases, quotations, and doctor calls.</div>
+      <div style={styles.emptyState2}>This is the master list of referring doctors who give business — used to autocomplete Doctor Name across cases, quotations, and doctor calls. Class reflects how much business each doctor supports.</div>
 
       <SectionTitle>Doctors ({sorted.length})</SectionTitle>
       {sorted.length === 0 ? <EmptyState text="No doctors added yet." /> : (
@@ -3292,6 +3301,7 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
           {sorted.map((d) => {
             const open = openId === d.id;
             const editing = edits[d.id];
+            const cls = classInfo[d.doctorClass] || classInfo.A;
             return (
               <div key={d.id} style={styles.card}>
                 <div style={styles.cardTop} onClick={() => setOpenId(open ? null : d.id)}>
@@ -3299,7 +3309,10 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
                     <div style={styles.cardTitle}>{d.name}</div>
                     <div style={styles.cardMeta}>{d.speciality || "—"} · {caseCountFor(d.name)} case{caseCountFor(d.name) === 1 ? "" : "s"}</div>
                   </div>
-                  <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                    <span style={{ ...styles.badge, color: cls.color, background: cls.bg }}>{d.doctorClass || "A"} Class</span>
+                    <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
+                  </div>
                 </div>
                 {open && (
                   <div style={{ padding: "0 14px 14px" }}>
@@ -3308,6 +3321,11 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
                         <input style={styles.smallInput} value={editing.name} onChange={(e) => setEdits((prev) => ({ ...prev, [d.id]: { ...prev[d.id], name: e.target.value } }))} placeholder="Name" />
                         <input style={styles.smallInput} value={editing.mobile} onChange={(e) => setEdits((prev) => ({ ...prev, [d.id]: { ...prev[d.id], mobile: e.target.value } }))} placeholder="Mobile" />
                         <input style={styles.smallInput} value={editing.speciality} onChange={(e) => setEdits((prev) => ({ ...prev, [d.id]: { ...prev[d.id], speciality: e.target.value } }))} placeholder="Speciality" />
+                        <select style={styles.smallInput} value={editing.doctorClass} onChange={(e) => setEdits((prev) => ({ ...prev, [d.id]: { ...prev[d.id], doctorClass: e.target.value } }))}>
+                          <option value="A">A Class</option>
+                          <option value="B">B Class</option>
+                          <option value="C">C Class</option>
+                        </select>
                         <div style={styles.formActions}>
                           <button style={styles.secondaryBtn} onClick={() => setEdits((prev) => { const next = { ...prev }; delete next[d.id]; return next; })}>Cancel</button>
                           <button style={{ ...styles.primaryBtn, flex: 1 }} onClick={() => saveEdit(d.id)}>Save</button>
