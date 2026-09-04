@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
+import * as XLSX from "xlsx";
 
 function playNotifyChime() {
   try {
@@ -4399,24 +4400,38 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       </CollapsibleSection>
 
       <CollapsibleSection title="Data Export">
-        <div style={{ ...styles.emptyState2, marginBottom: 10 }}>Download a copy of your data — for backup, or to hand to your CA/accountant.</div>
+        <div style={{ ...styles.emptyState2, marginBottom: 10 }}>Download a copy of your data — for backup, to hand to your CA/accountant, or to work with in Excel. Every report section above also has its own PDF download (tap the download icon next to its title), and quotations, challans, and commission statements each have their own PDF too.</div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button style={{ ...styles.smallBtn, flex: 1 }} onClick={() => {
-            const rows = [
-              ["Patient", "Doctor", "Dresser", "Status", "Application Date", "Total Amount", "Paid", "Outstanding", "Machine Rental", "Doctor Commission", "Hospital"],
-              ...cases.map((c) => {
-                const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
-                const outstanding = Math.max(0, Number(c.totalAmount || 0) - paid);
-                return [c.patientName, c.doctorName, c.dresserName, c.status, c.applicationDate, c.totalAmount || 0, paid, outstanding, c.machineRentalAmount || 0, c.doctorCommission || 0, c.hospitalName || ""];
-              }),
-            ];
-            const csv = rows.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
-            const blob = new Blob([csv], { type: "text/csv" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url; a.download = `${businessName.replace(/\s+/g, "-")}-cases-${todayISO()}.csv`; a.click();
-            URL.revokeObjectURL(url);
-          }}>Download Cases (CSV)</button>
+            const casesRows = cases.map((c) => {
+              const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+              const outstanding = Math.max(0, Number(c.totalAmount || 0) - paid);
+              return {
+                Patient: c.patientName, "Patient Mobile": c.patientMobile || "", Doctor: c.doctorName, Dresser: c.dresserName,
+                Status: (STATUS[c.status] || {}).label || c.status, "Application Date": c.applicationDate,
+                "Total Amount": c.totalAmount || 0, Paid: paid, Outstanding: outstanding,
+                "Machine Rental": c.machineRentalAmount || 0, "Doctor Commission": c.doctorCommission || 0,
+                "Bill To": c.billTo || "Patient", Hospital: c.hospitalName || "", "Machine Serial": c.machineSerial || "",
+              };
+            });
+            const stockRows = products.map((p) => ({ Product: p.name, Available: p.available || 0, "Used (all-time)": p.used || 0, "Cost Price": p.costPrice || 0, MRP: p.mrp || 0 }));
+            const quoteRows = (quotations || []).map((q) => {
+              const { total } = quoteTotals(q);
+              return { "Quote No": q.quoteNo, Customer: q.customerName, Date: q.date, "Valid Till": q.validTill, Status: q.status, Total: total, "Created By": q.createdBy || "Owner" };
+            });
+            const expenseRows = (expenses || []).map((e) => ({ Date: e.date, Category: e.category, Amount: e.amount, Note: e.note || "" }));
+            const doctorCallRows = (doctorCalls || []).map((d) => ({ Date: d.date, Doctor: d.doctorName, Speciality: d.speciality || "", Mobile: d.doctorMobile || "", Dresser: d.dresserName || "", Products: (d.products || []).join(", "), Notes: d.notes || "" }));
+            const machineRows = (machines || []).map((m) => ({ Serial: m.serial, Model: m.model }));
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(casesRows), "Cases");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stockRows), "Stock");
+            if (quoteRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(quoteRows), "Quotations");
+            if (expenseRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expenseRows), "Expenses");
+            if (doctorCallRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(doctorCallRows), "Doctor Calls");
+            if (machineRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(machineRows), "Machines");
+            XLSX.writeFile(wb, `${businessName.replace(/\s+/g, "-")}-report-${todayISO()}.xlsx`);
+          }}>Download Full Report (Excel)</button>
           <button style={{ ...styles.smallBtn, flex: 1, background: "#3B5BA5" }} onClick={() => {
             const backup = { exportedAt: new Date().toISOString(), business: businessName, cases, products, machines, dressers, quotations, doctorCalls, expenses };
             const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
