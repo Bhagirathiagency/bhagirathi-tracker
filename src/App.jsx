@@ -3745,7 +3745,14 @@ function OutstandingPatientRow({ c, businessName, addPayment, readOnly }) {
       <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
         <div style={{ flex: 1 }}>
           <div style={styles.cardTitle}>{c.patientName}</div>
-          <div style={styles.cardMeta}>{fmtDate(c.applicationDate)}</div>
+          <div style={styles.cardMeta}>
+            {fmtDate(c.applicationDate)}
+            {typeof c.daysOutstanding === "number" && (
+              <span style={{ marginLeft: 6, fontWeight: 700, color: c.daysOutstanding > 30 ? "#E1483C" : c.daysOutstanding > 14 ? "#D98D2B" : "#8A9A96" }}>
+                · {c.daysOutstanding}d outstanding
+              </span>
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
           <span style={{ fontWeight: 800, fontSize: 16, color: "#E1483C" }}>{fmtMoney(c.balance)}</span>
@@ -3980,10 +3987,11 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       .map((c) => {
         const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
         const balance = Math.max(0, Number(c.totalAmount || 0) - paid);
-        return { ...c, balance };
+        const daysOutstanding = c.applicationDate ? daysBetween(c.applicationDate, todayISO()) : 0;
+        return { ...c, balance, daysOutstanding };
       })
       .filter((c) => c.balance > 0)
-      .sort((a, b) => b.balance - a.balance);
+      .sort((a, b) => b.daysOutstanding - a.daysOutstanding || b.balance - a.balance);
   }, [cases]);
 
   const outstandingByHospital = useMemo(() => {
