@@ -1227,7 +1227,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
 
 function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, onLogout }) {
   const [showForm, setShowForm] = useState(false);
-  const myCasesActive = cases.filter((c) => c.status === "active");
+  const myCasesActive = cases.filter((c) => c.status === "active" && (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase());
   const myTodaysVisits = useMemo(() => myCasesActive
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
     .map((c) => ({ ...c, due: nextDueDate(c), overdue: overdueDays(c) }))
