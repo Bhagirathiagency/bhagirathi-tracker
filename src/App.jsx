@@ -3151,7 +3151,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
       {products.length === 0 ? <EmptyState text="No products added yet." /> : (
         <div>
           {productsByCompany.map(([company, prods]) => (
-            <CollapsibleSection key={company} title={company} defaultOpen right={<span style={{ fontSize: 11, color: "#8A9A96" }}>{prods.length}</span>}>
+            <CollapsibleSection key={company} title={company} right={<span style={{ fontSize: 11, color: "#8A9A96" }}>{prods.length}</span>}>
               <div style={styles.list}>
                 {prods.map((p) => {
                   const open = openId === p.id;
