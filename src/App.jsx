@@ -1043,7 +1043,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} />}
         {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} machines={machines} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} machines={machines} addPayment={addPayment} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
     </>
@@ -3699,7 +3699,61 @@ function DoctorCommissionCard({ d, businessName = "Bhagirathi Agency" }) {
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, machines, readOnly = false }) {
+function OutstandingPatientRow({ c, businessName, addPayment, readOnly }) {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [mode, setMode] = useState("Cash");
+  const [note, setNote] = useState("");
+
+  const submit = () => {
+    const amt = Number(amount);
+    if (!amt || amt <= 0) return;
+    addPayment(c.id, { amount: amt, mode, note: note.trim(), date: todayISO() });
+    setAmount(""); setNote(""); setOpen(false);
+  };
+
+  return (
+    <div style={styles.card}>
+      <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
+        <div style={{ flex: 1 }}>
+          <div style={styles.cardTitle}>{c.patientName}</div>
+          <div style={styles.cardMeta}>{fmtDate(c.applicationDate)}</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          <span style={{ fontWeight: 800, fontSize: 16, color: "#E1483C" }}>{fmtMoney(c.balance)}</span>
+          <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ add payment"}</span>
+        </div>
+      </div>
+      {open && (
+        <div style={{ padding: "0 14px 14px" }}>
+          {c.patientMobile && (
+            <button style={{ ...styles.linkBtn, color: "#25D366", marginBottom: 10 }} onClick={() => {
+              const msg = `Dear ${c.patientName}, this is a reminder from ${businessName} — an amount of ${fmtMoney(c.balance)} is outstanding on your wound care case. Kindly clear it at your earliest convenience. Thank you.`;
+              window.open(waLink(c.patientMobile.replace(/\D/g, ""), msg), "_blank");
+            }}>Remind on WhatsApp</button>
+          )}
+          {!readOnly && addPayment && (
+            <>
+              <div style={styles.detailLabel}>Record a payment received</div>
+              <div style={styles.addPaymentRow}>
+                <input type="number" placeholder={`Up to ${c.balance}`} style={{ ...styles.smallInput, flex: 1 }} value={amount} onChange={(e) => setAmount(e.target.value)} />
+                <select style={styles.smallInput} value={mode} onChange={(e) => setMode(e.target.value)}>
+                  {PAY_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div style={styles.addPaymentRow}>
+                <input type="text" placeholder="Note (optional)" style={{ ...styles.smallInput, flex: 1 }} value={note} onChange={(e) => setNote(e.target.value)} />
+                <button style={styles.smallBtn} onClick={submit}>Submit Payment</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, machines, addPayment, readOnly = false }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [expCategory, setExpCategory] = useState("Salary");
@@ -4413,19 +4467,9 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
       <CollapsibleSection title="Outstanding Payments by Patient" defaultOpen={outstandingByPatient.length > 0}>
         {outstandingByPatient.length === 0 ? <EmptyState text="No outstanding balances. All caught up!" /> : (
-          <div style={styles.card}>
+          <div style={styles.list}>
             {outstandingByPatient.map((c) => (
-              <div key={c.id} style={styles.dresserLine}>
-                <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
-                <span style={styles.mutedSmall}>{fmtDate(c.applicationDate)}</span>
-                <span style={{ ...styles.mutedSmall, color: "#E1483C", fontWeight: 600 }}>{fmtMoney(c.balance)}</span>
-                {c.patientMobile && (
-                  <button style={{ ...styles.linkBtn, color: "#25D366" }} onClick={() => {
-                    const msg = `Dear ${c.patientName}, this is a reminder from ${businessName} — an amount of ${fmtMoney(c.balance)} is outstanding on your wound care case. Kindly clear it at your earliest convenience. Thank you.`;
-                    window.open(waLink(c.patientMobile.replace(/\D/g, ""), msg), "_blank");
-                  }}>Remind</button>
-                )}
-              </div>
+              <OutstandingPatientRow key={c.id} c={c} businessName={businessName} addPayment={addPayment} readOnly={readOnly} />
             ))}
           </div>
         )}
