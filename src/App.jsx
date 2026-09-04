@@ -1649,13 +1649,21 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
       <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.cardTitle}>{c.patientName}</div>
-          <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")}</div>
-          <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {protocolLabel(c.protocolDays)} protocol</div>
-          <div style={styles.mutedSmall}>{doneCount}/3 photos captured</div>
+          {open && (
+            <>
+              <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")}</div>
+              <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {protocolLabel(c.protocolDays)} protocol</div>
+              <div style={styles.mutedSmall}>{doneCount}/3 photos captured</div>
+            </>
+          )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-          {overdue > 0 ? <span style={styles.overdueTag}>{overdue}d overdue</span> : <span style={styles.mutedSmall}>Due {fmtDate(due)}</span>}
-        </div>
+        {open ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+            {overdue > 0 ? <span style={styles.overdueTag}>{overdue}d overdue</span> : <span style={styles.mutedSmall}>Due {fmtDate(due)}</span>}
+          </div>
+        ) : (
+          <span style={{ fontSize: 11, color: "#8A9A96" }}>▼</span>
+        )}
       </div>
       {open && (
         <div style={styles.cardExpanded}>
