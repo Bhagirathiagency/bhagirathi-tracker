@@ -143,6 +143,9 @@ function latestChange(c) {
   }
   return [...list].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 }
+function protocolLabel(days) {
+  return days === 0 ? "N/A" : `${days || 5}-day`;
+}
 function nextDueDate(c) {
   const last = latestChange(c);
   return addDays(last.date, last.protocolDays || 5);
@@ -1561,7 +1564,7 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.cardTitle}>{c.patientName}</div>
           <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")}</div>
-          <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {c.protocolDays || 5}-day protocol</div>
+          <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {protocolLabel(c.protocolDays)} protocol</div>
           <div style={styles.mutedSmall}>{doneCount}/3 photos captured</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
@@ -1585,8 +1588,9 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
           <div style={{ ...styles.detailLabel, marginTop: 14 }}>Log a dressing change</div>
           <div style={styles.addPaymentRow}>
             <input style={{ ...styles.smallInput, flex: 1 }} value={dresserName} disabled />
-            <select value={protocolDays} onChange={(e) => setProtocolDays(Number(e.target.value))} style={styles.smallInput}>
+            <select value={protocolDays} onChange={(e) => setProtocolDays(e.target.value === "na" ? 0 : Number(e.target.value))} style={styles.smallInput}>
               {PROTOCOLS.map((p) => <option key={p} value={p}>{p}d</option>)}
+              <option value="na">N/A</option>
             </select>
           </div>
           <input type="text" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)}
@@ -1773,7 +1777,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
           <div style={styles.cardTitle}>{c.patientName}</div>
           {(!compact || open) && (
             <>
-              <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")} · {c.protocolDays || 5}-day protocol</div>
+              <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")} · {protocolLabel(c.protocolDays)} protocol</div>
               <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {fmtDate(c.applicationDate)}{c.applicationTime ? ` ${fmtTime(c.applicationTime)}` : ""} · {days}d</div>
               {c.dresserName && <div style={styles.cardMeta}>Dresser: {c.dresserName} · Bill to: {c.billTo || "Patient"}{c.billTo === "Hospital" && c.hospitalName ? ` (${c.hospitalName})` : ""}</div>}
             </>
@@ -1827,7 +1831,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
               changes.map((e) => (
                 <div key={e.id} style={styles.paymentLine}>
                   <span>{fmtDate(e.date)}</span><span>{e.dresserName || "—"}</span>
-                  <span style={styles.mutedSmall}>{e.protocolDays}d{e.note ? ` · ${e.note}` : ""}{(e.products || []).length > 0 ? ` · ${e.products.map((p) => p.qty > 1 ? `${p.name} x${p.qty}` : p.name).join(", ")}` : ""}</span>
+                  <span style={styles.mutedSmall}>{e.protocolDays === 0 ? "N/A" : `${e.protocolDays}d`}{e.note ? ` · ${e.note}` : ""}{(e.products || []).length > 0 ? ` · ${e.products.map((p) => p.qty > 1 ? `${p.name} x${p.qty}` : p.name).join(", ")}` : ""}</span>
                 </div>
               ))
             )}
@@ -1835,8 +1839,9 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
               <div>
                 <div style={styles.addPaymentRow}>
                   <input type="text" placeholder="Dresser name" value={changeDresser} onChange={(e) => setChangeDresser(e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
-                  <select value={changeProtocol} onChange={(e) => setChangeProtocol(Number(e.target.value))} style={styles.smallInput}>
+                  <select value={changeProtocol} onChange={(e) => setChangeProtocol(e.target.value === "na" ? 0 : Number(e.target.value))} style={styles.smallInput}>
                     {PROTOCOLS.map((p) => <option key={p} value={p}>{p}d</option>)}
+                    <option value="na">N/A</option>
                   </select>
                 </div>
                 <div style={styles.mutedSmall}>Products used at this visit (select what was actually used)</div>
@@ -1933,8 +1938,9 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         <Field label="Dresser Name (applied by)"><input style={styles.input} value={form.dresserName} onChange={(e) => set("dresserName", e.target.value)} /></Field>
         <Field label="Therapy Protocol">
           {!customProtocol ? (
-            <select style={styles.input} value={form.protocolDays} onChange={(e) => { if (e.target.value === "custom") setCustomProtocol(true); else set("protocolDays", Number(e.target.value)); }}>
+            <select style={styles.input} value={form.protocolDays} onChange={(e) => { if (e.target.value === "custom") setCustomProtocol(true); else set("protocolDays", e.target.value === "na" ? 0 : Number(e.target.value)); }}>
               {PROTOCOLS.map((p) => <option key={p} value={p}>Every {p} days</option>)}
+              <option value="na">N/A</option>
               <option value="custom">Custom…</option>
             </select>
           ) : (
