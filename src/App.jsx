@@ -1905,7 +1905,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
             {Number(c.doctorCommission) > 0 && <Detail label="Doctor Commission" value={fmtMoney(c.doctorCommission)} />}
             <Detail label="Paid" value={fmtMoney(paid)} color="#128577" big />
             <Detail label="Outstanding" value={fmtMoney(outstanding)} color={outstanding > 0 ? "#E1483C" : "#128577"} big />
-            <Detail label="Est. Profit" value={fmtMoney(profit)} highlight={profit < 0} />
+            <Detail label="Profit on this Sale" value={fmtMoney(profit)} color={profit >= 0 ? "#128577" : "#E1483C"} big />
           </div>
 
           {c.notes && <div style={styles.notesBox}><div style={styles.detailLabel}>Notes</div><div style={styles.notesText}>{c.notes}</div></div>}
