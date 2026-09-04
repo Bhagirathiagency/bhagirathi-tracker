@@ -367,6 +367,7 @@ export default function App() {
   const [doctorCalls, setDoctorCalls] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [challans, setChallans] = useState([]);
+  const [doctorsList, setDoctorsList] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [dresserBusinessAccess, setDresserBusinessAccessState] = useState({});
   const [businessAccessLoaded, setBusinessAccessLoaded] = useState(false);
@@ -416,7 +417,7 @@ export default function App() {
   const loadBusinessData = async (silent) => {
     if (silent) setRefreshing(true); else setLoaded(false);
     try {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals, docsList] = await Promise.all([
         loadKey(bkey(businessId, "wca-cases"), []),
         loadKey(bkey(businessId, "wca-machines"), []),
         loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
@@ -431,6 +432,7 @@ export default function App() {
         loadKey(bkey(businessId, "wca-expenses"), []),
         loadKey(bkey(businessId, "wca-accountant-pin"), null),
         loadKey(bkey(businessId, "wca-challans"), []),
+        loadKey(bkey(businessId, "wca-doctors"), []),
       ]);
       setCases(c);
       setMachines(m);
@@ -445,6 +447,7 @@ export default function App() {
       setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
       setExpenses(Array.isArray(exps) ? exps : []);
       setChallans(Array.isArray(chals) ? chals : []);
+      setDoctorsList(Array.isArray(docsList) ? docsList : []);
       {
         const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
         if (businessId === "bhagirathi") {
@@ -473,6 +476,7 @@ export default function App() {
   const refreshData = () => loadBusinessData(true);
 
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-challans"), challans); }, [challans, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-doctors"), doctorsList); }, [doctorsList, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-cases"), cases); }, [cases, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-machines"), machines); }, [machines, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-products"), products); }, [products, loaded, businessId]);
@@ -642,6 +646,9 @@ export default function App() {
     }
   };
   const deleteChallan = (id) => setChallans((prev) => prev.filter((c) => c.id !== id));
+  const addDoctorMaster = (entry) => setDoctorsList((prev) => [...prev, { id: uid(), ...entry }]);
+  const updateDoctorMaster = (id, patch) => setDoctorsList((prev) => prev.map((d) => d.id === id ? { ...d, ...patch } : d));
+  const removeDoctorMaster = (id) => setDoctorsList((prev) => prev.filter((d) => d.id !== id));
 
   const generateInvoiceNumber = (caseId) => {
     let assigned = null;
@@ -779,6 +786,7 @@ export default function App() {
           resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding}
           ownerLogins={ownerLogins}
           doctorCalls={doctorCalls}
+          doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster}
           expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
           businessId={businessId} business={business} businesses={BUSINESSES} onSwitchBusiness={switchBusiness}
           pin={pin} onChangePin={setOwnerPin}
@@ -794,6 +802,7 @@ export default function App() {
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
+          doctorsList={doctorsList}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           canManageStock={!!dresserStockAccess[role.name]}
           challans={challans} createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
@@ -934,7 +943,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -1003,7 +1012,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.nav}>
-        {[["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["reports", "Reports", "reports"], ["combined", "All Business", "overview"]].map(([key, label, icon]) => (
+        {[["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "dressers"], ["reports", "Reports", "reports"], ["combined", "All Business", "overview"]].map(([key, label, icon]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
             <Icon name={icon} size={16} />{label}
           </button>
@@ -1019,7 +1028,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "cases" && (
           <CasesTab cases={cases} machines={machines} products={products} saveCase={saveCase} deleteCase={deleteCase}
             addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
-            generateInvoiceNumber={generateInvoiceNumber} businessName={business.name} />
+            generateInvoiceNumber={generateInvoiceNumber} businessName={business.name} doctorsList={doctorsList} />
         )}
         {tab === "challans" && (
           <ChallansTab challans={challans} products={products} cases={cases}
@@ -1033,6 +1042,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} businessId={businessId} />}
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} />}
+        {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} machines={machines} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
@@ -1272,7 +1282,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const [savedConfirm, setSavedConfirm] = useState(false);
   useEffect(() => {
@@ -1330,7 +1340,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
 
   if (showForm) {
     return (
-      <CaseForm machines={machines} products={products} presetDresserName={name}
+      <CaseForm machines={machines} products={products} presetDresserName={name} doctorsList={doctorsList}
         onCancel={() => setShowForm(false)}
         onSave={(data) => { saveCase(data, null); setShowForm(false); setSavedConfirm(true); }} />
     );
@@ -1434,7 +1444,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         </CollapsibleSection>
 
         <CollapsibleSection title="Doctor Calls">
-          <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} />
+          <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} doctorsList={doctorsList} />
         </CollapsibleSection>
 
         {canManageStock && (
@@ -1454,7 +1464,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
   );
 }
 
-function DoctorCallTab({ name, products, doctorCalls, addDoctorCall }) {
+function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList }) {
   const [doctorName, setDoctorName] = useState("");
   const [doctorMobile, setDoctorMobile] = useState("");
   const [speciality, setSpeciality] = useState("");
@@ -1485,7 +1495,17 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall }) {
   return (
     <div>
       <div style={styles.formGrid}>
-        <Field label="Doctor Name"><input style={styles.input} value={doctorName} onChange={(e) => setDoctorName(e.target.value)} /></Field>
+        <Field label="Doctor Name">
+          <input style={styles.input} list="doctor-master-list-calls" value={doctorName} onChange={(e) => {
+            const val = e.target.value;
+            setDoctorName(val);
+            const match = (doctorsList || []).find((d) => d.name.toLowerCase() === val.toLowerCase());
+            if (match) { setDoctorMobile(match.mobile || ""); setSpeciality(match.speciality || ""); }
+          }} />
+          <datalist id="doctor-master-list-calls">
+            {(doctorsList || []).map((d) => <option key={d.id} value={d.name} />)}
+          </datalist>
+        </Field>
         <Field label="Doctor Mobile Number"><input type="tel" style={styles.input} value={doctorMobile} onChange={(e) => setDoctorMobile(e.target.value)} placeholder="10-digit number" /></Field>
         <Field label="Speciality"><input style={styles.input} value={speciality} onChange={(e) => setSpeciality(e.target.value)} placeholder="e.g. General Surgeon, Orthopedician" /></Field>
         <Field label="Product(s) Discussed">
@@ -1792,7 +1812,7 @@ function SectionTitle({ children }) { return <div style={styles.sectionTitle}>{c
 function EmptyState({ text }) { return <div style={styles.emptyState}>{text}</div>; }
 
 // ---------------- Cases (Owner) ----------------
-function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem }) {
+function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, businessName, doctorsList }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [filter, setFilter] = useState("all"); const [search, setSearch] = useState("");
@@ -1806,7 +1826,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
 
   if (showForm) {
     return (
-      <CaseForm machines={machines} products={products} initial={editing}
+      <CaseForm machines={machines} products={products} initial={editing} doctorsList={doctorsList}
         onCancel={() => { setShowForm(false); setEditing(null); }}
         onSave={(data) => { saveCase(data, editing ? editing.id : null); setShowForm(false); setEditing(null); }} />
     );
@@ -2002,7 +2022,7 @@ function Detail({ label, value, highlight, color, big }) {
   );
 }
 
-function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName }) {
+function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName, doctorsList }) {
   const [form, setForm] = useState(initial || {
     patientName: "", patientMobile: "", doctorName: "", doctorCommission: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: products[0] ? [{ name: products[0].name, qty: 1 }] : [],
@@ -2051,7 +2071,12 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
       <div style={styles.formGrid}>
         <Field label="Patient Name"><input style={styles.input} value={form.patientName} onChange={(e) => set("patientName", e.target.value)} /></Field>
         <Field label="Patient Mobile Number *"><input type="tel" style={styles.input} value={form.patientMobile} onChange={(e) => set("patientMobile", e.target.value)} placeholder="10-digit number — required" /></Field>
-        <Field label="Doctor Name"><input style={styles.input} value={form.doctorName} onChange={(e) => set("doctorName", e.target.value)} /></Field>
+        <Field label="Doctor Name">
+          <input style={styles.input} list="doctor-master-list" value={form.doctorName} onChange={(e) => set("doctorName", e.target.value)} />
+          <datalist id="doctor-master-list">
+            {(doctorsList || []).map((d) => <option key={d.id} value={d.name} />)}
+          </datalist>
+        </Field>
         <Field label="Doctor Commission (₹, optional)">
           <input type="number" style={styles.input} value={form.doctorCommission} onChange={(e) => set("doctorCommission", e.target.value)} placeholder="0 if none" />
         </Field>
@@ -3223,6 +3248,91 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
 }
 
 // ---------------- Dressers (Owner) ----------------
+// ---------------- Doctor Master List (Owner) ----------------
+function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, cases }) {
+  const [name, setName] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [speciality, setSpeciality] = useState("");
+  const [openId, setOpenId] = useState(null);
+  const [edits, setEdits] = useState({});
+
+  const caseCountFor = (docName) => cases.filter((c) => (c.doctorName || "").trim().toLowerCase() === docName.trim().toLowerCase()).length;
+
+  const submit = () => {
+    if (!name.trim()) return;
+    if (doctorsList.some((d) => d.name.trim().toLowerCase() === name.trim().toLowerCase())) { alert("This doctor is already in the list."); return; }
+    addDoctorMaster({ name: name.trim(), mobile: mobile.trim(), speciality: speciality.trim() });
+    setName(""); setMobile(""); setSpeciality("");
+  };
+
+  const startEdit = (d) => setEdits((prev) => ({ ...prev, [d.id]: { name: d.name, mobile: d.mobile || "", speciality: d.speciality || "" } }));
+  const saveEdit = (id) => {
+    const e = edits[id];
+    if (!e || !e.name.trim()) return;
+    updateDoctorMaster(id, { name: e.name.trim(), mobile: e.mobile.trim(), speciality: e.speciality.trim() });
+    setEdits((prev) => { const next = { ...prev }; delete next[id]; return next; });
+  };
+
+  const sorted = [...doctorsList].sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <div>
+      <SectionTitle>Add Doctor</SectionTitle>
+      <div style={styles.formGrid}>
+        <Field label="Doctor Name"><input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label="Mobile Number"><input type="tel" style={styles.input} value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="10-digit number" /></Field>
+        <Field label="Speciality"><input style={styles.input} value={speciality} onChange={(e) => setSpeciality(e.target.value)} placeholder="e.g. General Surgeon, Orthopedician" /></Field>
+        <button style={styles.primaryBtn} onClick={submit}>Add Doctor</button>
+      </div>
+      <div style={styles.emptyState2}>This is the master list of referring doctors who give business — used to autocomplete Doctor Name across cases, quotations, and doctor calls.</div>
+
+      <SectionTitle>Doctors ({sorted.length})</SectionTitle>
+      {sorted.length === 0 ? <EmptyState text="No doctors added yet." /> : (
+        <div style={styles.list}>
+          {sorted.map((d) => {
+            const open = openId === d.id;
+            const editing = edits[d.id];
+            return (
+              <div key={d.id} style={styles.card}>
+                <div style={styles.cardTop} onClick={() => setOpenId(open ? null : d.id)}>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.cardTitle}>{d.name}</div>
+                    <div style={styles.cardMeta}>{d.speciality || "—"} · {caseCountFor(d.name)} case{caseCountFor(d.name) === 1 ? "" : "s"}</div>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
+                </div>
+                {open && (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    {editing ? (
+                      <div style={styles.formGrid}>
+                        <input style={styles.smallInput} value={editing.name} onChange={(e) => setEdits((prev) => ({ ...prev, [d.id]: { ...prev[d.id], name: e.target.value } }))} placeholder="Name" />
+                        <input style={styles.smallInput} value={editing.mobile} onChange={(e) => setEdits((prev) => ({ ...prev, [d.id]: { ...prev[d.id], mobile: e.target.value } }))} placeholder="Mobile" />
+                        <input style={styles.smallInput} value={editing.speciality} onChange={(e) => setEdits((prev) => ({ ...prev, [d.id]: { ...prev[d.id], speciality: e.target.value } }))} placeholder="Speciality" />
+                        <div style={styles.formActions}>
+                          <button style={styles.secondaryBtn} onClick={() => setEdits((prev) => { const next = { ...prev }; delete next[d.id]; return next; })}>Cancel</button>
+                          <button style={{ ...styles.primaryBtn, flex: 1 }} onClick={() => saveEdit(d.id)}>Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={styles.mutedSmall}>Mobile: {d.mobile || "—"}</div>
+                        <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+                          <button style={styles.linkBtn} onClick={() => startEdit(d)}>Edit</button>
+                          <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => { if (window.confirm(`Remove Dr. ${d.name} from the master list?`)) removeDoctorMaster(d.id); }}>Remove</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserStats, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, businesses, businessId }) {
   const [name, setName] = useState("");
   const [newPin, setNewPin] = useState("");
