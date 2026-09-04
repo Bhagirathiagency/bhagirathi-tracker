@@ -258,6 +258,8 @@ function Icon({ name, size = 20 }) {
       return <svg {...common}><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M4.5 19.5h15" /></svg>;
     case "refresh":
       return <svg {...common}><path d="M3.5 12a8.5 8.5 0 0 1 14.4-6.1M20.5 12a8.5 8.5 0 0 1-14.4 6.1" /><path d="M18 3v4h-4" /><path d="M6 21v-4h4" /></svg>;
+    case "print":
+      return <svg {...common}><path d="M6 9V3h12v6" /><rect x="4" y="9" width="16" height="8" rx="1.5" /><path d="M6 17v4h12v-4" /></svg>;
     default:
       return null;
   }
@@ -2498,6 +2500,7 @@ function QuotationView({ q, onBack, onEdit, onStatus, businessName = "Bhagirathi
       </div>
       <div className="no-print" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <button style={styles.secondaryBtn} onClick={onEdit}>Edit</button>
+        <button style={{ ...styles.smallBtn, background: "#5B6864", flex: 1 }} onClick={() => window.print()}>Print</button>
         <button style={{ ...styles.smallBtn, background: "#3B5BA5", flex: 1 }} disabled={!!busy} onClick={downloadPdf}>
           {busy === "download" ? "Preparing…" : "Download PDF"}
         </button>
@@ -2946,6 +2949,7 @@ function ChallanPdfView({ ch, onBack, businessName }) {
       <div className="no-print" style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         <button style={styles.linkBtn} onClick={onBack}>← Back</button>
         <div style={{ flex: 1 }} />
+        <button style={{ ...styles.smallBtn, background: "#5B6864", flex: 1 }} onClick={() => window.print()}>Print</button>
         <button style={{ ...styles.smallBtn, flex: 1 }} disabled={busy} onClick={downloadPdf}>{busy ? "Preparing…" : "Download PDF"}</button>
       </div>
       <div style={{ ...styles.quoteSheet, fontFamily: PDF_FONT }} ref={sheetRef}>
@@ -3377,10 +3381,16 @@ function CollapsibleSection({ title, defaultOpen, right, children }) {
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {right}
           {open && (
-            <span onClick={download} title="Download this report as PDF"
-              style={{ display: "flex", alignItems: "center", color: busy ? "#8A9A96" : "#D9720A", cursor: busy ? "default" : "pointer" }}>
-              <Icon name="download" size={15} />
-            </span>
+            <>
+              <span onClick={(e) => { e.stopPropagation(); window.print(); }} title="Print this report"
+                style={{ display: "flex", alignItems: "center", color: "#5B6864", cursor: "pointer" }}>
+                <Icon name="print" size={15} />
+              </span>
+              <span onClick={download} title="Download this report as PDF"
+                style={{ display: "flex", alignItems: "center", color: busy ? "#8A9A96" : "#D9720A", cursor: busy ? "default" : "pointer" }}>
+                <Icon name="download" size={15} />
+              </span>
+            </>
           )}
           <span style={{ fontSize: 10 }}>{open ? "▲" : "▼"}</span>
         </span>
@@ -3519,9 +3529,12 @@ function DoctorCommissionCard({ d, businessName = "Bhagirathi Agency" }) {
       </div>
       {open && (
         <div style={{ padding: "0 14px 14px" }}>
-          <button style={{ ...styles.smallBtn, width: "100%", marginBottom: 12 }} disabled={busy} onClick={downloadPdf}>
-            {busy ? "Preparing…" : "Download Commission Statement PDF"}
-          </button>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button style={{ ...styles.smallBtn, background: "#5B6864", flex: 1 }} onClick={() => window.print()}>Print</button>
+            <button style={{ ...styles.smallBtn, flex: 1 }} disabled={busy} onClick={downloadPdf}>
+              {busy ? "Preparing…" : "Download PDF"}
+            </button>
+          </div>
           <div ref={sheetRef} style={{ ...styles.quoteSheet, fontFamily: PDF_FONT }}>
             <Letterhead businessName={businessName} docType="Commission Statement" />
             <div style={{ margin: "12px 0", fontSize: 13 }}>
