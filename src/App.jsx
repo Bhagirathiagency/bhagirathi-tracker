@@ -254,6 +254,8 @@ function Icon({ name, size = 20 }) {
       return <svg {...common}><path d="M9 21H5.5A1.5 1.5 0 0 1 4 19.5v-15A1.5 1.5 0 0 1 5.5 3H9" /><path d="M16 16l5-4-5-4" /><path d="M21 12H9" /></svg>;
     case "download":
       return <svg {...common}><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M4.5 19.5h15" /></svg>;
+    case "refresh":
+      return <svg {...common}><path d="M3.5 12a8.5 8.5 0 0 1 14.4-6.1M20.5 12a8.5 8.5 0 0 1-14.4 6.1" /><path d="M18 3v4h-4" /><path d="M6 21v-4h4" /></svg>;
     default:
       return null;
   }
@@ -406,49 +408,52 @@ export default function App() {
     } catch (e) { /* icon injection best-effort only */ }
   }, [business.name]);
 
-  useEffect(() => {
-    setLoaded(false);
-    (async () => {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals] = await Promise.all([
-        loadKey(bkey(businessId, "wca-cases"), []),
-        loadKey(bkey(businessId, "wca-machines"), []),
-        loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
-        loadKey(bkey(businessId, "wca-owner-pin"), null),
-        loadKey(bkey(businessId, "wca-dressers"), []),
-        loadKey(bkey(businessId, "wca-quotations"), []),
-        loadKey(bkey(businessId, "wca-dresser-pins"), {}),
-        loadKey(bkey(businessId, "wca-doctor-calls"), []),
-        loadKey(bkey(businessId, "wca-owner-logins"), []),
-        loadKey(bkey(businessId, "wca-dresser-profiles"), {}),
-        loadKey(bkey(businessId, "wca-dresser-stock-access"), {}),
-        loadKey(bkey(businessId, "wca-expenses"), []),
-        loadKey(bkey(businessId, "wca-accountant-pin"), null),
-        loadKey(bkey(businessId, "wca-challans"), []),
-      ]);
-      setCases(c);
-      setMachines(m);
-      setProducts(normalizeProducts(p));
-      setPin(ownerPin);
-      setAccountantPinState(acctPin);
-      setDressers(drs);
-      setQuotations(qts);
-      setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
-      setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
-      setOwnerLogins(Array.isArray(olog) ? olog : []);
-      setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
-      setExpenses(Array.isArray(exps) ? exps : []);
-      setChallans(Array.isArray(chals) ? chals : []);
-      {
-        const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
-        if (businessId === "bhagirathi") {
-          const devashish = (drs || []).find((n) => n.trim().toLowerCase() === "devashish");
-          if (devashish && stockAccess[devashish] === undefined) stockAccess[devashish] = true;
-        }
-        setDresserStockAccessState(stockAccess);
+  const [refreshing, setRefreshing] = useState(false);
+  const loadBusinessData = async (silent) => {
+    if (silent) setRefreshing(true); else setLoaded(false);
+    const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals] = await Promise.all([
+      loadKey(bkey(businessId, "wca-cases"), []),
+      loadKey(bkey(businessId, "wca-machines"), []),
+      loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
+      loadKey(bkey(businessId, "wca-owner-pin"), null),
+      loadKey(bkey(businessId, "wca-dressers"), []),
+      loadKey(bkey(businessId, "wca-quotations"), []),
+      loadKey(bkey(businessId, "wca-dresser-pins"), {}),
+      loadKey(bkey(businessId, "wca-doctor-calls"), []),
+      loadKey(bkey(businessId, "wca-owner-logins"), []),
+      loadKey(bkey(businessId, "wca-dresser-profiles"), {}),
+      loadKey(bkey(businessId, "wca-dresser-stock-access"), {}),
+      loadKey(bkey(businessId, "wca-expenses"), []),
+      loadKey(bkey(businessId, "wca-accountant-pin"), null),
+      loadKey(bkey(businessId, "wca-challans"), []),
+    ]);
+    setCases(c);
+    setMachines(m);
+    setProducts(normalizeProducts(p));
+    setPin(ownerPin);
+    setAccountantPinState(acctPin);
+    setDressers(drs);
+    setQuotations(qts);
+    setDresserPins(drPins && typeof drPins === "object" ? drPins : {});
+    setDoctorCalls(Array.isArray(dcalls) ? dcalls : []);
+    setOwnerLogins(Array.isArray(olog) ? olog : []);
+    setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
+    setExpenses(Array.isArray(exps) ? exps : []);
+    setChallans(Array.isArray(chals) ? chals : []);
+    {
+      const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
+      if (businessId === "bhagirathi") {
+        const devashish = (drs || []).find((n) => n.trim().toLowerCase() === "devashish");
+        if (devashish && stockAccess[devashish] === undefined) stockAccess[devashish] = true;
       }
-      setLoaded(true);
-    })();
-  }, [businessId]);
+      setDresserStockAccessState(stockAccess);
+    }
+    setLoaded(true);
+    if (silent) setRefreshing(false);
+  };
+
+  useEffect(() => { loadBusinessData(false); }, [businessId]); // eslint-disable-line
+  const refreshData = () => loadBusinessData(true);
 
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-challans"), challans); }, [challans, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-cases"), cases); }, [cases, loaded, businessId]);
@@ -742,6 +747,7 @@ export default function App() {
           businessId={businessId} business={business} businesses={BUSINESSES} onSwitchBusiness={switchBusiness}
           pin={pin} onChangePin={setOwnerPin}
           accountantPin={accountantPin} onChangeAccountantPin={setAccountantPin}
+          refreshData={refreshData} refreshing={refreshing}
           onLogout={() => setRole(null)}
         />
       )}
@@ -757,6 +763,7 @@ export default function App() {
           challans={challans} createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
           business={business} businessId={businessId} businesses={BUSINESSES}
           myBusinesses={businessesFor(role.name)} onSwitchBusiness={switchBusiness}
+          refreshData={refreshData} refreshing={refreshing}
           onLogout={() => setRole(null)}
         />
       )}
@@ -891,7 +898,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -929,6 +936,9 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             <div style={styles.brandSub}>Owner view</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
+            <button style={styles.logoutBtn} onClick={refreshData} disabled={refreshing}>
+              <Icon name="refresh" size={15} /> {refreshing ? "…" : "Refresh"}
+            </button>
             <button style={styles.logoutBtn} onClick={() => setShowPinForm((s) => !s)}><Icon name="pin" size={15} /> PIN</button>
             <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
           </div>
@@ -1225,7 +1235,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const myCasesActive = cases.filter((c) => c.status === "active" && (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase());
   const myTodaysVisits = useMemo(() => myCasesActive
@@ -1278,7 +1288,12 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             <div style={styles.brandName}>{business.name}</div>
             <div style={styles.brandSub}>Hi, {name}</div>
           </div>
-          <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button style={styles.logoutBtn} onClick={refreshData} disabled={refreshing}>
+              <Icon name="refresh" size={15} /> {refreshing ? "…" : "Refresh"}
+            </button>
+            <button style={styles.logoutBtn} onClick={onLogout}><Icon name="logout" size={15} /> Switch</button>
+          </div>
         </div>
       </header>
 
