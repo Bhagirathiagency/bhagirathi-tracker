@@ -2528,7 +2528,7 @@ function MachinesTab({ machines, setMachines, machineInUse, cases, businessId })
                     <div style={styles.cardMeta}>{m.model}</div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                    <span style={{ ...styles.badge, color: inUse ? "#D9720A" : "#5B6864", background: inUse ? "#FBEAD3" : "#EEF0EE" }}>{inUse ? "In Use" : "Available"}</span>
+                    <span style={{ ...styles.badge, color: inUse ? "#D9720A" : "#128577", background: inUse ? "#FBEAD3" : "#E3F3EF" }}>{inUse ? "In Use" : "Available"}</span>
                     <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
                   </div>
                 </div>
