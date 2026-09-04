@@ -3472,7 +3472,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     cases.forEach((c) => (c.payments || []).forEach((p) => { tally[p.mode || "Cash"] = (tally[p.mode || "Cash"] || 0) + Number(p.amount || 0); }));
     return tally;
   }, [cases]);
-  const totalProfit = cases.reduce((s, c) => s + estimateProfit(c, products), 0);
+  const totalProfit = cases.reduce((s, c) => s + estimateProfit(c, products), 0) - (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const [pnlGranularity, setPnlGranularity] = useState("monthly");
   const pnlRows = useMemo(() => {
