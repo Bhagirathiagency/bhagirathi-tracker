@@ -1269,6 +1269,12 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
 
 function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [showForm, setShowForm] = useState(false);
+  const [savedConfirm, setSavedConfirm] = useState(false);
+  useEffect(() => {
+    if (!savedConfirm) return;
+    const t = setTimeout(() => setSavedConfirm(false), 3000);
+    return () => clearTimeout(t);
+  }, [savedConfirm]);
   const myCasesActive = cases.filter((c) => c.status === "active" && (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase());
   const myTodaysVisits = useMemo(() => myCasesActive
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
@@ -1299,11 +1305,29 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
       return s + Math.max(0, Number(c.totalAmount || 0) - paid);
     }, 0), [cases, name]);
 
+  if (savedConfirm) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#FBF6EC", padding: 24, textAlign: "center" }}>
+        <div style={{
+          width: 96, height: 96, borderRadius: "50%", background: "#128577", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20,
+          boxShadow: "0 12px 30px rgba(18,133,119,0.35)",
+        }}>
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 12.5l5 5L20 6" />
+          </svg>
+        </div>
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 20, color: "#0E2422", marginBottom: 6 }}>Case Saved!</div>
+        <div style={{ fontSize: 14, color: "#5B6864", marginBottom: 24 }}>Your case has been saved successfully.</div>
+        <button style={{ ...styles.primaryBtn, width: 200 }} onClick={() => setSavedConfirm(false)}>OK</button>
+      </div>
+    );
+  }
+
   if (showForm) {
     return (
       <CaseForm machines={machines} products={products} presetDresserName={name}
         onCancel={() => setShowForm(false)}
-        onSave={(data) => { saveCase(data, null); setShowForm(false); }} />
+        onSave={(data) => { saveCase(data, null); setShowForm(false); setSavedConfirm(true); }} />
     );
   }
 
