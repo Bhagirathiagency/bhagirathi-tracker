@@ -1779,7 +1779,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
       <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.cardTitle}>{c.patientName}</div>
-          {(!compact || open) && (
+          {open && (
             <>
               <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")} · {protocolLabel(c.protocolDays)} protocol</div>
               <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {fmtDate(c.applicationDate)}{c.applicationTime ? ` ${fmtTime(c.applicationTime)}` : ""} · {days}d</div>
@@ -1787,7 +1787,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
             </>
           )}
         </div>
-        {(!compact || open) && (
+        {open && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
             <span style={{ ...styles.badge, color: st.color, background: st.bg }}>{st.label}</span>
             {c.status === "active" && overdue > 0 && <span style={styles.overdueTag}>{overdue}d change overdue</span>}
@@ -1795,7 +1795,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
             {outstanding > 0 ? <span style={styles.dueTag}>{fmtMoney(outstanding)} due</span> : <span style={styles.paidTag}>Paid up</span>}
           </div>
         )}
-        {compact && !open && <span style={{ fontSize: 11, color: "#8A9A96" }}>▼</span>}
+        {!open && <span style={{ fontSize: 11, color: "#8A9A96" }}>▼</span>}
       </div>
 
       {!compact && open && (
@@ -1808,8 +1808,8 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
             <Detail label="Total Amount" value={fmtMoney(c.totalAmount)} />
             {Number(c.machineRentalAmount) > 0 && <Detail label="Machine Rental" value={fmtMoney(c.machineRentalAmount)} />}
             {Number(c.doctorCommission) > 0 && <Detail label="Doctor Commission" value={fmtMoney(c.doctorCommission)} />}
-            <Detail label="Paid" value={fmtMoney(paid)} />
-            <Detail label="Outstanding" value={fmtMoney(outstanding)} highlight={outstanding > 0} />
+            <Detail label="Paid" value={fmtMoney(paid)} color="#128577" big />
+            <Detail label="Outstanding" value={fmtMoney(outstanding)} color={outstanding > 0 ? "#E1483C" : "#128577"} big />
             <Detail label="Est. Profit" value={fmtMoney(profit)} highlight={profit < 0} />
           </div>
 
@@ -1897,8 +1897,14 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
   );
 }
 
-function Detail({ label, value, highlight }) {
-  return <div><div style={styles.detailLabel}>{label}</div><div style={{ ...styles.detailValue, color: highlight ? "#E1483C" : "#182322" }}>{value}</div></div>;
+function Detail({ label, value, highlight, color, big }) {
+  const resolvedColor = color || (highlight ? "#E1483C" : "#182322");
+  return (
+    <div>
+      <div style={styles.detailLabel}>{label}</div>
+      <div style={{ ...styles.detailValue, color: resolvedColor, ...(big ? { fontSize: 18, fontWeight: 800 } : {}) }}>{value}</div>
+    </div>
+  );
 }
 
 function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName }) {
