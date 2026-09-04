@@ -529,6 +529,15 @@ export default function App() {
   };
   const addDressingChange = (caseId, entry) => {
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, dressingChanges: [...(c.dressingChanges || []), { id: uid(), ...entry }] } : c));
+    // Deduct stock for whatever was actually used at this specific visit.
+    const lines = Array.isArray(entry.products) ? entry.products : [];
+    lines.forEach((line) => {
+      const qty = Number(line.qty) || 0;
+      if (qty <= 0) return;
+      setProducts((prev) => prev.map((p) => p.name === line.name
+        ? { ...p, available: Math.max(0, (p.available || 0) - qty), used: (p.used || 0) + qty }
+        : p));
+    });
   };
   const addAdditionalItem = (caseId, entry) => {
     const qty = Number(entry.qty) || 1;
@@ -1486,10 +1495,50 @@ function AdditionalItemsBlock({ c, products, onAddAdditionalItem }) {
   );
 }
 
+function ProductsUsedPicker({ products, selected, onChange }) {
+  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
+  const current = selected || [];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, border: "1px solid #DCE4DF", borderRadius: 10, padding: 8, maxHeight: 200, overflowY: "auto", marginTop: 8 }}>
+      {productsByCompany.map(([company, prods]) => (
+        <div key={company}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9A96", margin: "6px 0 2px" }}>{company}</div>
+          {prods.map((p) => {
+            const line = current.find((it) => it.name === p.name);
+            const checked = !!line;
+            const qty = line ? line.qty : 1;
+            return (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 0" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, flex: 1 }}>
+                  <input type="checkbox" checked={checked} onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...current.filter((it) => it.name !== p.name), { name: p.name, qty: 1 }]
+                      : current.filter((it) => it.name !== p.name);
+                    onChange(next);
+                  }} />
+                  {p.name}
+                </label>
+                {checked && (
+                  <input type="number" min="1" style={{ ...styles.smallInput, width: 55 }} value={qty}
+                    onChange={(e) => {
+                      const q = Math.max(1, Number(e.target.value) || 1);
+                      onChange(current.map((it) => it.name === p.name ? { name: p.name, qty: q } : it));
+                    }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAdditionalItem, onCapturePhoto }) {
   const [open, setOpen] = useState(false);
   const [protocolDays, setProtocolDays] = useState(c.protocolDays || 5);
   const [note, setNote] = useState("");
+  const [changeProducts, setChangeProducts] = useState([]);
   const [uploading, setUploading] = useState(null);
   const due = nextDueDate(c);
   const overdue = overdueDays(c);
@@ -1542,9 +1591,11 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
           </div>
           <input type="text" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)}
             style={{ ...styles.smallInput, width: "100%", marginTop: 8, boxSizing: "border-box" }} />
+          <div style={styles.mutedSmall}>Products used at this visit (select what was actually used, single or multiple)</div>
+          <ProductsUsedPicker products={products} selected={changeProducts} onChange={setChangeProducts} />
           <button style={{ ...styles.smallBtn, width: "100%", marginTop: 8 }} onClick={() => {
-            onAddDressingChange({ date: todayISO(), dresserName, protocolDays, note });
-            setNote(""); setOpen(false);
+            onAddDressingChange({ date: todayISO(), dresserName, protocolDays, note, products: changeProducts });
+            setNote(""); setChangeProducts([]); setOpen(false);
           }}>Log Today's Change</button>
 
           <AdditionalItemsBlock c={c} products={products} onAddAdditionalItem={onAddAdditionalItem} />
@@ -1692,6 +1743,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
   const [changeDresser, setChangeDresser] = useState(c.dresserName || "");
   const [changeProtocol, setChangeProtocol] = useState(c.protocolDays || 5);
   const [changeNote, setChangeNote] = useState("");
+  const [changeProducts, setChangeProducts] = useState([]);
   const [photoData, setPhotoData] = useState({});
 
   const st = STATUS[c.status] || STATUS.active;
@@ -1773,19 +1825,26 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
             <div style={styles.detailLabel}>Dressing change log</div>
             {changes.length === 0 ? <div style={styles.mutedSmall}>No dressing changes recorded.</div> : (
               changes.map((e) => (
-                <div key={e.id} style={styles.paymentLine}><span>{fmtDate(e.date)}</span><span>{e.dresserName || "—"}</span><span style={styles.mutedSmall}>{e.protocolDays}d{e.note ? ` · ${e.note}` : ""}</span></div>
+                <div key={e.id} style={styles.paymentLine}>
+                  <span>{fmtDate(e.date)}</span><span>{e.dresserName || "—"}</span>
+                  <span style={styles.mutedSmall}>{e.protocolDays}d{e.note ? ` · ${e.note}` : ""}{(e.products || []).length > 0 ? ` · ${e.products.map((p) => p.qty > 1 ? `${p.name} x${p.qty}` : p.name).join(", ")}` : ""}</span>
+                </div>
               ))
             )}
             {c.status === "active" && (
-              <div style={styles.addPaymentRow}>
-                <input type="text" placeholder="Dresser name" value={changeDresser} onChange={(e) => setChangeDresser(e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
-                <select value={changeProtocol} onChange={(e) => setChangeProtocol(Number(e.target.value))} style={styles.smallInput}>
-                  {PROTOCOLS.map((p) => <option key={p} value={p}>{p}d</option>)}
-                </select>
-                <button style={styles.smallBtn} onClick={() => {
+              <div>
+                <div style={styles.addPaymentRow}>
+                  <input type="text" placeholder="Dresser name" value={changeDresser} onChange={(e) => setChangeDresser(e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
+                  <select value={changeProtocol} onChange={(e) => setChangeProtocol(Number(e.target.value))} style={styles.smallInput}>
+                    {PROTOCOLS.map((p) => <option key={p} value={p}>{p}d</option>)}
+                  </select>
+                </div>
+                <div style={styles.mutedSmall}>Products used at this visit (select what was actually used)</div>
+                <ProductsUsedPicker products={products} selected={changeProducts} onChange={setChangeProducts} />
+                <button style={{ ...styles.smallBtn, width: "100%", marginTop: 8 }} onClick={() => {
                   if (!changeDresser.trim()) return;
-                  onAddDressingChange({ date: todayISO(), dresserName: changeDresser.trim(), protocolDays: changeProtocol, note: changeNote });
-                  setChangeNote("");
+                  onAddDressingChange({ date: todayISO(), dresserName: changeDresser.trim(), protocolDays: changeProtocol, note: changeNote, products: changeProducts });
+                  setChangeNote(""); setChangeProducts([]);
                 }}>Log Change</button>
               </div>
             )}
