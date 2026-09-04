@@ -1986,7 +1986,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
   const submit = () => {
     if (!form.patientName.trim() || !form.doctorName.trim()) return;
     const cleanedProducts = (form.products || []).filter((it) => (typeof it === "string" ? true : Number(it.qty) > 0));
-    onSave({ ...form, products: cleanedProducts, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: form.machineSerial ? (Number(form.protocolDays) || 5) : 0 });
+    onSave({ ...form, products: cleanedProducts, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: form.machineSerial ? (Number(form.protocolDays) || 5) : 0, status: form.machineSerial ? form.status : "na" });
   };
 
   return (
@@ -2043,7 +2043,12 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
           </div>
         </Field>
         <Field label="Machine Serial No.">
-          <select style={styles.input} value={form.machineSerial} onChange={(e) => set("machineSerial", e.target.value)}>
+          <select style={styles.input} value={form.machineSerial} onChange={(e) => {
+            const val = e.target.value;
+            set("machineSerial", val);
+            if (!val) set("status", "na");
+            else if (form.status === "na") set("status", "active");
+          }}>
             <option value="">— None —</option>
             {machines.map((m) => <option key={m.id} value={m.serial}>{m.serial} ({m.model})</option>)}
           </select>
@@ -2072,12 +2077,13 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         <Field label="Application Date"><input type="date" style={styles.input} value={form.applicationDate} onChange={(e) => set("applicationDate", e.target.value)} /></Field>
         <Field label="Application Time"><input type="time" style={styles.input} value={form.applicationTime} onChange={(e) => set("applicationTime", e.target.value)} /></Field>
         <Field label="Status">
-          <select style={styles.input} value={form.status} onChange={(e) => set("status", e.target.value)}>
+          <select style={styles.input} value={form.machineSerial ? form.status : "na"} disabled={!form.machineSerial} onChange={(e) => set("status", e.target.value)}>
             <option value="active">VAC Therapy Applied</option>
             <option value="stopped">VAC Therapy Stop</option>
             <option value="reapplied">VAC Therapy Continue</option>
             <option value="na">N/A (No VAC Therapy)</option>
           </select>
+          {!form.machineSerial && <span style={styles.mutedSmall}>Select a machine to set a VAC therapy status</span>}
         </Field>
         {form.status !== "active" && (
           <Field label={form.status === "stopped" ? "Stop Date" : "Reapply Date"}>
