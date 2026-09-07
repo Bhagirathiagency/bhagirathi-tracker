@@ -4563,6 +4563,40 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
             </div>
               ); })()}
 
+            {(() => {
+              const overallCost = cases.reduce((s, c) => {
+                const names = getCaseProducts(c);
+                return s + names.reduce((sub, name) => {
+                  const prod = products.find((p) => p.name === name);
+                  return sub + (prod ? Number(prod.costPrice || 0) : 0);
+                }, 0);
+              }, 0);
+              const overallCommission = cases.reduce((s, c) => s + Number(c.doctorCommission || 0), 0);
+              const overallInvestment = overallCost + overallCommission + expensesTotal;
+              const overallProfit = totalCollected - overallInvestment;
+              const totalBusiness = outstandingTotal + overallInvestment + Math.max(0, overallProfit);
+              const pieData = [
+                { name: "Outstanding", value: outstandingTotal, color: "#E1483C" },
+                { name: "Investment", value: overallInvestment, color: "#D98D2B" },
+                { name: "Profit", value: Math.max(0, overallProfit), color: "#128577" },
+              ].filter((d) => d.value > 0);
+              return totalBusiness > 0 ? (
+                <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
+                  <div style={{ ...styles.detailLabel, padding: "0 8px 8px" }}>Total Business Done — {fmtMoney(totalBusiness)}</div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(d) => `${d.name} ${((d.value / totalBusiness) * 100).toFixed(1)}%`}>
+                        {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                      </Pie>
+                      <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {overallProfit < 0 && <div style={{ ...styles.mutedSmall, padding: "0 8px", color: "#E1483C" }}>Note: overall investment currently exceeds amount collected — profit slice is ₹0 in the chart, actual shortfall is {fmtMoney(Math.abs(overallProfit))}.</div>}
+                </div>
+              ) : null;
+            })()}
+
             <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={[...pnlRows].reverse().map((r) => ({ label: pnlPeriodLabel(r.key, pnlGranularity), Revenue: r.revenue + r.rental, Cost: r.cost + r.commission + (r.opex || 0), Profit: r.profit }))}>
