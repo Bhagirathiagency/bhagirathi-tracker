@@ -967,6 +967,8 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 // ================= OWNER SHELL =================
 function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("dashboard");
+  const [casesInitialFilter, setCasesInitialFilter] = useState(null);
+  const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
   const [showPinForm, setShowPinForm] = useState(false);
 
   const machineInUse = (serial) => cases.some((c) => c.machineSerial === serial && c.status === "active");
@@ -1045,12 +1047,12 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "dashboard" && (
           <Dashboard cases={cases} machines={machines} outstandingTotal={outstandingTotal} activeCount={activeCount}
             machinesInUseCount={machinesInUseCount} overdueCount={overdueCount} dueSoonCount={dueSoonCount} dresserStats={dresserStats} lowStock={lowStock}
-            products={products} setTab={setTab} />
+            products={products} setTab={setTab} goToCases={goToCases} />
         )}
         {tab === "cases" && (
           <CasesTab cases={cases} machines={machines} products={products} saveCase={saveCase} deleteCase={deleteCase}
             addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
-            generateInvoiceNumber={generateInvoiceNumber} businessName={business.name} doctorsList={doctorsList} />
+            generateInvoiceNumber={generateInvoiceNumber} businessName={business.name} doctorsList={doctorsList} initialFilter={casesInitialFilter} />
         )}
         {tab === "challans" && (
           <ChallansTab challans={challans} products={products} cases={cases}
@@ -1882,7 +1884,7 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
 }
 
 // ---------------- Dashboard ----------------
-function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInUseCount, overdueCount, dueSoonCount, dresserStats, lowStock, products, setTab }) {
+function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInUseCount, overdueCount, dueSoonCount, dresserStats, lowStock, products, setTab, goToCases }) {
   const recentCases = [...cases].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)).slice(0, 5);
 
   const todaysVisits = useMemo(() => {
@@ -1897,9 +1899,9 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
   return (
     <div>
       <div style={styles.cardGrid}>
-        <StatCard label="Active Cases" value={activeCount} accent="#D9720A" icon="cases" onClick={() => setTab("cases")} />
-        <StatCard label="Change Due / Overdue" value={dueSoonCount} accent="#E1483C" icon="reports" onClick={() => setTab("cases")} />
-        <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => setTab("cases")} />
+        <StatCard label="Active Cases" value={activeCount} accent="#D9720A" icon="cases" onClick={() => goToCases("active")} />
+        <StatCard label="Change Due / Overdue" value={dueSoonCount} accent="#E1483C" icon="reports" onClick={() => goToCases("overdue")} />
+        <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => goToCases("outstanding")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
       </div>
 
@@ -1965,14 +1967,18 @@ function SectionTitle({ children }) { return <div style={styles.sectionTitle}>{c
 function EmptyState({ text }) { return <div style={styles.emptyState}>{text}</div>; }
 
 // ---------------- Cases (Owner) ----------------
-function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, businessName, doctorsList }) {
+function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, businessName, doctorsList, initialFilter }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [filter, setFilter] = useState("all"); const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState(initialFilter || "all"); const [search, setSearch] = useState("");
 
   const filtered = cases.filter((c) => {
     if (filter === "all") return true;
     if (filter === "overdue") return overdueDays(c) > 0;
+    if (filter === "outstanding") {
+      const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      return Math.max(0, Number(c.totalAmount || 0) - paid) > 0;
+    }
     return c.status === filter;
   });
   const searched = search.trim() ? filtered.filter((c) => (c.patientName||"").toLowerCase().includes(search.trim().toLowerCase()) || (c.doctorName||"").toLowerCase().includes(search.trim().toLowerCase())) : filtered; const sorted = [...searched].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate));
@@ -1988,9 +1994,9 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
   return (
     <div>
       <input style={{...styles.input, marginBottom: 10}} placeholder="Search by patient or doctor name..." value={search} onChange={(e) => setSearch(e.target.value)} /><div style={styles.filterRow}>
-        {["all", "active", "overdue", "stopped", "reapplied"].map((f) => (
+        {["all", "active", "overdue", "outstanding", "stopped", "reapplied"].map((f) => (
           <button key={f} onClick={() => setFilter(f)} style={{ ...styles.filterChip, ...(filter === f ? styles.filterChipActive : {}) }}>
-            {f === "all" ? "All" : f === "overdue" ? "Change Due" : STATUS[f].label}
+            {f === "all" ? "All" : f === "overdue" ? "Change Due" : f === "outstanding" ? "Outstanding" : STATUS[f].label}
           </button>
         ))}
       </div>
