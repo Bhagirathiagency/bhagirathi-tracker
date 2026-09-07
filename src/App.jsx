@@ -1456,6 +1456,7 @@ function DresserProfileForm({ name, profile, setDresserProfile, businessName = "
 
 function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, deleteDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [showForm, setShowForm] = useState(false);
+  const [editingCase, setEditingCase] = useState(null);
   const [savedConfirm, setSavedConfirm] = useState(false);
   useEffect(() => {
     if (!savedConfirm) return;
@@ -1537,9 +1538,9 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
 
   if (showForm) {
     return (
-      <CaseForm machines={machines} products={products} presetDresserName={name} doctorsList={doctorsList} cases={cases}
-        onCancel={() => setShowForm(false)}
-        onSave={(data) => { saveCase(data, null); setShowForm(false); setSavedConfirm(true); }} />
+      <CaseForm machines={machines} products={products} initial={editingCase} presetDresserName={name} doctorsList={doctorsList} cases={cases}
+        onCancel={() => { setShowForm(false); setEditingCase(null); }}
+        onSave={(data) => { saveCase(data, editingCase ? editingCase.id : null); setShowForm(false); setEditingCase(null); setSavedConfirm(true); }} />
     );
   }
 
@@ -1626,6 +1627,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                   onAddDressingChange={(e) => addDressingChange(c.id, e)}
                   onDeleteDressingChange={(changeId) => deleteDressingChange(c.id, changeId)}
                   onUpdateStatus={(status, endDate) => saveCase({ ...c, status, endDate }, c.id)}
+                  onEdit={() => { setEditingCase(c); setShowForm(true); }}
                   onAddAdditionalItem={(e) => addAdditionalItem(c.id, e)}
                   onCapturePhoto={(stage, dataURL) => capturePhoto(c.id, stage, dataURL)} />
               ))}
@@ -1971,7 +1973,7 @@ function ProductsUsedPicker({ products, selected, onChange }) {
   );
 }
 
-function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingChange, onDeleteDressingChange, onUpdateStatus, onAddAdditionalItem, onAddPayment, onCapturePhoto }) {
+function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingChange, onDeleteDressingChange, onUpdateStatus, onAddAdditionalItem, onAddPayment, onCapturePhoto, onEdit }) {
   const draftKey = `wca-draft-${c.id}`;
   const loadDraft = () => {
     try {
@@ -2105,6 +2107,11 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingCh
             <button style={{ ...styles.smallBtn, width: "100%", marginTop: 6, background: "#E1483C" }} onClick={() => {
               if (window.confirm("Undo your last logged change for this case?")) onDeleteDressingChange(lastMyChange.id);
             }}>Undo Last Log (within 10 min)</button>
+          )}
+          {onEdit && (
+            <button style={{ ...styles.smallBtn, width: "100%", marginTop: 6, background: "#3B5BA5" }} onClick={onEdit}>
+              ✏️ Fix / Edit Case Details
+            </button>
           )}
 
           <AdditionalItemsBlock c={c} products={products} onAddAdditionalItem={onAddAdditionalItem} />
@@ -2468,12 +2475,31 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
       .map((c) => c.machineSerial)
       .filter(Boolean)
   );
-  const [form, setForm] = useState(initial || {
+  const newCaseDraftKey = `wca-new-case-draft-${(presetDresserName || "owner").replace(/\s+/g, "_")}`;
+  const loadNewCaseDraft = () => {
+    if (initial) return null; // never restore a draft over an existing case being edited
+    try {
+      const raw = localStorage.getItem(newCaseDraftKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  };
+  const savedDraft = loadNewCaseDraft();
+  const [form, setForm] = useState(initial || savedDraft || {
     patientName: "", patientMobile: "", doctorName: "", doctorCommission: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: [],
     applicationDate: todayISO(), applicationTime: nowTimeHM(), status: "active", endDate: "",
     billTo: "Patient", hospitalName: "", totalAmount: "", amountReceived: "", machineRentalAmount: "", notes: "",
   });
+
+  useEffect(() => {
+    if (initial) return; // don't draft-save while editing an existing case
+    const hasContent = form.patientName || form.patientMobile || form.doctorName;
+    try {
+      if (hasContent) localStorage.setItem(newCaseDraftKey, JSON.stringify(form));
+      else localStorage.removeItem(newCaseDraftKey);
+    } catch (e) {}
+    // eslint-disable-next-line
+  }, [form]);
   const [customProtocol, setCustomProtocol] = useState(!PROTOCOLS.includes(Number(form.protocolDays)));
   const [pickerCompany, setPickerCompany] = useState("");
   const [formError, setFormError] = useState("");
@@ -2507,6 +2533,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
     if (!form.patientMobile || !form.patientMobile.trim()) { setFormError("Patient mobile number is required — enter it before proceeding."); return; }
     setFormError("");
     const cleanedProducts = (form.products || []).filter((it) => (typeof it === "string" ? true : Number(it.qty) > 0));
+    try { localStorage.removeItem(newCaseDraftKey); } catch (e) {}
     onSave({ ...form, products: cleanedProducts, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: form.machineSerial ? (Number(form.protocolDays) || 5) : 0, status: form.machineSerial ? form.status : "na" });
   };
 
