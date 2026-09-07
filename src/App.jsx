@@ -1410,8 +1410,8 @@ function DresserProfileForm({ name, profile, setDresserProfile, businessName = "
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#CFE8E3", letterSpacing: 1.5, textTransform: "uppercase", marginTop: 6, textAlign: "center" }}>Advanced Wound Care Service</div>
               </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "center", marginTop: -64 }}>
-              <img src={photo} alt={name} style={{ width: 128, height: 128, borderRadius: 30, objectFit: "cover", border: "5px solid #FFFFFF", boxShadow: "0 8px 22px rgba(15,61,56,0.35)", filter: "contrast(1.08) saturate(1.12) brightness(1.03)" }} />
+            <div style={{ display: "flex", justifyContent: "center", marginTop: -70, position: "relative", zIndex: 2 }}>
+              <img src={photo} alt={name} style={{ width: 168, height: 168, borderRadius: 38, objectFit: "cover", border: "6px solid #FFFFFF", boxShadow: "0 10px 28px rgba(15,61,56,0.4)", filter: "contrast(1.08) saturate(1.12) brightness(1.03)" }} />
             </div>
             <div style={{ padding: "16px 28px 28px" }}>
               <div style={{ textAlign: "center", fontSize: 22, fontWeight: 700, color: "#0E2422", marginBottom: 2 }}>{name}</div>
