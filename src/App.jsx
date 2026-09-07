@@ -4241,14 +4241,17 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   const doctorMonthlyStats = useMemo(() => {
     const tally = {};
     cases.forEach((c) => {
-      const doctor = (c.doctorName || "Unknown").trim();
+      const doctorRaw = (c.doctorName || "Unknown").trim() || "Unknown";
+      const doctorKeyPart = doctorRaw.toLowerCase();
       const month = c.applicationDate ? new Date(c.applicationDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "Unknown";
-      const key = doctor + "||" + month;
-      if (tally[key] === undefined) tally[key] = { doctor, month, count: 0, sortDate: c.applicationDate || "" };
+      const key = doctorKeyPart + "||" + month;
+      if (tally[key] === undefined) tally[key] = { doctor: doctorRaw, month, count: 0, sortDate: c.applicationDate || "", cases: [] };
       tally[key].count += 1;
+      tally[key].cases.push({ id: c.id, patientName: c.patientName, date: c.applicationDate });
     });
     return Object.values(tally).sort((a, b) => a.doctor.localeCompare(b.doctor) || new Date(b.sortDate) - new Date(a.sortDate));
   }, [cases]);
+  const [openDoctorMonth, setOpenDoctorMonth] = useState(null);
 
   const doctorCommissionStats = useMemo(() => {
     const tally = {};
@@ -4843,10 +4846,18 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         {doctorMonthlyStats.length === 0 ? <EmptyState text="No cases yet." /> : (
           <div style={styles.card}>
             {doctorMonthlyStats.map((d, i) => (
-              <div key={i} style={styles.dresserLine}>
-                <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
-                <span style={styles.mutedSmall}>{d.month}</span>
-                <span style={styles.mutedSmall}>{d.count} case{d.count > 1 ? "s" : ""}</span>
+              <div key={i}>
+                <div style={styles.dresserLine} onClick={() => setOpenDoctorMonth(openDoctorMonth === i ? null : i)}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
+                  <span style={styles.mutedSmall}>{d.month}</span>
+                  <span style={{ ...styles.mutedSmall, textDecoration: "underline", cursor: "pointer" }}>{d.count} case{d.count > 1 ? "s" : ""}</span>
+                </div>
+                {openDoctorMonth === i && d.cases.map((cs) => (
+                  <div key={cs.id} style={{ ...styles.dresserLine, paddingLeft: 24 }}>
+                    <span style={{ flex: 1 }}>{cs.patientName}</span>
+                    <span style={styles.mutedSmall}>{fmtDate(cs.date)}</span>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
