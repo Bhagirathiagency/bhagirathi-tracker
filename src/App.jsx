@@ -1561,6 +1561,13 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                           <div key={e.id} style={styles.paymentLine}><span>{fmtDate(e.date)}</span><span style={styles.mutedSmall}>{e.note || ""}</span></div>
                         ))
                       )}
+                      {c.status !== "active" && (
+                        <button style={{ ...styles.smallBtn, width: "100%", marginTop: 10, background: "#3B5BA5" }} onClick={() => {
+                          if (window.confirm(`Doctor asked to restart therapy for ${c.patientName}? This reopens the same case — full history stays attached.`)) {
+                            saveCase({ ...c, status: "active", endDate: "" }, c.id);
+                          }
+                        }}>Doctor Asked to Reapply — Restart Therapy</button>
+                      )}
                     </div>
                   )}
                 </div>
