@@ -1530,6 +1530,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                 <DresserCaseRow key={c.id} c={c} dresserName={name} products={products} doctorsList={doctorsList} onAddPayment={(p) => addPayment(c.id, p)}
                   onAddDressingChange={(e) => addDressingChange(c.id, e)}
                   onDeleteDressingChange={(changeId) => deleteDressingChange(c.id, changeId)}
+                  onUpdateStatus={(status, endDate) => saveCase({ ...c, status, endDate }, c.id)}
                   onAddAdditionalItem={(e) => addAdditionalItem(c.id, e)}
                   onCapturePhoto={(stage, dataURL) => capturePhoto(c.id, stage, dataURL)} />
               ))}
@@ -1840,7 +1841,7 @@ function ProductsUsedPicker({ products, selected, onChange }) {
   );
 }
 
-function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingChange, onDeleteDressingChange, onAddAdditionalItem, onAddPayment, onCapturePhoto }) {
+function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingChange, onDeleteDressingChange, onUpdateStatus, onAddAdditionalItem, onAddPayment, onCapturePhoto }) {
   const [open, setOpen] = useState(false);
   const [protocolDays, setProtocolDays] = useState(c.protocolDays || 5);
   const [note, setNote] = useState("");
@@ -1849,6 +1850,8 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingCh
   const [payAmount, setPayAmount] = useState("");
   const [payMode, setPayMode] = useState("Cash");
   const [payNote, setPayNote] = useState("");
+  const [therapyOutcome, setTherapyOutcome] = useState("continue");
+  const [outcomeDate, setOutcomeDate] = useState(todayISO());
   const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
   const outstanding = Math.max(0, Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - paid);
   const due = nextDueDate(c);
@@ -1926,10 +1929,30 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingCh
             style={{ ...styles.smallInput, width: "100%", marginTop: 8, boxSizing: "border-box" }} />
           <div style={styles.mutedSmall}>Products used at this visit (select what was actually used, single or multiple)</div>
           <ProductsUsedPicker products={products} selected={changeProducts} onChange={setChangeProducts} />
+
+          {onUpdateStatus && (
+            <>
+              <div style={{ ...styles.detailLabel, marginTop: 12 }}>After this visit, what's next for the therapy?</div>
+              <div style={styles.addPaymentRow}>
+                <select value={therapyOutcome} onChange={(e) => setTherapyOutcome(e.target.value)} style={{ ...styles.smallInput, flex: 1 }}>
+                  <option value="continue">Continue same protocol (routine change)</option>
+                  <option value="stopped">Stop Therapy</option>
+                  <option value="reapplied">Reapply / Continue New Cycle</option>
+                </select>
+                {therapyOutcome !== "continue" && (
+                  <input type="date" value={outcomeDate} onChange={(e) => setOutcomeDate(e.target.value)} style={styles.smallInput} />
+                )}
+              </div>
+            </>
+          )}
+
           <button style={{ ...styles.smallBtn, width: "100%", marginTop: 8 }} onClick={() => {
             onAddDressingChange({ date: todayISO(), dresserName, protocolDays, note, products: changeProducts.filter((p) => Number(p.qty) > 0) });
-            setNote(""); setChangeProducts([]); setOpen(false);
-          }}>Log Today's Change</button>
+            if (onUpdateStatus && therapyOutcome !== "continue") {
+              onUpdateStatus(therapyOutcome, outcomeDate);
+            }
+            setNote(""); setChangeProducts([]); setTherapyOutcome("continue"); setOpen(false);
+          }}>{therapyOutcome === "continue" ? "Log Today's Change" : therapyOutcome === "stopped" ? "Log Change & Mark Stopped" : "Log Change & Mark Reapplied"}</button>
           {canUndoLast && onDeleteDressingChange && (
             <button style={{ ...styles.smallBtn, width: "100%", marginTop: 6, background: "#E1483C" }} onClick={() => {
               if (window.confirm("Undo your last logged change for this case?")) onDeleteDressingChange(lastMyChange.id);
