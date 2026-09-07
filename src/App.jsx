@@ -2218,10 +2218,15 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
 
 function StatCard({ label, value, accent, icon, onClick }) {
   return (
-    <button onClick={onClick} style={{ ...styles.statCard, borderColor: accent + "26" }}>
+    <button onClick={onClick} style={{
+      ...styles.statCard,
+      borderColor: accent + "26",
+      background: `linear-gradient(155deg, ${accent}0F 0%, #FFFFFF 55%)`,
+      boxShadow: `0 2px 4px rgba(14,36,34,0.05), 0 10px 24px ${accent}1A`,
+    }}>
       {icon && (
-        <div style={{ width: 32, height: 32, borderRadius: 9, background: accent + "1A", color: accent, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-          <Icon name={icon} size={17} />
+        <div style={{ width: 36, height: 36, borderRadius: 11, background: `linear-gradient(135deg, ${accent} 0%, ${accent}CC 100%)`, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10, boxShadow: `0 4px 10px ${accent}40` }}>
+          <Icon name={icon} size={18} />
         </div>
       )}
       <div style={{ ...styles.statValue, color: accent }}>{value}</div>
@@ -5678,7 +5683,7 @@ const styles = {
   reportCard: { textAlign: "left", border: "1px solid #E3E7E2", background: "#fff", borderRadius: 16, padding: "16px 14px", boxShadow: "0 1px 2px rgba(14,36,34,0.04), 0 8px 20px rgba(14,36,34,0.05)" },
   statValue: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 21, fontWeight: 700 },
   statLabel: { fontSize: 12, color: "#5B6864", marginTop: 4 },
-  sectionTitle: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: "#182322", margin: "20px 0 8px" },
+  sectionTitle: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: "#182322", margin: "20px 0 8px", paddingLeft: 12, borderLeft: "4px solid #1B6B63", letterSpacing: 0.2 },
   emptyState: { color: "#8A9A96", fontSize: 13, padding: "24px 0", textAlign: "center", border: "1px dashed #DCE4DF", borderRadius: 14 },
   emptyState2: { color: "#8A9A96", fontSize: 11, marginBottom: 8 },
   list: { display: "flex", flexDirection: "column", gap: 10 },
