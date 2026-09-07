@@ -1474,7 +1474,8 @@ function DresserProfileForm({ name, profile, setDresserProfile, businessName = "
               backgroundImage: "linear-gradient(135deg, #0F3D38 0%, #1B6B63 55%, #3B5BA5 100%), url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\'%3E%3Cg fill=\'%23FFFFFF\' fill-opacity=\'0.08\'%3E%3Crect x=\'26\' y=\'14\' width=\'8\' height=\'32\'/%3E%3Crect x=\'14\' y=\'26\' width=\'32\' height=\'8\'/%3E%3C/g%3E%3C/svg%3E\")",
             }}>
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF", letterSpacing: 0.5, textAlign: "center" }}>BHAGIRATHI AGENCY</div>
+                <img src="/bhagirathi-logo.png" alt={businessName} style={{ width: 44, height: 44, objectFit: "contain", background: "#FFFFFF", borderRadius: 12, padding: 4, marginBottom: 8 }} />
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF", letterSpacing: 0.5, textAlign: "center" }}>{businessName.toUpperCase()}</div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#CFE8E3", letterSpacing: 1.5, textTransform: "uppercase", marginTop: 6, textAlign: "center" }}>Advanced Wound Care Service</div>
               </div>
             </div>
