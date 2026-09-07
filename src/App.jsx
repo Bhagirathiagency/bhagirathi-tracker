@@ -342,6 +342,30 @@ function compressImage(file) {
     reader.readAsDataURL(file);
   });
 }
+// Only ever one photo per dresser, so we can afford much higher quality than case photos.
+function compressProfilePhoto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1000;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.92));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function App() {
   const [businessId, setBusinessId] = useState(() => {
@@ -1342,7 +1366,7 @@ function DresserProfileForm({ name, profile, setDresserProfile, businessName = "
     if (!file) return;
     setUploading(true);
     try {
-      const dataURL = await compressImage(file);
+      const dataURL = await compressProfilePhoto(file);
       setDresserProfile(name, { photo: dataURL });
     } catch (e) { console.error(e); }
     setUploading(false);
@@ -1379,7 +1403,7 @@ function DresserProfileForm({ name, profile, setDresserProfile, businessName = "
             <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: "#3B5BA5", textTransform: "uppercase", marginBottom: 4 }}>{businessName}</div>
             <div style={{ fontSize: 11, color: "#8A9A96", marginBottom: 18 }}>Wound Care Field Dresser</div>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-              <img src={photo} alt={name} style={{ width: 120, height: 120, borderRadius: 24, objectFit: "cover", border: "4px solid #FFFFFF", boxShadow: "0 6px 18px rgba(27,107,99,0.25)" }} />
+              <img src={photo} alt={name} style={{ width: 120, height: 120, borderRadius: 24, objectFit: "cover", border: "4px solid #FFFFFF", boxShadow: "0 6px 18px rgba(27,107,99,0.25)", filter: "contrast(1.08) saturate(1.12) brightness(1.03)" }} />
             </div>
             <div style={{ textAlign: "center", fontSize: 22, fontWeight: 700, color: "#0E2422", marginBottom: 4 }}>{name}</div>
             {phone && <div style={{ textAlign: "center", fontSize: 13, color: "#3B5BA5", fontWeight: 600, marginBottom: 10 }}>📞 {phone}</div>}
