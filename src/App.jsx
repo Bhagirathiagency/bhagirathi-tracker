@@ -596,7 +596,7 @@ export default function App() {
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, payments: [...(c.payments || []), { id: uid(), ...payment }] } : c));
   };
   const addDressingChange = (caseId, entry) => {
-    setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, dressingChanges: [...(c.dressingChanges || []), { id: uid(), ...entry }] } : c));
+    setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, dressingChanges: [...(c.dressingChanges || []), { id: uid(), loggedAt: new Date().toISOString(), ...entry }] } : c));
     // Deduct stock for whatever was actually used at this specific visit.
     const lines = Array.isArray(entry.products) ? entry.products : [];
     lines.forEach((line) => {
@@ -606,6 +606,9 @@ export default function App() {
         ? { ...p, available: Math.max(0, (p.available || 0) - qty), used: (p.used || 0) + qty }
         : p));
     });
+  };
+  const deleteDressingChange = (caseId, changeId) => {
+    setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, dressingChanges: (c.dressingChanges || []).filter((e) => e.id !== changeId) } : c));
   };
   const addAdditionalItem = (caseId, entry) => {
     const qty = Number(entry.qty) || 1;
@@ -834,7 +837,7 @@ export default function App() {
       {role && role.type === "dresser" && (
         <DresserShell
           name={role.name} cases={cases} machines={machines} products={products} setProducts={setProducts} receiveStock={receiveStock} saveCase={saveCase}
-          addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem} addPayment={addPayment} capturePhoto={capturePhoto}
+          addDressingChange={addDressingChange} deleteDressingChange={deleteDressingChange} addAdditionalItem={addAdditionalItem} addPayment={addPayment} capturePhoto={capturePhoto}
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
@@ -1359,7 +1362,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, deleteDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const [savedConfirm, setSavedConfirm] = useState(false);
   useEffect(() => {
@@ -1524,8 +1527,9 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
             <div style={styles.list}>
               {myCasesActive.map((c) => (
-                <DresserCaseRow key={c.id} c={c} dresserName={name} products={products} onAddPayment={(p) => addPayment(c.id, p)}
+                <DresserCaseRow key={c.id} c={c} dresserName={name} products={products} doctorsList={doctorsList} onAddPayment={(p) => addPayment(c.id, p)}
                   onAddDressingChange={(e) => addDressingChange(c.id, e)}
+                  onDeleteDressingChange={(changeId) => deleteDressingChange(c.id, changeId)}
                   onAddAdditionalItem={(e) => addAdditionalItem(c.id, e)}
                   onCapturePhoto={(stage, dataURL) => capturePhoto(c.id, stage, dataURL)} />
               ))}
@@ -1836,7 +1840,7 @@ function ProductsUsedPicker({ products, selected, onChange }) {
   );
 }
 
-function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAdditionalItem, onAddPayment, onCapturePhoto }) {
+function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingChange, onDeleteDressingChange, onAddAdditionalItem, onAddPayment, onCapturePhoto }) {
   const [open, setOpen] = useState(false);
   const [protocolDays, setProtocolDays] = useState(c.protocolDays || 5);
   const [note, setNote] = useState("");
@@ -1851,6 +1855,11 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
   const overdue = overdueDays(c);
   const flags = c.photoFlags || {};
   const doneCount = PHOTO_STAGES.filter((s) => flags[s.key]).length;
+  const matchedDoctor = (doctorsList || []).find((d) => (d.name || "").trim().toLowerCase() === (c.doctorName || "").trim().toLowerCase());
+  const doctorMobile = matchedDoctor ? matchedDoctor.mobile : "";
+  const myRecentChanges = (c.dressingChanges || []).filter((e) => (e.dresserName || "").trim().toLowerCase() === dresserName.trim().toLowerCase() && e.loggedAt);
+  const lastMyChange = myRecentChanges.length ? myRecentChanges[myRecentChanges.length - 1] : null;
+  const canUndoLast = lastMyChange && (Date.now() - new Date(lastMyChange.loggedAt).getTime()) < 10 * 60 * 1000;
 
   const handleFile = async (stage, file) => {
     if (!file) return;
@@ -1872,6 +1881,14 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
               <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")}</div>
               <div style={styles.cardMeta}>Machine {c.machineSerial || "—"} · {protocolLabel(c.protocolDays)} protocol</div>
               <div style={styles.mutedSmall}>{doneCount}/3 photos captured</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+                {c.patientMobile && (
+                  <a href={`tel:${c.patientMobile}`} style={{ ...styles.smallBtn, textDecoration: "none", display: "inline-flex", alignItems: "center", background: "#128577" }}>📞 Call Patient</a>
+                )}
+                {doctorMobile && (
+                  <a href={`tel:${doctorMobile}`} style={{ ...styles.smallBtn, textDecoration: "none", display: "inline-flex", alignItems: "center", background: "#3B5BA5" }}>📞 Call Dr. {c.doctorName}</a>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -1913,6 +1930,11 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
             onAddDressingChange({ date: todayISO(), dresserName, protocolDays, note, products: changeProducts.filter((p) => Number(p.qty) > 0) });
             setNote(""); setChangeProducts([]); setOpen(false);
           }}>Log Today's Change</button>
+          {canUndoLast && onDeleteDressingChange && (
+            <button style={{ ...styles.smallBtn, width: "100%", marginTop: 6, background: "#E1483C" }} onClick={() => {
+              if (window.confirm("Undo your last logged change for this case?")) onDeleteDressingChange(lastMyChange.id);
+            }}>Undo Last Log (within 10 min)</button>
+          )}
 
           <AdditionalItemsBlock c={c} products={products} onAddAdditionalItem={onAddAdditionalItem} />
 
