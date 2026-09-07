@@ -200,8 +200,9 @@ function estimateProfit(c, products) {
     const prod = products.find((p) => p.name === line.name);
     return sum + (prod ? Number(prod.costPrice || 0) * line.qty : 0);
   }, 0);
+  const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
 
-    return Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - cost - Number(c.doctorCommission || 0);
+    return paid + Number(c.machineRentalAmount || 0) - cost - Number(c.doctorCommission || 0);
 }
 function photoKey(caseId, stage) { return `photo-${caseId}-${stage}`; }
 function locKey(businessId, name) { return `${bkey(businessId, "wca-loc")}-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`; }
@@ -1117,7 +1118,7 @@ function CombinedSummaryTab({ businesses }) {
         <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(combined.revenue)}</div><div style={styles.statLabel}>Total Revenue</div></div>
         <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(combined.collected)}</div><div style={styles.statLabel}>Total Collected</div></div>
         <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(combined.outstanding)}</div><div style={styles.statLabel}>Total Outstanding</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: combined.profit >= 0 ? "#D9720A" : "#E1483C" }}>{fmtMoney(combined.profit)}</div><div style={styles.statLabel}>Combined Net Profit</div></div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: combined.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(combined.profit)}</div><div style={styles.statLabel}>Combined Net Profit</div></div>
         <div style={styles.reportCard}><div style={styles.statValue}>{combined.activeCount}</div><div style={styles.statLabel}>Active Cases (all businesses)</div></div>
         <div style={styles.reportCard}><div style={styles.statValue}>{combined.caseCount}</div><div style={styles.statLabel}>Total Cases (all-time)</div></div>
       </div>
@@ -1147,7 +1148,7 @@ function CombinedSummaryTab({ businesses }) {
                 <span>Revenue {fmtMoney(b.revenue)}</span>
                 <span>Collected {fmtMoney(b.collected)}</span>
                 {b.outstanding > 0 && <span style={{ color: "#E1483C", fontWeight: 600 }}>Outstanding {fmtMoney(b.outstanding)}</span>}
-                <span style={{ color: b.profit >= 0 ? "#D9720A" : "#E1483C", fontWeight: 700 }}>Profit {fmtMoney(b.profit)}</span>
+                <span style={{ color: b.profit >= 0 ? "#128577" : "#E1483C", fontWeight: 700 }}>Profit {fmtMoney(b.profit)}</span>
               </div>
             </div>
           </div>
@@ -1806,7 +1807,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
       <div style={styles.cardGrid}>
         <StatCard label="Active Cases" value={activeCount} accent="#D9720A" icon="cases" onClick={() => setTab("cases")} />
         <StatCard label="Change Due / Overdue" value={dueSoonCount} accent="#E1483C" icon="reports" onClick={() => setTab("cases")} />
-        <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#D98D2B" icon="quotes" onClick={() => setTab("cases")} />
+        <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => setTab("cases")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
       </div>
 
@@ -3895,7 +3896,8 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         const prod = products.find((p) => p.name === name);
         return s + (prod ? Number(prod.costPrice || 0) : 0);
       }, 0);
-      tally[key].revenue += Number(c.totalAmount || 0);
+      const casePaid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      tally[key].revenue += casePaid;
       tally[key].rental += Number(c.machineRentalAmount || 0);
       tally[key].cost += cost;
       tally[key].commission += Number(c.doctorCommission || 0);
@@ -4241,7 +4243,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
       <button style={styles.primaryBtn} onClick={sendSummary}>Send Summary on WhatsApp</button>
 
-      <CollapsibleSection title="Profit & Loss Statement" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: pnlTotals.profit >= 0 ? "#D9720A" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</span>}>
+      <CollapsibleSection title="Profit & Loss Statement" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</span>}>
         <div style={styles.filterRow}>
           {[["daily", "Daily"], ["weekly", "Weekly"], ["monthly", "Monthly"], ["yearly", "Yearly"]].map(([key, label]) => (
             <button key={key} onClick={() => setPnlGranularity(key)}
@@ -4258,7 +4260,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(pnlRevTotal)}</div><div style={styles.statLabel}>Total Revenue</div></div>
               <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(pnlTotals.cost + pnlTotals.commission + pnlTotals.opex)}{pnlPct(pnlTotals.cost + pnlTotals.commission + pnlTotals.opex)}</div><div style={styles.statLabel}>Total Cost + Commission + Expenses</div></div>
               <div style={{ ...styles.reportCard, gridColumn: "1 / -1" }}>
-                <div style={{ ...styles.statValue, color: pnlTotals.profit >= 0 ? "#D9720A" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}{pnlPct(pnlTotals.profit)}</div>
+                <div style={{ ...styles.statValue, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}{pnlPct(pnlTotals.profit)}</div>
                 <div style={styles.statLabel}>Net Profit / Loss Margin</div>
               </div>
             </div>
@@ -4284,7 +4286,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                 <div key={r.key} style={styles.cardExpanded}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontWeight: 700 }}>{pnlPeriodLabel(r.key, pnlGranularity)}</span>
-                    <span style={{ fontWeight: 700, color: r.profit >= 0 ? "#D9720A" : "#E1483C" }}>{fmtMoney(r.profit)}</span>
+                    <span style={{ fontWeight: 700, color: r.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(r.profit)}</span>
                   </div>
                   <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5B6864", flexWrap: "wrap" }}>
                     {(() => {
@@ -4296,7 +4298,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                     <span>Cost {fmtMoney(r.cost)}{rowPct(r.cost)}</span>
                     {r.commission > 0 && <span>Commission {fmtMoney(r.commission)}{rowPct(r.commission)}</span>}
                     {r.opex > 0 && <span>Expenses {fmtMoney(r.opex)}{rowPct(r.opex)}</span>}
-                    <span style={{ fontWeight: 700, color: r.profit >= 0 ? "#D9720A" : "#E1483C" }}>Profit {fmtMoney(r.profit)}{rowPct(r.profit)}</span>
+                    <span style={{ fontWeight: 700, color: r.profit >= 0 ? "#128577" : "#E1483C" }}>Profit {fmtMoney(r.profit)}{rowPct(r.profit)}</span>
                     </>); })()}
                   </div>
                 </div>
