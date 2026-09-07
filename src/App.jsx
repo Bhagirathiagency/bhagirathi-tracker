@@ -2184,7 +2184,7 @@ function Detail({ label, value, highlight, color, big }) {
 function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName, doctorsList }) {
   const [form, setForm] = useState(initial || {
     patientName: "", patientMobile: "", doctorName: "", doctorCommission: "", dresserName: presetDresserName || "", protocolDays: 5,
-       machineSerial: "", products: products[0] ? [{ name: products[0].name, qty: 1 }] : [],
+       machineSerial: "", products: [],
     applicationDate: todayISO(), applicationTime: nowTimeHM(), status: "active", endDate: "",
     billTo: "Patient", hospitalName: "", totalAmount: "", amountReceived: "", machineRentalAmount: "", notes: "",
   });
