@@ -200,9 +200,8 @@ function estimateProfit(c, products) {
     const prod = products.find((p) => p.name === line.name);
     return sum + (prod ? Number(prod.costPrice || 0) * line.qty : 0);
   }, 0);
-  const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
 
-    return paid + Number(c.machineRentalAmount || 0) - cost - Number(c.doctorCommission || 0);
+    return Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - cost - Number(c.doctorCommission || 0);
 }
 function photoKey(caseId, stage) { return `photo-${caseId}-${stage}`; }
 function locKey(businessId, name) { return `${bkey(businessId, "wca-loc")}-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`; }
@@ -3937,8 +3936,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         const prod = products.find((p) => p.name === name);
         return s + (prod ? Number(prod.costPrice || 0) : 0);
       }, 0);
-      const casePaid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
-      tally[key].revenue += casePaid;
+      tally[key].revenue += Number(c.totalAmount || 0);
       tally[key].rental += Number(c.machineRentalAmount || 0);
       tally[key].cost += cost;
       tally[key].commission += Number(c.doctorCommission || 0);
