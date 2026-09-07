@@ -460,9 +460,9 @@ export default function App() {
       setDiscussionTopics(Array.isArray(topics) ? topics : ["VAC Therapy", "Oxygen Therapy", "Matriderm", "Wound Dressing", "General Consultation"]);
       {
         const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
-        if (businessId === "bhagirathi") {
+        if (businessId === "bhagirathi" || businessId === "leelavac") {
           const devashish = (drs || []).find((n) => n.trim().toLowerCase() === "devashish");
-          if (devashish && stockAccess[devashish] === undefined) stockAccess[devashish] = true;
+          if (devashish) stockAccess[devashish] = true;
         }
         setDresserStockAccessState(stockAccess);
       }
