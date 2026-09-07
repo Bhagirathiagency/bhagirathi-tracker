@@ -1916,7 +1916,7 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingCh
     <div style={styles.card}>
       <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={styles.cardTitle}>{c.patientName}</div>
+          <div style={styles.cardTitle}>{c.patientName} <span style={{ fontSize: 11, fontWeight: 600, color: "#3B5BA5" }}>· Visit #{(c.dressingChanges || []).length}</span></div>
           {open && (
             <>
               <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")}</div>
@@ -2201,7 +2201,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
     <div style={styles.card}>
       <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={styles.cardTitle}>{c.patientName}</div>
+          <div style={styles.cardTitle}>{c.patientName} <span style={{ fontSize: 11, fontWeight: 600, color: "#3B5BA5" }}>· Visit #{(c.dressingChanges || []).length}</span></div>
           {open && (
             <>
               <div style={styles.cardMeta}>Dr. {c.doctorName} · {getCaseProductLines(c).map((l) => l.qty > 1 ? `${l.name} x${l.qty}` : l.name).join(", ")} · {protocolLabel(c.protocolDays)} protocol</div>
