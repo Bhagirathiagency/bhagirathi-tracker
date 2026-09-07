@@ -1075,6 +1075,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
 function CombinedSummaryTab({ businesses }) {
   const [loading, setLoading] = useState(true);
   const [perBusiness, setPerBusiness] = useState([]);
+  const [expandedMetric, setExpandedMetric] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -1121,13 +1122,41 @@ function CombinedSummaryTab({ businesses }) {
 
       <SectionTitle>Combined Totals</SectionTitle>
       <div style={styles.cardGrid}>
-        <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(combined.revenue)}</div><div style={styles.statLabel}>Total Revenue</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(combined.collected)}</div><div style={styles.statLabel}>Total Collected</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(combined.outstanding)}</div><div style={styles.statLabel}>Total Outstanding</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: combined.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(combined.profit)}</div><div style={styles.statLabel}>Combined Net Profit</div></div>
+        <div style={{ ...styles.reportCard, cursor: "pointer" }} onClick={() => setExpandedMetric(expandedMetric === "revenue" ? null : "revenue")}>
+          <div style={styles.statValue}>{fmtMoney(combined.revenue)}</div><div style={styles.statLabel}>Total Revenue (tap for source)</div>
+        </div>
+        <div style={{ ...styles.reportCard, cursor: "pointer" }} onClick={() => setExpandedMetric(expandedMetric === "collected" ? null : "collected")}>
+          <div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(combined.collected)}</div><div style={styles.statLabel}>Total Collected (tap for source)</div>
+        </div>
+        <div style={{ ...styles.reportCard, cursor: "pointer" }} onClick={() => setExpandedMetric(expandedMetric === "outstanding" ? null : "outstanding")}>
+          <div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(combined.outstanding)}</div><div style={styles.statLabel}>Total Outstanding (tap for source)</div>
+        </div>
+        <div style={{ ...styles.reportCard, cursor: "pointer" }} onClick={() => setExpandedMetric(expandedMetric === "profit" ? null : "profit")}>
+          <div style={{ ...styles.statValue, color: combined.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(combined.profit)}</div><div style={styles.statLabel}>Combined Net Profit (tap for source)</div>
+        </div>
         <div style={styles.reportCard}><div style={styles.statValue}>{combined.activeCount}</div><div style={styles.statLabel}>Active Cases (all businesses)</div></div>
         <div style={styles.reportCard}><div style={styles.statValue}>{combined.caseCount}</div><div style={styles.statLabel}>Total Cases (all-time)</div></div>
       </div>
+
+      {expandedMetric && (
+        <div style={{ ...styles.card, marginBottom: 16 }}>
+          <div style={{ ...styles.detailLabel, padding: "10px 14px 0" }}>
+            {expandedMetric === "revenue" && "Revenue by business"}
+            {expandedMetric === "collected" && "Collected by business"}
+            {expandedMetric === "outstanding" && "Outstanding by business"}
+            {expandedMetric === "profit" && "Profit by business"}
+          </div>
+          {[...perBusiness].sort((a, b) => b[expandedMetric] - a[expandedMetric]).map((b) => (
+            <div key={b.id} style={styles.dresserLine}>
+              <span style={{ flex: 1, fontWeight: 600 }}>{b.name}</span>
+              <span style={{
+                fontWeight: 700,
+                color: expandedMetric === "outstanding" ? "#E1483C" : expandedMetric === "profit" ? (b.profit >= 0 ? "#128577" : "#E1483C") : expandedMetric === "collected" ? "#128577" : "#182322"
+              }}>{fmtMoney(b[expandedMetric])}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <SectionTitle>Per Business</SectionTitle>
       <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
