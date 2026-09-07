@@ -1081,7 +1081,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense}
           />
         )}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} machines={machines} addPayment={addPayment} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} machines={machines} addPayment={addPayment} dresserProfiles={dresserProfiles} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
     </>
@@ -4069,7 +4069,7 @@ function ExpensesTab({ expenses, addExpense, deleteExpense, fixedExpenses, addFi
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, machines, addPayment, readOnly = false }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, dresserProfiles = {}, machines, addPayment, readOnly = false }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [expCategory, setExpCategory] = useState("Salary");
@@ -4498,11 +4498,34 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       <CollapsibleSection title="SWOT Analysis — Team (per Dresser)">
         {dresserSWOT.length === 0 ? <EmptyState text="No dressers added yet." /> : (
           <div style={styles.list}>
-            {dresserSWOT.map((d) => (
-              <CollapsibleSubcard key={d.name} title={d.name}>
-                <SWOTGrid swot={d} />
-              </CollapsibleSubcard>
-            ))}
+            {dresserSWOT.map((d) => {
+              const buildMotivation = () => {
+                let msg = `Hi ${d.name}! 👋\n\n`;
+                if (d.s && d.s.length && d.s[0] !== "No activity logged yet.") {
+                  msg += `Great work so far — ${d.s[0]}\n\n`;
+                } else {
+                  msg += `Let's get your numbers moving this week — every case you log builds your track record.\n\n`;
+                }
+                if (d.w && d.w.length && d.w[0] !== "No activity logged yet.") {
+                  msg += `One thing to focus on: ${d.w[0]}\n\n`;
+                }
+                if (d.o && d.o.length && d.o[0] !== "No specific opportunity identified from current data.") {
+                  msg += `Opportunity: ${d.o[0]}\n\n`;
+                }
+                msg += `You're a key part of the team — keep it up! 💪\n– ${businessName}`;
+                return msg;
+              };
+              const phone = (dresserProfiles && dresserProfiles[d.name] && dresserProfiles[d.name].phone) || "";
+              const waNumber = phone ? `91${phone.replace(/\D/g, "").slice(-10)}` : OWNER_WHATSAPP;
+              return (
+                <CollapsibleSubcard key={d.name} title={d.name}>
+                  <SWOTGrid swot={d} />
+                  <button style={{ ...styles.smallBtn, marginTop: 10, background: "#3B5BA5" }} onClick={() => window.open(waLink(waNumber, buildMotivation()), "_blank")}>
+                    💬 Send Motivation via WhatsApp{!phone ? " (to you — forward it on)" : ""}
+                  </button>
+                </CollapsibleSubcard>
+              );
+            })}
           </div>
         )}
       </CollapsibleSection>
