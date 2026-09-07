@@ -1880,10 +1880,27 @@ function ProductsUsedPicker({ products, selected, onChange }) {
 }
 
 function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingChange, onDeleteDressingChange, onUpdateStatus, onAddAdditionalItem, onAddPayment, onCapturePhoto }) {
+  const draftKey = `wca-draft-${c.id}`;
+  const loadDraft = () => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  };
+  const draft = loadDraft();
   const [open, setOpen] = useState(false);
-  const [protocolDays, setProtocolDays] = useState(c.protocolDays || 5);
-  const [note, setNote] = useState("");
-  const [changeProducts, setChangeProducts] = useState([]);
+  const [protocolDays, setProtocolDays] = useState((draft && draft.protocolDays) || c.protocolDays || 5);
+  const [note, setNote] = useState((draft && draft.note) || "");
+  const [changeProducts, setChangeProducts] = useState((draft && draft.changeProducts) || []);
+
+  useEffect(() => {
+    if (note || (changeProducts && changeProducts.length)) {
+      try { localStorage.setItem(draftKey, JSON.stringify({ note, protocolDays, changeProducts })); } catch (e) {}
+    } else {
+      try { localStorage.removeItem(draftKey); } catch (e) {}
+    }
+    // eslint-disable-next-line
+  }, [note, protocolDays, changeProducts]);
   const [uploading, setUploading] = useState(null);
   const [payAmount, setPayAmount] = useState("");
   const [payMode, setPayMode] = useState("Cash");
@@ -1989,6 +2006,7 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingCh
             if (onUpdateStatus && therapyOutcome !== "continue") {
               onUpdateStatus(therapyOutcome, outcomeDate);
             }
+            try { localStorage.removeItem(draftKey); } catch (e) {}
             setNote(""); setChangeProducts([]); setTherapyOutcome("continue"); setOpen(false);
           }}>{therapyOutcome === "continue" ? "Log Today's Change" : therapyOutcome === "stopped" ? "Log Change & Mark Stopped" : "Log Change & Mark Reapplied"}</button>
           {canUndoLast && onDeleteDressingChange && (
