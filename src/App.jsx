@@ -373,6 +373,7 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [supplierLedger, setSupplierLedger] = useState([]);
   const [fixedExpenses, setFixedExpenses] = useState([]);
+  const [previousOutstanding, setPreviousOutstanding] = useState([]);
   const [challans, setChallans] = useState([]);
   const [doctorsList, setDoctorsList] = useState([]);
   const [discussionTopics, setDiscussionTopics] = useState([]);
@@ -425,7 +426,7 @@ export default function App() {
   const loadBusinessData = async (silent) => {
     if (silent) setRefreshing(true); else setLoaded(false);
     try {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, splLedger, fixedExps, acctPin, chals, docsList, topics] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, splLedger, fixedExps, prevOut, acctPin, chals, docsList, topics] = await Promise.all([
         loadKey(bkey(businessId, "wca-cases"), []),
         loadKey(bkey(businessId, "wca-machines"), []),
         loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
@@ -440,6 +441,7 @@ export default function App() {
         loadKey(bkey(businessId, "wca-expenses"), []),
         loadKey(bkey(businessId, "wca-supplier-ledger"), []),
         loadKey(bkey(businessId, "wca-fixed-expenses"), []),
+        loadKey(bkey(businessId, "wca-previous-outstanding"), []),
         loadKey(bkey(businessId, "wca-accountant-pin"), null),
         loadKey(bkey(businessId, "wca-challans"), []),
         loadKey(bkey(businessId, "wca-doctors"), []),
@@ -459,6 +461,7 @@ export default function App() {
       setExpenses(Array.isArray(exps) ? exps : []);
       setSupplierLedger(Array.isArray(splLedger) ? splLedger : []);
       setFixedExpenses(Array.isArray(fixedExps) ? fixedExps : []);
+      setPreviousOutstanding(Array.isArray(prevOut) ? prevOut : []);
       setChallans(Array.isArray(chals) ? chals : []);
       setDoctorsList(Array.isArray(docsList) ? docsList : []);
       setDiscussionTopics(Array.isArray(topics) ? topics : ["VAC Therapy", "Oxygen Therapy", "Matriderm", "Wound Dressing", "General Consultation"]);
@@ -500,6 +503,7 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-expenses"), expenses); }, [expenses, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-supplier-ledger"), supplierLedger); }, [supplierLedger, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-fixed-expenses"), fixedExpenses); }, [fixedExpenses, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-previous-outstanding"), previousOutstanding); }, [previousOutstanding, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-pins"), dresserPins); }, [dresserPins, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-doctor-calls"), doctorCalls); }, [doctorCalls, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-profiles"), dresserProfiles); }, [dresserProfiles, loaded, businessId]);
@@ -738,6 +742,9 @@ export default function App() {
   const deleteSupplierLedgerEntry = (id) => setSupplierLedger((prev) => prev.filter((e) => e.id !== id));
   const addFixedExpense = (entry) => setFixedExpenses((prev) => [...prev, { id: uid(), ...entry }]);
   const deleteFixedExpense = (id) => setFixedExpenses((prev) => prev.filter((e) => e.id !== id));
+  const addPreviousOutstanding = (entry) => setPreviousOutstanding((prev) => [...prev, { id: uid(), date: todayISO(), payments: [], ...entry }]);
+  const deletePreviousOutstanding = (id) => setPreviousOutstanding((prev) => prev.filter((e) => e.id !== id));
+  const addPreviousOutstandingPayment = (id, payment) => setPreviousOutstanding((prev) => prev.map((e) => e.id === id ? { ...e, payments: [...(e.payments || []), { id: uid(), date: todayISO(), ...payment }] } : e));
   const resetTestData = () => { setCases([]); setProducts([]); };
   const logOwnerLogin = () => {
     const ua = navigator.userAgent || "";
@@ -816,7 +823,7 @@ export default function App() {
           doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster}
           expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
           supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry}
-          fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense}
+          fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment}
           businessId={businessId} business={business} businesses={BUSINESSES} onSwitchBusiness={switchBusiness}
           pin={pin} onChangePin={setOwnerPin}
           accountantPin={accountantPin} onChangeAccountantPin={setAccountantPin}
@@ -831,7 +838,7 @@ export default function App() {
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
-          doctorsList={doctorsList} addDoctorMaster={addDoctorMaster}
+          doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} addPreviousOutstanding={addPreviousOutstanding}
           discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           canManageStock={!!dresserStockAccess[role.name]}
@@ -973,7 +980,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [casesInitialFilter, setCasesInitialFilter] = useState(null);
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
@@ -1078,10 +1085,10 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "expenses" && (
           <ExpensesTab
             expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
-            fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense}
+            fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment}
           />
         )}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} machines={machines} addPayment={addPayment} dresserProfiles={dresserProfiles} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} dresserProfiles={dresserProfiles} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
     </>
@@ -1349,7 +1356,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const [savedConfirm, setSavedConfirm] = useState(false);
   useEffect(() => {
@@ -1571,6 +1578,11 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic} />
         </CollapsibleSection>
 
+        {name.trim().toLowerCase() === "devashish" && (
+          <CollapsibleSection title="Add Previous Outstanding">
+            <PreviousOutstandingQuickAdd addPreviousOutstanding={addPreviousOutstanding} />
+          </CollapsibleSection>
+        )}
         {canManageStock && (
           <CollapsibleSection title="Stock">
             <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} businessId={businessId} />
@@ -1585,6 +1597,39 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         )}
       </main>
     </>
+  );
+}
+
+function PreviousOutstandingQuickAdd({ addPreviousOutstanding }) {
+  const [form, setForm] = useState({ name: "", billTo: "Patient", amount: "", note: "" });
+  const [confirm, setConfirm] = useState(false);
+  const submit = () => {
+    const amt = Number(form.amount);
+    if (!form.name.trim() || !amt || amt <= 0) return;
+    addPreviousOutstanding({ name: form.name.trim(), billTo: form.billTo, amount: amt, note: form.note.trim() });
+    setForm({ name: "", billTo: "Patient", amount: "", note: "" });
+    setConfirm(true);
+    setTimeout(() => setConfirm(false), 2000);
+  };
+  return (
+    <div>
+      <div style={styles.emptyState2}>Add old dues from before the app was used — this goes to the Owner's Reports for tracking.</div>
+      <div style={styles.formGrid}>
+        <div style={styles.addPaymentRow}>
+          <input type="text" placeholder="Patient / Hospital name" style={{ ...styles.smallInput, flex: 1 }} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          <select style={styles.smallInput} value={form.billTo} onChange={(e) => setForm((f) => ({ ...f, billTo: e.target.value }))}>
+            <option value="Patient">Patient</option>
+            <option value="Hospital">Hospital</option>
+          </select>
+        </div>
+        <div style={styles.addPaymentRow}>
+          <input type="number" placeholder="Amount owed ₹" style={styles.smallInput} value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} />
+          <input type="text" placeholder="Note (optional)" style={{ ...styles.smallInput, flex: 1 }} value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+        </div>
+        <button style={styles.primaryBtn} onClick={submit}>Add Previous Outstanding</button>
+        {confirm && <div style={{ ...styles.mutedSmall, color: "#128577" }}>✓ Added</div>}
+      </div>
+    </div>
   );
 }
 
@@ -4069,7 +4114,7 @@ function ExpensesTab({ expenses, addExpense, deleteExpense, fixedExpenses, addFi
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, dresserProfiles = {}, machines, addPayment, readOnly = false }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, previousOutstanding = [], addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, dresserProfiles = {}, machines, addPayment, readOnly = false }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [expCategory, setExpCategory] = useState("Salary");
@@ -4155,6 +4200,9 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   }), { revenue: 0, rental: 0, cost: 0, commission: 0, opex: 0, profit: 0 }), [pnlRows]);
 
   const [fixedExpForm, setFixedExpForm] = useState({ category: "Salary", amount: "", note: "" });
+  const [prevOutForm, setPrevOutForm] = useState({ name: "", billTo: "Patient", amount: "", note: "" });
+  const [prevOutPayForm, setPrevOutPayForm] = useState({});
+  const [openPrevOut, setOpenPrevOut] = useState(null);
   const [supplierForm, setSupplierForm] = useState({ supplier: "", type: "bill", amount: "", note: "" });
   const [openSupplier, setOpenSupplier] = useState(null);
   const [showOutstandingDetail, setShowOutstandingDetail] = useState(null);
@@ -4184,6 +4232,12 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   }, [products, supplierLedger]);
   const supplierOutstandingTotal = useMemo(() => supplierStats.reduce((s, x) => s + Math.max(0, x.outstanding), 0), [supplierStats]);
 
+  const previousOutstandingWithRemaining = useMemo(() => (previousOutstanding || []).map((e) => {
+    const paid = (e.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    return { ...e, paid, remaining: Math.max(0, Number(e.amount || 0) - paid) };
+  }), [previousOutstanding]);
+  const previousOutstandingTotal = useMemo(() => previousOutstandingWithRemaining.reduce((s, e) => s + e.remaining, 0), [previousOutstandingWithRemaining]);
+
   const outstandingBySource = useMemo(() => {
     const groups = { Patient: { total: 0, cases: [] }, Hospital: { total: 0, cases: [] } };
     cases.forEach((c) => {
@@ -4194,8 +4248,14 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       groups[key].total += due;
       groups[key].cases.push({ id: c.id, name: c.billTo === "Hospital" ? (c.hospitalName || c.patientName) : c.patientName, due });
     });
+    previousOutstandingWithRemaining.forEach((e) => {
+      if (e.remaining <= 0) return;
+      const key = e.billTo === "Hospital" ? "Hospital" : "Patient";
+      groups[key].total += e.remaining;
+      groups[key].cases.push({ id: e.id, name: e.name + " (previous due)", due: e.remaining });
+    });
     return groups;
-  }, [cases]);
+  }, [cases, previousOutstandingWithRemaining]);
 
   const expensesSorted = useMemo(() => [...(expenses || [])].sort((a, b) => new Date(b.date) - new Date(a.date)), [expenses]);
   const expensesByCategory = useMemo(() => {
@@ -4993,6 +5053,63 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               ))}
             </div>
           </>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Previous Outstanding (Before This App)" right={previousOutstandingTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(previousOutstandingTotal)}</span> : null}>
+        <div style={styles.emptyState2}>Old dues from before you started using this app — add them here so they're included in your Outstanding totals and the pie chart above.</div>
+        {!readOnly && (
+          <div style={styles.formGrid}>
+            <div style={styles.addPaymentRow}>
+              <input type="text" placeholder="Patient / Hospital name" style={{ ...styles.smallInput, flex: 1 }} value={prevOutForm.name} onChange={(e) => setPrevOutForm((f) => ({ ...f, name: e.target.value }))} />
+              <select style={styles.smallInput} value={prevOutForm.billTo} onChange={(e) => setPrevOutForm((f) => ({ ...f, billTo: e.target.value }))}>
+                <option value="Patient">Patient</option>
+                <option value="Hospital">Hospital</option>
+              </select>
+            </div>
+            <div style={styles.addPaymentRow}>
+              <input type="number" placeholder="Amount owed ₹" style={styles.smallInput} value={prevOutForm.amount} onChange={(e) => setPrevOutForm((f) => ({ ...f, amount: e.target.value }))} />
+              <input type="text" placeholder="Note (optional)" style={{ ...styles.smallInput, flex: 1 }} value={prevOutForm.note} onChange={(e) => setPrevOutForm((f) => ({ ...f, note: e.target.value }))} />
+              <button style={styles.smallBtn} onClick={() => {
+                const amt = Number(prevOutForm.amount);
+                if (!prevOutForm.name.trim() || !amt || amt <= 0) return;
+                addPreviousOutstanding({ name: prevOutForm.name.trim(), billTo: prevOutForm.billTo, amount: amt, note: prevOutForm.note.trim() });
+                setPrevOutForm({ name: "", billTo: "Patient", amount: "", note: "" });
+              }}>Add</button>
+            </div>
+          </div>
+        )}
+        {previousOutstandingWithRemaining.length === 0 ? <EmptyState text="No previous outstanding added yet." /> : (
+          <div style={styles.card}>
+            {previousOutstandingWithRemaining.map((e) => (
+              <div key={e.id}>
+                <div style={styles.dresserLine} onClick={() => setOpenPrevOut(openPrevOut === e.id ? null : e.id)}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{e.name} ({e.billTo})</span>
+                  <span style={styles.mutedSmall}>Owed {fmtMoney(e.amount)} · Paid {fmtMoney(e.paid)}</span>
+                  <span style={{ fontWeight: 700, color: e.remaining > 0 ? "#E1483C" : "#128577" }}>{e.remaining > 0 ? fmtMoney(e.remaining) : "Cleared"}</span>
+                </div>
+                {openPrevOut === e.id && (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    {(e.payments || []).map((p) => (
+                      <div key={p.id} style={styles.paymentLine}><span>{fmtDate(p.date)}</span><span>{fmtMoney(p.amount)}</span></div>
+                    ))}
+                    {!readOnly && e.remaining > 0 && (
+                      <div style={styles.addPaymentRow}>
+                        <input type="number" placeholder="Payment amount" style={styles.smallInput} value={(prevOutPayForm[e.id] || "")} onChange={(ev) => setPrevOutPayForm((f) => ({ ...f, [e.id]: ev.target.value }))} />
+                        <button style={styles.smallBtn} onClick={() => {
+                          const amt = Number(prevOutPayForm[e.id]);
+                          if (!amt || amt <= 0) return;
+                          addPreviousOutstandingPayment(e.id, { amount: amt });
+                          setPrevOutPayForm((f) => ({ ...f, [e.id]: "" }));
+                        }}>Log Payment</button>
+                      </div>
+                    )}
+                    {!readOnly && <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 8 }} onClick={() => { if (window.confirm("Delete this previous outstanding entry?")) deletePreviousOutstanding(e.id); }}>Delete Entry</button>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </CollapsibleSection>
 

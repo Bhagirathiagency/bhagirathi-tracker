@@ -96,7 +96,7 @@ apply("Add form state",
 apply("Insert Previous Outstanding UI section",
 '''      <CollapsibleSection title="Outstanding Payments by Patient">''',
 '''      <CollapsibleSection title="Previous Outstanding (Before This App)" right={previousOutstandingTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(previousOutstandingTotal)}</span> : null}>
-        <div style={styles.emptyState2}>Old dues from before you started using this app — add them here so they're included in your Outstanding totals and the pie chart above.</div>
+        <div style={styles.emptyState2}>Old dues from before you started using this app \u2014 add them here so they're included in your Outstanding totals and the pie chart above.</div>
         {!readOnly && (
           <div style={styles.formGrid}>
             <div style={styles.addPaymentRow}>
@@ -107,97 +107,130 @@ apply("Insert Previous Outstanding UI section",
               </select>
             </div>
             <div style={styles.addPaymentRow}>
-              <input type="number" placeholder="Amount owed ₹" style={styles.smallInput} value={prevOutForm.amount} onChange={(e) => setPrevOutForm((f) => ({ ...f, amount: e.target.value }))} />
+              <input type="number" placeholder="Amount owed \u20b9" style={styles.smallInput} value={prevOutForm.amount} onChange={(e) => setPrevOutForm((f) => ({ ...f, amount: e.target.value }))} />
               <input type="text" placeholder="Note (optional)" style={{ ...styles.smallInput, flex: 1 }} value={prevOutForm.note} onChange={(e) => setPrevOutForm((f) => ({ ...f, note: e.target.value }))} />
               <button style={styles.smallBtn} onClick={() => {
                 const amt = Number(prevOutForm.amount);
                 if (!prevOutForm.name.trim() || !amt || amt <= 0) return;
-                addPreviousOutstanding({ name: prevOutForm.name.trim(), billTo: prevOutForm.billTo, amount: amt, note:
-npm run build
-git add src/App.jsx combined_pending.py
-git commit -m "Add Previous Outstanding tracking and give Devashish access to add entries"
-git push origin main
-cd ~/Desktop/bhagirathi-tracker-real
-git pull origin main
-npm run build
-git add src/App.jsx combined_pending.py
-git commit -m "Add Previous Outstanding tracking and give Devashish access to add entries"
-git push origin main
-npm run build
-git add src/App.jsx combined_pending.py
-git commit -m "Add Previous Outstanding tracking and give Devashish access to add entries"
-git push origin main
-cd ~/Desktop/bhagirathi-tracker-real
-git pull origin main
-cat > fix_outstanding_hospital_patient.py << 'PYEOF'
-edits = []
+                addPreviousOutstanding({ name: prevOutForm.name.trim(), billTo: prevOutForm.billTo, amount: amt, note: prevOutForm.note.trim() });
+                setPrevOutForm({ name: "", billTo: "Patient", amount: "", note: "" });
+              }}>Add</button>
+            </div>
+          </div>
+        )}
+        {previousOutstandingWithRemaining.length === 0 ? <EmptyState text="No previous outstanding added yet." /> : (
+          <div style={styles.card}>
+            {previousOutstandingWithRemaining.map((e) => (
+              <div key={e.id}>
+                <div style={styles.dresserLine} onClick={() => setOpenPrevOut(openPrevOut === e.id ? null : e.id)}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{e.name} ({e.billTo})</span>
+                  <span style={styles.mutedSmall}>Owed {fmtMoney(e.amount)} \u00b7 Paid {fmtMoney(e.paid)}</span>
+                  <span style={{ fontWeight: 700, color: e.remaining > 0 ? "#E1483C" : "#128577" }}>{e.remaining > 0 ? fmtMoney(e.remaining) : "Cleared"}</span>
+                </div>
+                {openPrevOut === e.id && (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    {(e.payments || []).map((p) => (
+                      <div key={p.id} style={styles.paymentLine}><span>{fmtDate(p.date)}</span><span>{fmtMoney(p.amount)}</span></div>
+                    ))}
+                    {!readOnly && e.remaining > 0 && (
+                      <div style={styles.addPaymentRow}>
+                        <input type="number" placeholder="Payment amount" style={styles.smallInput} value={(prevOutPayForm[e.id] || "")} onChange={(ev) => setPrevOutPayForm((f) => ({ ...f, [e.id]: ev.target.value }))} />
+                        <button style={styles.smallBtn} onClick={() => {
+                          const amt = Number(prevOutPayForm[e.id]);
+                          if (!amt || amt <= 0) return;
+                          addPreviousOutstandingPayment(e.id, { amount: amt });
+                          setPrevOutPayForm((f) => ({ ...f, [e.id]: "" }));
+                        }}>Log Payment</button>
+                      </div>
+                    )}
+                    {!readOnly && <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 8 }} onClick={() => { if (window.confirm("Delete this previous outstanding entry?")) deletePreviousOutstanding(e.id); }}>Delete Entry</button>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
 
-def apply(label, old, new):
-    edits.append((label, old, new))
+      <CollapsibleSection title="Outstanding Payments by Patient">''', 1)
 
-apply("Filter Patient list to exclude Hospital-billed cases",
-'''  const outstandingByPatient = useMemo(() => {
-    return cases
-      .map((c) => {
-        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
-        const balance = Math.max(0, Number(c.totalAmount || 0) - paid);
-        const daysOutstanding = c.applicationDate ? daysBetween(c.applicationDate, todayISO()) : 0;
-        return { ...c, balance, daysOutstanding };
-      })
-      .filter((c) => c.balance > 0)
-      .sort((a, b) => b.daysOutstanding - a.daysOutstanding || b.balance - a.balance);
-  }, [cases]);''',
-'''  const outstandingByPatient = useMemo(() => {
-    return cases
-      .filter((c) => c.billTo !== "Hospital")
-      .map((c) => {
-        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
-        const balance = Math.max(0, Number(c.totalAmount || 0) - paid);
-        const daysOutstanding = c.applicationDate ? daysBetween(c.applicationDate, todayISO()) : 0;
-        return { ...c, balance, daysOutstanding };
-      })
-      .filter((c) => c.balance > 0)
-      .sort((a, b) => b.daysOutstanding - a.daysOutstanding || b.balance - a.balance);
-  }, [cases]);
-  const outstandingByPatientForHospitalGrouping = useMemo(() => {
-    return cases
-      .map((c) => {
-        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
-        const balance = Math.max(0, Number(c.totalAmount || 0) - paid);
-        const daysOutstanding = c.applicationDate ? daysBetween(c.applicationDate, todayISO()) : 0;
-        return { ...c, balance, daysOutstanding };
-      })
-      .filter((c) => c.balance > 0)
-      .sort((a, b) => b.daysOutstanding - a.daysOutstanding || b.balance - a.balance);
-  }, [cases]);''')
+apply("Pass addPreviousOutstanding to DresserShell call",
+'''          doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
+          doctorsList={doctorsList} addDoctorMaster={addDoctorMaster}''',
+'''          doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
+          doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} addPreviousOutstanding={addPreviousOutstanding}''', 1)
 
-apply("Hospital grouping uses unfiltered source",
-'''  const outstandingByHospital = useMemo(() => {
-    const tally = {};
-    outstandingByPatient
-      .filter((c) => c.billTo === "Hospital")
-      .forEach((c) => {''',
-'''  const outstandingByHospital = useMemo(() => {
-    const tally = {};
-    outstandingByPatientForHospitalGrouping
-      .filter((c) => c.billTo === "Hospital")
-      .forEach((c) => {''')
+apply("DresserShell fn signature",
+'''function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster,''',
+'''function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, addPreviousOutstanding,''', 1)
 
-apply("Dependency array update",
-'''  }, [outstandingByPatient]);''',
-'''  }, [outstandingByPatientForHospitalGrouping]);''')
+apply("Add Previous Outstanding section for Devashish",
+'''        {canManageStock && (
+          <CollapsibleSection title="Stock">
+            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} businessId={businessId} />
+          </CollapsibleSection>
+        )}''',
+'''        {name.trim().toLowerCase() === "devashish" && (
+          <CollapsibleSection title="Add Previous Outstanding">
+            <PreviousOutstandingQuickAdd addPreviousOutstanding={addPreviousOutstanding} />
+          </CollapsibleSection>
+        )}
+        {canManageStock && (
+          <CollapsibleSection title="Stock">
+            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} businessId={businessId} />
+          </CollapsibleSection>
+        )}''', 1)
+
+apply("Insert PreviousOutstandingQuickAdd component",
+'''function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, discussionTopics, addDiscussionTopic, removeDiscussionTopic }) {''',
+'''function PreviousOutstandingQuickAdd({ addPreviousOutstanding }) {
+  const [form, setForm] = useState({ name: "", billTo: "Patient", amount: "", note: "" });
+  const [confirm, setConfirm] = useState(false);
+  const submit = () => {
+    const amt = Number(form.amount);
+    if (!form.name.trim() || !amt || amt <= 0) return;
+    addPreviousOutstanding({ name: form.name.trim(), billTo: form.billTo, amount: amt, note: form.note.trim() });
+    setForm({ name: "", billTo: "Patient", amount: "", note: "" });
+    setConfirm(true);
+    setTimeout(() => setConfirm(false), 2000);
+  };
+  return (
+    <div>
+      <div style={styles.emptyState2}>Add old dues from before the app was used \u2014 this goes to the Owner's Reports for tracking.</div>
+      <div style={styles.formGrid}>
+        <div style={styles.addPaymentRow}>
+          <input type="text" placeholder="Patient / Hospital name" style={{ ...styles.smallInput, flex: 1 }} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          <select style={styles.smallInput} value={form.billTo} onChange={(e) => setForm((f) => ({ ...f, billTo: e.target.value }))}>
+            <option value="Patient">Patient</option>
+            <option value="Hospital">Hospital</option>
+          </select>
+        </div>
+        <div style={styles.addPaymentRow}>
+          <input type="number" placeholder="Amount owed \u20b9" style={styles.smallInput} value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} />
+          <input type="text" placeholder="Note (optional)" style={{ ...styles.smallInput, flex: 1 }} value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+        </div>
+        <button style={styles.primaryBtn} onClick={submit}>Add Previous Outstanding</button>
+        {confirm && <div style={{ ...styles.mutedSmall, color: "#128577" }}>\u2713 Added</div>}
+      </div>
+    </div>
+  );
+}
+
+function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, discussionTopics, addDiscussionTopic, removeDiscussionTopic }) {''', 1)
 
 with open('src/App.jsx', 'r') as f:
     content = f.read()
 
 all_ok = True
-for label, old, new in edits:
+for label, old, new, count in edits:
     c = content.count(old)
     print(label, "matches:", c)
-    if c != 1:
+    if count and c != count:
+        all_ok = False
+    elif not count and c == 0:
         all_ok = False
     else:
-        content = content.replace(old, new, 1)
+        content = content.replace(old, new, count if count else c)
 
 if all_ok:
     with open('src/App.jsx', 'w') as f:
