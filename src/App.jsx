@@ -831,7 +831,7 @@ export default function App() {
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
-          doctorsList={doctorsList}
+          doctorsList={doctorsList} addDoctorMaster={addDoctorMaster}
           discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           canManageStock={!!dresserStockAccess[role.name]}
@@ -1349,7 +1349,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const [savedConfirm, setSavedConfirm] = useState(false);
   useEffect(() => {
@@ -1567,7 +1567,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         </CollapsibleSection>
 
         <CollapsibleSection title="Doctor Calls">
-          <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} doctorsList={doctorsList}
+          <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} doctorsList={doctorsList} addDoctorMaster={addDoctorMaster}
             discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic} />
         </CollapsibleSection>
 
@@ -1588,7 +1588,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
   );
 }
 
-function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList, discussionTopics, addDiscussionTopic, removeDiscussionTopic }) {
+function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, discussionTopics, addDiscussionTopic, removeDiscussionTopic }) {
   const [doctorName, setDoctorName] = useState("");
   const [doctorMobile, setDoctorMobile] = useState("");
   const [speciality, setSpeciality] = useState("");
@@ -1620,6 +1620,10 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList
       dresserName: name, doctorName: doctorName.trim(), doctorMobile: doctorMobile.trim(),
       speciality: speciality.trim(), products: selectedProducts, date, notes: notes.trim(),
     });
+    const alreadyKnown = (doctorsList || []).some((d) => d.name.trim().toLowerCase() === doctorName.trim().toLowerCase());
+    if (!alreadyKnown && addDoctorMaster) {
+      addDoctorMaster({ name: doctorName.trim(), mobile: doctorMobile.trim(), speciality: speciality.trim(), doctorClass: "B" });
+    }
     setDoctorName(""); setDoctorMobile(""); setSpeciality(""); setSelectedProducts([]); setNotes("");
   };
 
