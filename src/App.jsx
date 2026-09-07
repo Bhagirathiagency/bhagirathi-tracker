@@ -371,6 +371,7 @@ export default function App() {
   const [quotations, setQuotations] = useState([]);
   const [doctorCalls, setDoctorCalls] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [supplierLedger, setSupplierLedger] = useState([]);
   const [challans, setChallans] = useState([]);
   const [doctorsList, setDoctorsList] = useState([]);
   const [discussionTopics, setDiscussionTopics] = useState([]);
@@ -423,7 +424,7 @@ export default function App() {
   const loadBusinessData = async (silent) => {
     if (silent) setRefreshing(true); else setLoaded(false);
     try {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, acctPin, chals, docsList, topics] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, splLedger, acctPin, chals, docsList, topics] = await Promise.all([
         loadKey(bkey(businessId, "wca-cases"), []),
         loadKey(bkey(businessId, "wca-machines"), []),
         loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
@@ -436,6 +437,7 @@ export default function App() {
         loadKey(bkey(businessId, "wca-dresser-profiles"), {}),
         loadKey(bkey(businessId, "wca-dresser-stock-access"), {}),
         loadKey(bkey(businessId, "wca-expenses"), []),
+        loadKey(bkey(businessId, "wca-supplier-ledger"), []),
         loadKey(bkey(businessId, "wca-accountant-pin"), null),
         loadKey(bkey(businessId, "wca-challans"), []),
         loadKey(bkey(businessId, "wca-doctors"), []),
@@ -453,6 +455,7 @@ export default function App() {
       setOwnerLogins(Array.isArray(olog) ? olog : []);
       setDresserProfiles(dprofiles && typeof dprofiles === "object" ? dprofiles : {});
       setExpenses(Array.isArray(exps) ? exps : []);
+      setSupplierLedger(Array.isArray(splLedger) ? splLedger : []);
       setChallans(Array.isArray(chals) ? chals : []);
       setDoctorsList(Array.isArray(docsList) ? docsList : []);
       setDiscussionTopics(Array.isArray(topics) ? topics : ["VAC Therapy", "Oxygen Therapy", "Matriderm", "Wound Dressing", "General Consultation"]);
@@ -492,6 +495,7 @@ export default function App() {
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dressers"), dressers); }, [dressers, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-quotations"), quotations); }, [quotations, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-expenses"), expenses); }, [expenses, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-supplier-ledger"), supplierLedger); }, [supplierLedger, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-pins"), dresserPins); }, [dresserPins, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-doctor-calls"), doctorCalls); }, [doctorCalls, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-dresser-profiles"), dresserProfiles); }, [dresserProfiles, loaded, businessId]);
@@ -719,13 +723,15 @@ export default function App() {
   const deleteQuotation = (id) => setQuotations((prev) => prev.filter((q) => q.id !== id));
   const setQuotationStatus = (id, status) =>
     setQuotations((prev) => prev.map((q) => (q.id === id ? { ...q, status } : q)));
-  const receiveStock = (productId, qty, company, receivedBy) => {
+  const receiveStock = (productId, qty, company, receivedBy, billAmount) => {
     setProducts((prev) => prev.map((p) => p.id === productId ? {
       ...p,
       available: (p.available || 0) + qty,
-      receipts: [...(p.receipts || []), { id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), qty, company: company || "Unspecified", receivedBy: receivedBy || "Owner" }],
+      receipts: [...(p.receipts || []), { id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), qty, company: company || "Unspecified", receivedBy: receivedBy || "Owner", billAmount: Number(billAmount) || 0 }],
     } : p));
   };
+  const addSupplierLedgerEntry = (entry) => setSupplierLedger((prev) => [...prev, { id: uid(), date: todayISO(), ...entry }]);
+  const deleteSupplierLedgerEntry = (id) => setSupplierLedger((prev) => prev.filter((e) => e.id !== id));
   const resetTestData = () => { setCases([]); setProducts([]); };
   const logOwnerLogin = () => {
     const ua = navigator.userAgent || "";
@@ -803,6 +809,7 @@ export default function App() {
           doctorCalls={doctorCalls}
           doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster}
           expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
+          supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry}
           businessId={businessId} business={business} businesses={BUSINESSES} onSwitchBusiness={switchBusiness}
           pin={pin} onChangePin={setOwnerPin}
           accountantPin={accountantPin} onChangeAccountantPin={setAccountantPin}
@@ -959,7 +966,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("dashboard");
   const [showPinForm, setShowPinForm] = useState(false);
 
@@ -1059,7 +1066,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} />}
         {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} machines={machines} addPayment={addPayment} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} machines={machines} addPayment={addPayment} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
     </>
@@ -3111,8 +3118,8 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
     const f = receiveForm[id] || {};
     const qty = Number(f.qty);
     if (!qty || qty <= 0) return;
-    receiveStock(id, qty, f.company, actorName);
-    setReceiveForm((prev) => ({ ...prev, [id]: { qty: "", company: "" } }));
+    receiveStock(id, qty, f.company, actorName, f.billAmount);
+    setReceiveForm((prev) => ({ ...prev, [id]: { qty: "", company: "", billAmount: "" } }));
   };
   const addVariant = (id) => {
     const val = (variantInput[id] || "").trim();
@@ -3272,6 +3279,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
                         <div style={styles.addPaymentRow}>
                           <input type="number" placeholder="Qty received" value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setField(p.id, "qty", e.target.value)} style={styles.smallInput} />
                           <input type="text" placeholder="Company / supplier" value={(receiveForm[p.id] || {}).company || ""} onChange={(e) => setField(p.id, "company", e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
+                          <input type="number" placeholder="Bill amount ₹ (optional)" value={(receiveForm[p.id] || {}).billAmount || ""} onChange={(e) => setField(p.id, "billAmount", e.target.value)} style={styles.smallInput} />
                           <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
                         </div>
 
@@ -3849,7 +3857,7 @@ function OutstandingPatientRow({ c, businessName, addPayment, readOnly }) {
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, machines, addPayment, readOnly = false }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, machines, addPayment, readOnly = false }) {
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [expCategory, setExpCategory] = useState("Salary");
@@ -3916,6 +3924,48 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   const pnlTotals = useMemo(() => pnlRows.reduce((acc, r) => ({
     revenue: acc.revenue + r.revenue, rental: acc.rental + r.rental, cost: acc.cost + r.cost, commission: acc.commission + r.commission, opex: acc.opex + (r.opex || 0), profit: acc.profit + r.profit,
   }), { revenue: 0, rental: 0, cost: 0, commission: 0, opex: 0, profit: 0 }), [pnlRows]);
+
+  const [supplierForm, setSupplierForm] = useState({ supplier: "", type: "bill", amount: "", note: "" });
+  const [openSupplier, setOpenSupplier] = useState(null);
+  const [showOutstandingDetail, setShowOutstandingDetail] = useState(null);
+
+  const supplierStats = useMemo(() => {
+    const tally = {};
+    (products || []).forEach((p) => (p.receipts || []).forEach((r) => {
+      const amt = Number(r.billAmount || 0);
+      if (amt <= 0) return;
+      const name = r.company || "Unspecified";
+      if (!tally[name]) tally[name] = { supplier: name, billed: 0, paid: 0, entries: [] };
+      tally[name].billed += amt;
+      tally[name].entries.push({ id: r.id, type: "bill", amount: amt, date: r.date, note: `${r.qty} units — stock receipt` });
+    }));
+    (supplierLedger || []).forEach((e) => {
+      const name = e.supplier || "Unspecified";
+      if (!tally[name]) tally[name] = { supplier: name, billed: 0, paid: 0, entries: [] };
+      if (e.type === "payment") tally[name].paid += Number(e.amount || 0);
+      else tally[name].billed += Number(e.amount || 0);
+      tally[name].entries.push({ id: e.id, type: e.type, amount: Number(e.amount || 0), date: e.date, note: e.note, manual: true });
+    });
+    return Object.values(tally).map((s) => ({
+      ...s,
+      outstanding: s.billed - s.paid,
+      entries: s.entries.sort((a, b) => new Date(b.date) - new Date(a.date)),
+    })).sort((a, b) => b.outstanding - a.outstanding);
+  }, [products, supplierLedger]);
+  const supplierOutstandingTotal = useMemo(() => supplierStats.reduce((s, x) => s + Math.max(0, x.outstanding), 0), [supplierStats]);
+
+  const outstandingBySource = useMemo(() => {
+    const groups = { Patient: { total: 0, cases: [] }, Hospital: { total: 0, cases: [] } };
+    cases.forEach((c) => {
+      const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      const due = Math.max(0, Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - paid);
+      if (due <= 0) return;
+      const key = c.billTo === "Hospital" ? "Hospital" : "Patient";
+      groups[key].total += due;
+      groups[key].cases.push({ id: c.id, name: c.billTo === "Hospital" ? (c.hospitalName || c.patientName) : c.patientName, due });
+    });
+    return groups;
+  }, [cases]);
 
   const expensesSorted = useMemo(() => [...(expenses || [])].sort((a, b) => new Date(b.date) - new Date(a.date)), [expenses]);
   const expensesByCategory = useMemo(() => {
@@ -4231,9 +4281,30 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       <div style={styles.cardGrid}>
         <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(totalBilled)}</div><div style={styles.statLabel}>Total Billed</div></div>
         <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#D9720A" }}>{fmtMoney(totalCollected)}</div><div style={styles.statLabel}>Total Collected</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(outstandingTotal)}</div><div style={styles.statLabel}>Outstanding</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#3B5BA5" }}>{fmtMoney(totalProfit)}</div><div style={styles.statLabel}>Est. Profit</div></div>
+        <div style={{ ...styles.reportCard, cursor: "pointer" }} onClick={() => setShowOutstandingDetail(showOutstandingDetail ? null : "all")}>
+          <div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(outstandingTotal)}</div><div style={styles.statLabel}>Outstanding (tap for details)</div>
+        </div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(totalProfit)}</div><div style={styles.statLabel}>Est. Profit</div></div>
       </div>
+
+      {showOutstandingDetail && (
+        <div style={{ ...styles.card, marginBottom: 16 }}>
+          <div style={styles.dresserLine} onClick={() => setShowOutstandingDetail(showOutstandingDetail === "Patient" ? "all" : "Patient")}>
+            <span style={{ flex: 1, fontWeight: 600 }}>Patient Outstanding</span>
+            <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(outstandingBySource.Patient.total)}</span>
+          </div>
+          {showOutstandingDetail === "Patient" && outstandingBySource.Patient.cases.map((c) => (
+            <div key={c.id} style={{ ...styles.dresserLine, paddingLeft: 24 }}><span style={{ flex: 1 }}>{c.name}</span><span style={styles.mutedSmall}>{fmtMoney(c.due)}</span></div>
+          ))}
+          <div style={styles.dresserLine} onClick={() => setShowOutstandingDetail(showOutstandingDetail === "Hospital" ? "all" : "Hospital")}>
+            <span style={{ flex: 1, fontWeight: 600 }}>Hospital Outstanding</span>
+            <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(outstandingBySource.Hospital.total)}</span>
+          </div>
+          {showOutstandingDetail === "Hospital" && outstandingBySource.Hospital.cases.map((c) => (
+            <div key={c.id} style={{ ...styles.dresserLine, paddingLeft: 24 }}><span style={{ flex: 1 }}>{c.name}</span><span style={styles.mutedSmall}>{fmtMoney(c.due)}</span></div>
+          ))}
+        </div>
+      )}
 
       <div style={styles.card}>
         {PAY_MODES.map((m) => (
@@ -4347,6 +4418,51 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               ))}
             </div>
           </>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Supplier Payments Due" right={supplierOutstandingTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(supplierOutstandingTotal)}</span> : null}>
+        {!readOnly && (
+          <div style={styles.formGrid}>
+            <div style={styles.addPaymentRow}>
+              <input type="text" placeholder="Supplier / distributor name" style={{ ...styles.smallInput, flex: 1 }} value={supplierForm.supplier} onChange={(e) => setSupplierForm((f) => ({ ...f, supplier: e.target.value }))} />
+              <select style={styles.smallInput} value={supplierForm.type} onChange={(e) => setSupplierForm((f) => ({ ...f, type: e.target.value }))}>
+                <option value="bill">New Bill (owed)</option>
+                <option value="payment">Payment Made</option>
+              </select>
+            </div>
+            <div style={styles.addPaymentRow}>
+              <input type="number" placeholder="Amount ₹" style={styles.smallInput} value={supplierForm.amount} onChange={(e) => setSupplierForm((f) => ({ ...f, amount: e.target.value }))} />
+              <input type="text" placeholder="Note (optional)" style={{ ...styles.smallInput, flex: 1 }} value={supplierForm.note} onChange={(e) => setSupplierForm((f) => ({ ...f, note: e.target.value }))} />
+              <button style={styles.smallBtn} onClick={() => {
+                const amt = Number(supplierForm.amount);
+                if (!supplierForm.supplier.trim() || !amt || amt <= 0) return;
+                addSupplierLedgerEntry({ supplier: supplierForm.supplier.trim(), type: supplierForm.type, amount: amt, note: supplierForm.note.trim() });
+                setSupplierForm({ supplier: "", type: "bill", amount: "", note: "" });
+              }}>Add</button>
+            </div>
+          </div>
+        )}
+        {supplierStats.length === 0 ? <EmptyState text="No supplier bills yet. Add a bill amount when receiving stock, or log one manually above." /> : (
+          <div style={styles.card}>
+            {supplierStats.map((s) => (
+              <div key={s.supplier}>
+                <div style={styles.dresserLine} onClick={() => setOpenSupplier(openSupplier === s.supplier ? null : s.supplier)}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{s.supplier}</span>
+                  <span style={styles.mutedSmall}>Billed {fmtMoney(s.billed)} · Paid {fmtMoney(s.paid)}</span>
+                  <span style={{ fontWeight: 700, color: s.outstanding > 0 ? "#E1483C" : "#128577" }}>{fmtMoney(Math.max(0, s.outstanding))}</span>
+                </div>
+                {openSupplier === s.supplier && s.entries.map((e) => (
+                  <div key={e.id} style={{ ...styles.paymentLine, paddingLeft: 24 }}>
+                    <span>{fmtDate(e.date)}</span>
+                    <span style={{ color: e.type === "payment" ? "#128577" : "#E1483C" }}>{e.type === "payment" ? "Paid" : "Bill"} {fmtMoney(e.amount)}</span>
+                    <span style={styles.mutedSmall}>{e.note || ""}</span>
+                    {!readOnly && e.manual && <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => { if (window.confirm("Delete this entry?")) deleteSupplierLedgerEntry(e.id); }}>✕</button>}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         )}
       </CollapsibleSection>
 
