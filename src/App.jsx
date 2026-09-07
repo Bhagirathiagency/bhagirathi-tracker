@@ -1051,7 +1051,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.nav}>
-        {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["expenses", "Expenses", "reports"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "dressers"], ["combined", "All Business", "overview"]].map(([key, label, icon]) => (
+        {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["expenses", "Expenses", "reports"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "dressers"], ["combined", "All Business", "overview"], ["settings", "Master Settings", "reports"]].map(([key, label, icon]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
             <Icon name={icon} size={16} />{label}
           </button>
@@ -1087,6 +1087,9 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
             fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment}
           />
+        )}
+        {tab === "settings" && (
+          <MasterSettingsTab outstandingTotal={outstandingTotal} clearAllOutstanding={clearAllOutstanding} resetTestData={resetTestData} />
         )}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} dresserProfiles={dresserProfiles} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
@@ -5327,29 +5330,33 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       </CollapsibleSection>
       )}
 
-      {!readOnly && (
-        <>
-          <SectionTitle>Danger Zone</SectionTitle>
-          <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4", marginBottom: 10 }}>
-            <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
-              Marks every case's outstanding balance as paid (adds a settling payment entry to each). Case history stays intact — only outstanding drops to zero. Currently outstanding: {fmtMoney(outstandingTotal)}.
-            </div>
-            <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
-              const typed = window.prompt('This will mark ALL outstanding balances as paid. Type "CLEAR" to confirm:');
-              if (typed === "CLEAR") clearAllOutstanding();
-            }}>Zero Out All Outstanding</button>
-          </div>
-          <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4" }}>
-            <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
-              Permanently clears all cases and all stock/products — use this to wipe out testing data before going live. This cannot be undone.
-            </div>
-            <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
-              const typed = window.prompt('This will permanently delete ALL cases and ALL stock/products. Type "RESET" to confirm:');
-              if (typed === "RESET") resetTestData();
-            }}>Clear All Cases &amp; Stock</button>
-          </div>
-        </>
-      )}
+    </div>
+  );
+}
+
+function MasterSettingsTab({ outstandingTotal, clearAllOutstanding, resetTestData }) {
+  return (
+    <div>
+      <SectionTitle>Danger Zone</SectionTitle>
+      <div style={{ ...styles.emptyState2, marginBottom: 10 }}>Destructive, irreversible actions live here — kept separate from everyday screens on purpose.</div>
+      <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4", marginBottom: 10 }}>
+        <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+          Marks every case's outstanding balance as paid (adds a settling payment entry to each). Case history stays intact — only outstanding drops to zero. Currently outstanding: {fmtMoney(outstandingTotal)}.
+        </div>
+        <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
+          const typed = window.prompt('This will mark ALL outstanding balances as paid. Type "CLEAR" to confirm:');
+          if (typed === "CLEAR") clearAllOutstanding();
+        }}>Zero Out All Outstanding</button>
+      </div>
+      <div style={{ ...styles.card, padding: 14, border: "1px solid #FCE7E4" }}>
+        <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+          Permanently clears all cases and all stock/products — use this to wipe out testing data before going live. This cannot be undone.
+        </div>
+        <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={() => {
+          const typed = window.prompt('This will permanently delete ALL cases and ALL stock/products. Type "RESET" to confirm:');
+          if (typed === "RESET") resetTestData();
+        }}>Clear All Cases &amp; Stock</button>
+      </div>
     </div>
   );
 }
