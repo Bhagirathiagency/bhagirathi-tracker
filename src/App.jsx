@@ -72,6 +72,7 @@ const fmtDate = (d) =>
 const fmtMoney = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 const addDays = (dateStr, days) => {
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null; // missing/invalid source date — don't crash, signal it clearly instead
   d.setDate(d.getDate() + Number(days || 0));
   return d.toISOString().slice(0, 10);
 };
@@ -154,7 +155,7 @@ function protocolLabel(days) {
 }
 function nextDueDate(c) {
   const last = latestChange(c);
-  return addDays(last.date, last.protocolDays || 5);
+  return addDays(last.date, last.protocolDays || 5) || "No date on record";
 }
 function overdueDays(c) {
   if (c.status !== "active") return 0;
