@@ -4362,7 +4362,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               return (
             <div style={styles.cardGrid}>
               <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(pnlRevTotal)}</div><div style={styles.statLabel}>Total Revenue</div></div>
-              <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(pnlTotals.cost + pnlTotals.commission + pnlTotals.opex)}{pnlPct(pnlTotals.cost + pnlTotals.commission + pnlTotals.opex)}</div><div style={styles.statLabel}>Total Cost + Commission + Expenses</div></div>
+              <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#5B6864" }}>{fmtMoney(pnlTotals.cost + pnlTotals.commission + pnlTotals.opex)}{pnlPct(pnlTotals.cost + pnlTotals.commission + pnlTotals.opex)}</div><div style={styles.statLabel}>Total Investment (Cost + Commission + Expenses)</div></div>
               <div style={{ ...styles.reportCard, gridColumn: "1 / -1" }}>
                 <div style={{ ...styles.statValue, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}{pnlPct(pnlTotals.profit)}</div>
                 <div style={styles.statLabel}>Net Profit / Loss Margin</div>
