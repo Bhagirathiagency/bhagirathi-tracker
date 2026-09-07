@@ -1415,14 +1415,14 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
       )}
 
       <main style={styles.main}>
-        <CollapsibleSection title="My Profile" defaultOpen={!profile || !profile.photo}>
+        <CollapsibleSection title="My Profile">
           <DresserProfileForm name={name} profile={profile} setDresserProfile={setDresserProfile} />
         </CollapsibleSection>
 
         <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
 
         {myTodaysVisits.length > 0 && (
-          <CollapsibleSection title="Today's & Tomorrow's Visits" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
+          <CollapsibleSection title="Today's & Tomorrow's Visits" right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
             <div style={styles.card}>
               {myTodaysVisits.map((c) => (
                 <div key={c.id} style={styles.dresserLine}>
@@ -1456,7 +1456,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Cases on Therapy" defaultOpen>
+        <CollapsibleSection title="Cases on Therapy">
           {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
             <div style={styles.list}>
               {myCasesActive.map((c) => (
@@ -1852,7 +1852,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
       </div>
 
       {todaysVisits.length > 0 && (
-        <CollapsibleSection title="Today's & Tomorrow's Visits" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{todaysVisits.length}</span>}>
+        <CollapsibleSection title="Today's & Tomorrow's Visits" right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{todaysVisits.length}</span>}>
           <div style={styles.card}>
             {todaysVisits.map((c) => (
               <div key={c.id} style={styles.dresserLine}>
@@ -1887,7 +1887,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
         </CollapsibleSection>
       )}
 
-      <CollapsibleSection title="Recent Cases" defaultOpen>
+      <CollapsibleSection title="Recent Cases">
         {recentCases.length === 0 ? <EmptyState text="No cases yet. Add your first case from the Cases tab." /> : (
           <div style={styles.list}>{recentCases.map((c) => <CaseRow key={c.id} c={c} products={products} compact />)}</div>
         )}
@@ -4347,7 +4347,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
       <button style={styles.primaryBtn} onClick={sendSummary}>Send Summary on WhatsApp</button>
 
-      <CollapsibleSection title="Profit & Loss Statement" defaultOpen right={<span style={{ fontSize: 12, fontWeight: 700, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</span>}>
+      <CollapsibleSection title="Profit & Loss Statement" right={<span style={{ fontSize: 12, fontWeight: 700, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</span>}>
         <div style={styles.filterRow}>
           {[["daily", "Daily"], ["weekly", "Weekly"], ["monthly", "Monthly"], ["yearly", "Yearly"]].map(([key, label]) => (
             <button key={key} onClick={() => setPnlGranularity(key)}
@@ -4605,7 +4605,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Doctor Commission" defaultOpen={doctorCommissionStats.length > 0}
+      <CollapsibleSection title="Doctor Commission"
         right={doctorCommissionTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#D98D2B" }}>{fmtMoney(doctorCommissionTotal)}</span> : null}>
         {doctorCommissionStats.length === 0 ? <EmptyState text="No commission entered on any case yet. Add it in the case form when applicable." /> : (
           <>
@@ -4629,7 +4629,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Doctor Call Report" defaultOpen={(doctorCalls || []).length > 0}
+      <CollapsibleSection title="Doctor Call Report"
         right={(doctorCalls || []).length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#3B5BA5" }}>{doctorCalls.length} calls</span> : null}>
         {(!doctorCalls || doctorCalls.length === 0) ? <EmptyState text="No doctor calls logged by any dresser yet." /> : (
           <>
@@ -4724,7 +4724,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Outstanding Payments by Patient" defaultOpen={outstandingByPatient.length > 0}>
+      <CollapsibleSection title="Outstanding Payments by Patient">
         {outstandingByPatient.length === 0 ? <EmptyState text="No outstanding balances. All caught up!" /> : (
           <div style={styles.list}>
             {outstandingByPatient.map((c) => (
@@ -4734,7 +4734,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Outstanding by Hospital" defaultOpen={outstandingByHospital.length > 0}>
+      <CollapsibleSection title="Outstanding by Hospital">
         {outstandingByHospital.length === 0 ? <EmptyState text="No hospital-billed outstanding balances." /> : (
           <div style={styles.list}>
             {outstandingByHospital.map((h) => (
@@ -4773,7 +4773,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection title="Overdue Dressing Changes" defaultOpen={overdueCasesList.length > 0}>
+      <CollapsibleSection title="Overdue Dressing Changes">
         {overdueCasesList.length === 0 ? <EmptyState text="No overdue cases right now." /> : (
           <div style={styles.card}>
             {overdueCasesList.map((c) => (
