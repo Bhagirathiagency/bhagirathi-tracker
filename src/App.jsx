@@ -989,7 +989,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
   const [showPinForm, setShowPinForm] = useState(false);
 
-  const machineInUse = (serial) => cases.some((c) => c.machineSerial === serial && c.status === "active");
+  const machineInUse = (serial) => cases.some((c) => c.machineSerial === serial && (c.status === "active" || c.status === "reapplied"));
   const outstandingTotal = useMemo(() => cases.reduce((sum, c) => {
     const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
     return sum + Math.max(0, Number(c.totalAmount || 0) - paid);
@@ -1442,7 +1442,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
 
   if (showForm) {
     return (
-      <CaseForm machines={machines} products={products} presetDresserName={name} doctorsList={doctorsList}
+      <CaseForm machines={machines} products={products} presetDresserName={name} doctorsList={doctorsList} cases={cases}
         onCancel={() => setShowForm(false)}
         onSave={(data) => { saveCase(data, null); setShowForm(false); setSavedConfirm(true); }} />
     );
@@ -2096,7 +2096,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
 
   if (showForm) {
     return (
-      <CaseForm machines={machines} products={products} initial={editing} doctorsList={doctorsList}
+      <CaseForm machines={machines} products={products} initial={editing} doctorsList={doctorsList} cases={cases}
         onCancel={() => { setShowForm(false); setEditing(null); }}
         onSave={(data) => { saveCase(data, editing ? editing.id : null); setShowForm(false); setEditing(null); }} />
     );
@@ -2292,7 +2292,13 @@ function Detail({ label, value, highlight, color, big }) {
   );
 }
 
-function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName, doctorsList }) {
+function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName, doctorsList, cases = [] }) {
+  const inUseSerials = new Set(
+    cases
+      .filter((c) => (c.status === "active" || c.status === "reapplied") && (!initial || c.id !== initial.id))
+      .map((c) => c.machineSerial)
+      .filter(Boolean)
+  );
   const [form, setForm] = useState(initial || {
     patientName: "", patientMobile: "", doctorName: "", doctorCommission: "", dresserName: presetDresserName || "", protocolDays: 5,
        machineSerial: "", products: [],
@@ -2411,7 +2417,11 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             else if (form.status === "na") set("status", "active");
           }}>
             <option value="">— None —</option>
-            {machines.map((m) => <option key={m.id} value={m.serial}>{m.serial} ({m.model})</option>)}
+            {machines.map((m) => (
+              <option key={m.id} value={m.serial} disabled={inUseSerials.has(m.serial)}>
+                {m.serial} ({m.model}){inUseSerials.has(m.serial) ? " — In Use" : ""}
+              </option>
+            ))}
           </select>
         </Field>
         {form.machineSerial && (
