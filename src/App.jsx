@@ -105,7 +105,7 @@ const STATUS = {
   na: { label: "Material Supplied", color: "#5B6864", bg: "#EEF0EE" },
 };
 const PROTOCOLS = [5, 7];
-const PAY_MODES = ["Cash", "Online", "Credit"];
+const PAY_MODES = ["Cash", "Online", "Cheque", "RTGS", "Credit"];
 const DEFAULT_PRODUCTS = [{ id: uid(), name: "Material", available: 0, used: 0, costPrice: 0, receipts: [] }];
 const LOW_STOCK_THRESHOLD = 5;
 const OWNER_WHATSAPP = "917507777127";
@@ -820,7 +820,7 @@ export default function App() {
       {role && role.type === "dresser" && (
         <DresserShell
           name={role.name} cases={cases} machines={machines} products={products} setProducts={setProducts} receiveStock={receiveStock} saveCase={saveCase}
-          addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem} capturePhoto={capturePhoto}
+          addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem} addPayment={addPayment} capturePhoto={capturePhoto}
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
@@ -1305,7 +1305,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [showForm, setShowForm] = useState(false);
   const [savedConfirm, setSavedConfirm] = useState(false);
   useEffect(() => {
@@ -1460,7 +1460,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
             <div style={styles.list}>
               {myCasesActive.map((c) => (
-                <DresserCaseRow key={c.id} c={c} dresserName={name} products={products}
+                <DresserCaseRow key={c.id} c={c} dresserName={name} products={products} onAddPayment={(p) => addPayment(c.id, p)}
                   onAddDressingChange={(e) => addDressingChange(c.id, e)}
                   onAddAdditionalItem={(e) => addAdditionalItem(c.id, e)}
                   onCapturePhoto={(stage, dataURL) => capturePhoto(c.id, stage, dataURL)} />
@@ -1716,12 +1716,17 @@ function ProductsUsedPicker({ products, selected, onChange }) {
   );
 }
 
-function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAdditionalItem, onCapturePhoto }) {
+function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAdditionalItem, onAddPayment, onCapturePhoto }) {
   const [open, setOpen] = useState(false);
   const [protocolDays, setProtocolDays] = useState(c.protocolDays || 5);
   const [note, setNote] = useState("");
   const [changeProducts, setChangeProducts] = useState([]);
   const [uploading, setUploading] = useState(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMode, setPayMode] = useState("Cash");
+  const [payNote, setPayNote] = useState("");
+  const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+  const outstanding = Math.max(0, Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - paid);
   const due = nextDueDate(c);
   const overdue = overdueDays(c);
   const flags = c.photoFlags || {};
@@ -1790,6 +1795,34 @@ function DresserCaseRow({ c, dresserName, products, onAddDressingChange, onAddAd
           }}>Log Today's Change</button>
 
           <AdditionalItemsBlock c={c} products={products} onAddAdditionalItem={onAddAdditionalItem} />
+
+          {onAddPayment && (
+            <div style={{ ...styles.paymentsSection, marginTop: 14 }}>
+              <div style={styles.detailLabel}>Payment collection</div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                <span style={styles.mutedSmall}>Outstanding</span>
+                <span style={{ fontWeight: 700, color: outstanding > 0 ? "#E1483C" : "#128577" }}>{fmtMoney(outstanding)}</span>
+              </div>
+              {(c.payments || []).length > 0 && (c.payments || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5).map((p) => (
+                <div key={p.id} style={styles.paymentLine}><span>{fmtDate(p.date)}</span><span>{fmtMoney(p.amount)}</span><span style={styles.mutedSmall}>{p.mode || "Cash"}{p.note ? ` · ${p.note}` : ""}</span></div>
+              ))}
+              {outstanding > 0 && (
+                <div style={styles.addPaymentRow}>
+                  <input type="number" placeholder="Amount" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} style={styles.smallInput} />
+                  <select value={payMode} onChange={(e) => setPayMode(e.target.value)} style={styles.smallInput}>
+                    {PAY_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <input type="text" placeholder="Note e.g. cheque no. / UTR" value={payNote} onChange={(e) => setPayNote(e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
+                  <button style={styles.smallBtn} onClick={() => {
+                    const amt = Number(payAmount);
+                    if (!amt || amt <= 0) return;
+                    onAddPayment({ amount: amt, mode: payMode, note: payNote.trim(), date: todayISO() });
+                    setPayAmount(""); setPayNote("");
+                  }}>Collect Payment</button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
