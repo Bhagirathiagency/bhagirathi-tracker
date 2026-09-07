@@ -1346,7 +1346,7 @@ function DresserProfileForm({ name, profile, setDresserProfile }) {
               {uploading ? "…" : "Add photo"}
             </div>
           )}
-          <input type="file" accept="image/*" capture="user" style={{ display: "none" }} onChange={(e) => handlePhoto(e.target.files[0])} />
+          <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handlePhoto(e.target.files[0])} />
         </label>
         <div>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 }}>{name}</div>
