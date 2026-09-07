@@ -351,12 +351,24 @@ export default function App() {
   const switchBusiness = (id) => {
     if (id === businessId) return;
     try { localStorage.setItem("wca-active-business", id); } catch (e) { /* ignore */ }
-    setRole(null);
+    setRolePersisted(null);
     setLoaded(false);
     setBusinessId(id);
   };
 
-  const [role, setRole] = useState(null);
+  const [role, setRole] = useState(() => {
+    try {
+      const saved = localStorage.getItem("wca-session-role");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) { return null; }
+  });
+  const setRolePersisted = (r) => {
+    setRole(r);
+    try {
+      if (r) localStorage.setItem("wca-session-role", JSON.stringify(r));
+      else localStorage.removeItem("wca-session-role");
+    } catch (e) {}
+  };
   const [activityToast, setActivityToast] = useState(null);
   const [pin, setPin] = useState(null);
   const [accountantPin, setAccountantPinState] = useState(null);
@@ -802,9 +814,9 @@ export default function App() {
           dressers={dressers}
           dresserPins={dresserPins}
           onSetPin={setOwnerPin}
-          onOwnerLogin={() => { logOwnerLogin(); setRole({ type: "owner" }); }}
-          onDresserLogin={(name) => { setRole({ type: "dresser", name }); updateDresserLocation(name); }}
-          onAccountantLogin={() => setRole({ type: "accountant" })}
+          onOwnerLogin={() => { logOwnerLogin(); setRolePersisted({ type: "owner" }); }}
+          onDresserLogin={(name) => { setRolePersisted({ type: "dresser", name }); updateDresserLocation(name); }}
+          onAccountantLogin={() => setRolePersisted({ type: "accountant" })}
           businesses={BUSINESSES} businessId={businessId} business={business} onSwitchBusiness={switchBusiness}
         />
       )}
@@ -831,7 +843,7 @@ export default function App() {
           pin={pin} onChangePin={setOwnerPin}
           accountantPin={accountantPin} onChangeAccountantPin={setAccountantPin}
           refreshData={refreshData} refreshing={refreshing}
-          onLogout={() => setRole(null)}
+          onLogout={() => setRolePersisted(null)}
         />
       )}
       {role && role.type === "dresser" && (
@@ -849,7 +861,7 @@ export default function App() {
           business={business} businessId={businessId} businesses={BUSINESSES}
           myBusinesses={businessesFor(role.name)} onSwitchBusiness={switchBusiness}
           refreshData={refreshData} refreshing={refreshing}
-          onLogout={() => setRole(null)}
+          onLogout={() => setRolePersisted(null)}
         />
       )}
       {role && role.type === "accountant" && (
@@ -857,7 +869,7 @@ export default function App() {
           business={business}
           cases={cases} products={products} dressers={dressers} machines={machines}
           quotations={quotations} doctorCalls={doctorCalls} expenses={expenses}
-          onLogout={() => setRole(null)}
+          onLogout={() => setRolePersisted(null)}
         />
       )}
     </div>
