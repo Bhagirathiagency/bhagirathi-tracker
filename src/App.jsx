@@ -4329,6 +4329,18 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
   const outstandingByPatient = useMemo(() => {
     return cases
+      .filter((c) => c.billTo !== "Hospital")
+      .map((c) => {
+        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        const balance = Math.max(0, Number(c.totalAmount || 0) - paid);
+        const daysOutstanding = c.applicationDate ? daysBetween(c.applicationDate, todayISO()) : 0;
+        return { ...c, balance, daysOutstanding };
+      })
+      .filter((c) => c.balance > 0)
+      .sort((a, b) => b.daysOutstanding - a.daysOutstanding || b.balance - a.balance);
+  }, [cases]);
+  const outstandingByPatientForHospitalGrouping = useMemo(() => {
+    return cases
       .map((c) => {
         const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
         const balance = Math.max(0, Number(c.totalAmount || 0) - paid);
@@ -4341,7 +4353,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
   const outstandingByHospital = useMemo(() => {
     const tally = {};
-    outstandingByPatient
+    outstandingByPatientForHospitalGrouping
       .filter((c) => c.billTo === "Hospital")
       .forEach((c) => {
         const hospital = (c.hospitalName || "Unnamed Hospital").trim() || "Unnamed Hospital";
@@ -4351,7 +4363,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         tally[hospital].cases.push(c);
       });
     return Object.values(tally).sort((a, b) => b.balance - a.balance);
-  }, [outstandingByPatient]);
+  }, [outstandingByPatientForHospitalGrouping]);
 
   const rentedCases = useMemo(
     () => cases.filter((c) => Number(c.machineRentalAmount || 0) > 0),
