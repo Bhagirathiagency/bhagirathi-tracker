@@ -2154,6 +2154,12 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
       .sort((a, b) => b.overdue - a.overdue || new Date(a.due) - new Date(b.due));
   }, [cases]);
 
+  const allActiveCasesDue = useMemo(() => cases
+    .filter((c) => c.status === "active")
+    .map((c) => ({ ...c, due: nextDueDate(c), overdue: overdueDays(c) }))
+    .sort((a, b) => (a.dresserName || "").localeCompare(b.dresserName || "") || new Date(a.due) - new Date(b.due)),
+    [cases]);
+
   return (
     <div>
       <div style={styles.cardGrid}>
@@ -2178,6 +2184,21 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
           </div>
         </CollapsibleSection>
       )}
+
+      <CollapsibleSection title="Diagnostic: All Active Cases &amp; Due Dates" right={<span style={{ fontSize: 12, fontWeight: 700, color: "#8A9A96" }}>{allActiveCasesDue.length}</span>}>
+        <div style={styles.emptyState2}>Temporary tool — shows every active case's computed next-due date, so we can spot why a case isn't showing under Today's/Tomorrow's Visits.</div>
+        {allActiveCasesDue.length === 0 ? <EmptyState text="No active cases." /> : (
+          <div style={styles.card}>
+            {allActiveCasesDue.map((c) => (
+              <div key={c.id} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{c.patientName}</span>
+                <span style={styles.mutedSmall}>{c.dresserName || "Unassigned"}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: c.overdue > 0 ? "#E1483C" : "#3B5BA5" }}>Due: {c.due}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
 
       {lowStock.length > 0 && (
         <CollapsibleSection title="Stock Alerts" right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{lowStock.length}</span>}>
