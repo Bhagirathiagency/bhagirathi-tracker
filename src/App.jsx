@@ -4606,7 +4606,8 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
               const overallProfit = totalCollected - overallInvestment;
               const totalBusiness = outstandingTotal + overallInvestment + Math.max(0, overallProfit);
               const pieData = [
-                { name: "Outstanding", value: outstandingTotal, color: "#E1483C" },
+                { name: "Patient Outstanding", value: outstandingBySource.Patient.total, color: "#E1483C" },
+                { name: "Hospital Outstanding", value: outstandingBySource.Hospital.total, color: "#B3542F" },
                 { name: "Investment", value: overallInvestment, color: "#D98D2B" },
                 { name: "Profit", value: Math.max(0, overallProfit), color: "#128577" },
               ].filter((d) => d.value > 0);
