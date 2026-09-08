@@ -1818,6 +1818,15 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
       return s + Math.max(0, Number(c.totalAmount || 0) - paid);
     }, 0), [cases, name]);
   const myOverdueCount = useMemo(() => myCasesActive.filter((c) => overdueDays(c) > 0).length, [myCasesActive]);
+  const goToDresserSection = (sectionId) => {
+    const header = document.querySelector(`[data-collapsible-header="${sectionId}-header"]`);
+    const wrapper = document.getElementById(sectionId);
+    if (header && wrapper) {
+      const arrow = header.querySelector("span:last-child");
+      if (arrow && arrow.textContent === "▼") header.click();
+      setTimeout(() => wrapper.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }
+  };
   const myOutstandingCases = useMemo(() => cases
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
     .map((c) => {
@@ -1894,22 +1903,22 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
 
       <main style={styles.main}>
         <div style={styles.cardGrid}>
-          <div style={{ ...styles.statCard, borderColor: "#1B6B6333", cursor: "default" }}>
+          <button onClick={() => goToDresserSection("dresser-active-cases")} style={{ ...styles.statCard, borderColor: "#1B6B6333" }}>
             <div style={{ ...styles.statValue, color: "#1B6B63" }}>{myCasesActive.length}</div>
             <div style={styles.statLabel}>Active patients</div>
-          </div>
-          <div style={{ ...styles.statCard, borderColor: myOverdueCount > 0 ? "#E1483C33" : "#3B5BA533", cursor: "default" }}>
+          </button>
+          <button onClick={() => goToDresserSection("dresser-due-visits")} style={{ ...styles.statCard, borderColor: myOverdueCount > 0 ? "#E1483C33" : "#3B5BA533" }}>
             <div style={{ ...styles.statValue, color: myOverdueCount > 0 ? "#E1483C" : "#3B5BA5" }}>{myTodaysVisits.length}</div>
             <div style={styles.statLabel}>Due today/tomorrow{myOverdueCount > 0 ? ` (${myOverdueCount} overdue)` : ""}</div>
-          </div>
-          <div style={{ ...styles.statCard, borderColor: myOutstandingTotal > 0 ? "#E1483C33" : "#D9720A33", cursor: "default" }}>
+          </button>
+          <button onClick={() => goToDresserSection("dresser-your-reporting")} style={{ ...styles.statCard, borderColor: myOutstandingTotal > 0 ? "#E1483C33" : "#D9720A33" }}>
             <div style={{ ...styles.statValue, color: myOutstandingTotal > 0 ? "#E1483C" : "#D9720A" }}>{fmtMoney(myOutstandingTotal)}</div>
             <div style={styles.statLabel}>Outstanding on your cases</div>
-          </div>
-          <div style={{ ...styles.statCard, borderColor: "#D9720A33", cursor: "default" }}>
+          </button>
+          <button onClick={() => goToDresserSection("dresser-your-reporting")} style={{ ...styles.statCard, borderColor: "#D9720A33" }}>
             <div style={{ ...styles.statValue, color: "#D9720A" }}>{myChanges.length}</div>
             <div style={styles.statLabel}>Dressings logged (all-time)</div>
-          </div>
+          </button>
         </div>
 
         <CollapsibleSection title={t("myProfile")}>
@@ -1927,7 +1936,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>{t("newCase")}</button>
 
         {myTodaysVisits.length > 0 && (
-          <CollapsibleSection title={t("todaysVisits")} right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
+          <CollapsibleSection id="dresser-due-visits" title={t("todaysVisits")} right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
             <div style={styles.card}>
               {myTodaysVisits.map((c) => (
                 <div key={c.id} style={styles.dresserLine}>
@@ -1961,7 +1970,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("casesOnTherapy")}>
+        <CollapsibleSection id="dresser-active-cases" title={t("casesOnTherapy")}>
           {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
             <div style={styles.list}>
               {myCasesActive.map((c) => (
@@ -2012,7 +2021,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("yourReporting")}>
+        <CollapsibleSection id="dresser-your-reporting" title={t("yourReporting")}>
           {(() => {
             let cashPending = 0;
             cases.forEach((c) => (c.payments || []).forEach((p) => {
@@ -4536,7 +4545,7 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
 }
 
 // ---------------- Reports (Owner) ----------------
-function CollapsibleSection({ title, defaultOpen, right, children }) {
+function CollapsibleSection({ title, defaultOpen, right, children, id }) {
   const [open, setOpen] = useState(!!defaultOpen);
   const [busy, setBusy] = useState(false);
   const contentRef = useRef(null);
@@ -4558,8 +4567,8 @@ function CollapsibleSection({ title, defaultOpen, right, children }) {
   };
 
   return (
-    <div style={{ marginBottom: 4 }}>
-      <div onClick={() => setOpen((o) => !o)}
+    <div style={{ marginBottom: 4 }} id={id}>
+      <div onClick={() => setOpen((o) => !o)} data-collapsible-header={id ? `${id}-header` : undefined}
         style={{ ...styles.sectionTitle, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>{title}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
