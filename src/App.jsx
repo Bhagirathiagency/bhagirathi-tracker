@@ -258,6 +258,21 @@ function locKey(businessId, name) { return `${bkey(businessId, "wca-loc")}-${nam
 function mapsLink(lat, lng) { return `https://www.google.com/maps?q=${lat},${lng}`; }
 function waLink(number, text) { return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
 
+function sendDoctorThankYou(caseData, doctorsList, businessName) {
+  const doctorName = (caseData.doctorName || "").trim();
+  if (!doctorName) return;
+  const matchedDoctor = (doctorsList || []).find((d) => (d.name || "").trim().toLowerCase() === doctorName.toLowerCase());
+  const doctorMobile = matchedDoctor ? matchedDoctor.mobile : "";
+  if (!doctorMobile) return;
+  const openers = [
+    `Dear Dr. ${doctorName},`,
+    `Respected Dr. ${doctorName},`,
+  ];
+  const opener = openers[Math.floor(Math.random() * openers.length)];
+  const msg = `${opener}\n\nThank you for trusting ${businessName} with the care of your patient, ${caseData.patientName}. We deeply appreciate your continued confidence in our wound care services, and we're committed to giving your patient the best possible care throughout their therapy.\n\nWe'll keep you updated on their progress.\n\nWith gratitude and respect,\n${businessName}`;
+  window.open(waLink(`91${doctorMobile.replace(/\D/g, "").slice(-10)}`, msg), "_blank");
+}
+
 const DAILY_THOUGHTS = [
   "Every dressing you change is a step closer to someone's healing. Thank you for showing up.",
   "Patients remember the hands that cared for them gently. You make that difference today.",
@@ -1660,7 +1675,11 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
     return (
       <CaseForm machines={machines} products={products} initial={editingCase} presetDresserName={name} doctorsList={doctorsList} cases={cases}
         onCancel={() => { setShowForm(false); setEditingCase(null); }}
-        onSave={(data) => { saveCase(data, editingCase ? editingCase.id : null); setShowForm(false); setEditingCase(null); setSavedConfirm(true); }} />
+        onSave={(data) => {
+          saveCase(data, editingCase ? editingCase.id : null);
+          if (!editingCase) sendDoctorThankYou(data, doctorsList, business.name);
+          setShowForm(false); setEditingCase(null); setSavedConfirm(true);
+        }} />
     );
   }
 
@@ -2407,7 +2426,11 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
     return (
       <CaseForm machines={machines} products={products} initial={editing} doctorsList={doctorsList} cases={cases}
         onCancel={() => { setShowForm(false); setEditing(null); }}
-        onSave={(data) => { saveCase(data, editing ? editing.id : null); setShowForm(false); setEditing(null); }} />
+        onSave={(data) => {
+          saveCase(data, editing ? editing.id : null);
+          if (!editing) sendDoctorThankYou(data, doctorsList, businessName);
+          setShowForm(false); setEditing(null);
+        }} />
     );
   }
 
