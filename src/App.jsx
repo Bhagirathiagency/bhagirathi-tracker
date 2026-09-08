@@ -1251,7 +1251,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} businessName={business.name} />
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} businessId={businessId} />}
-        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} />}
+        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} cases={cases} />}
         {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
         {tab === "expenses" && (
@@ -1890,7 +1890,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         )}
         {canManageStock && (
           <CollapsibleSection title="Stock">
-            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} businessId={businessId} />
+            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} businessId={businessId} cases={cases} />
           </CollapsibleSection>
         )}
         {canManageStock && (
@@ -3684,7 +3684,23 @@ function ChallanPdfView({ ch, onBack, businessName }) {
   );
 }
 
-function StockTab({ products, setProducts, receiveStock, actorName = "Owner", businessId }) {
+function StockTab({ products, setProducts, receiveStock, actorName = "Owner", businessId, cases = [] }) {
+  const productMismatches = useMemo(() => {
+    const knownNames = new Set(products.map((p) => p.name.trim().toLowerCase()));
+    const found = {};
+    cases.forEach((c) => {
+      getCaseProductLines(c).forEach((line) => {
+        const raw = (line.name || "").trim();
+        if (!raw) return;
+        if (!knownNames.has(raw.toLowerCase())) {
+          if (!found[raw]) found[raw] = { count: 0, patients: [] };
+          found[raw].count++;
+          if (found[raw].patients.length < 5) found[raw].patients.push(c.patientName);
+        }
+      });
+    });
+    return Object.entries(found).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.count - a.count);
+  }, [cases, products]);
   const [name, setName] = useState("");
   const [initQty, setInitQty] = useState("");
   const [initCost, setInitCost] = useState("");
@@ -3798,6 +3814,21 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
 
   return (
     <div>
+      {productMismatches.length > 0 && (
+        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FCE7E4", background: "#FFF7F5" }}>
+          <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 6 }}>⚠️ Product Name Mismatch Found — Profit May Be Wrong</div>
+          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+            These product names appear on cases but don't exactly match anything in your current product list below. Since profit is calculated using each product's saved cost price, any case using one of these unmatched names is being counted with ₹0 cost — overstating that case's profit. This usually happens when a product was renamed after cases were already created using the old name.
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {productMismatches.map((m) => (
+              <div key={m.name} style={{ fontSize: 13 }}>
+                <strong>"{m.name}"</strong> — used in {m.count} case{m.count > 1 ? "s" : ""} ({m.patients.join(", ")}{m.count > m.patients.length ? "…" : ""})
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {packDupCount > 0 && (
         <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FCE7E4" }}>
           <div style={{ fontSize: 13, marginBottom: 8 }}>
