@@ -83,7 +83,7 @@ async function flushOfflineQueue() {
 const PDF_FONT = "Arial, Helvetica, sans-serif";
 const TRANSLATIONS = {
   en: {
-    myProfile: "My Profile", todaysVisits: "Today's & Tomorrow's Visits", casesOnTherapy: "Cases on Therapy",
+    myProfile: "My Profile", todaysVisits: "Today's & Tomorrow's Visits", casesOnTherapy: "Patients on Therapy",
     patientHistory: "Patient History (Stopped / Reapplied)", yourReporting: "Your Reporting", myQuotations: "My Quotations",
     doctorCalls: "Doctor Calls", newCase: "+ New Case", callPatient: "Call Patient", callDoctor: "Call Dr.",
     logChange: "Log Today's Change", language: "Language",
