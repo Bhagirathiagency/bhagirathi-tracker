@@ -2387,7 +2387,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
         <CollapsibleSection title="Dresser Workload">
           <div style={styles.card}>
             {dresserStats.map((d, i) => (
-              <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span><span style={styles.mutedSmall}>{d.count} dressing{d.count > 1 ? "s" : ""}</span></div>
+              <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600, textAlign: "left" }}>{d.name}</span><span style={{ ...styles.mutedSmall, textAlign: "right", minWidth: 80 }}>{d.count} dressing{d.count > 1 ? "s" : ""}</span></div>
             ))}
           </div>
         </CollapsibleSection>
@@ -5507,10 +5507,10 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
           <div style={styles.card}>
             {allReceipts.slice(0, 40).map((r) => (
               <div key={r.id} style={styles.dresserLine}>
-                <span style={{ flex: 1, fontWeight: 600 }}>{r.product}</span>
-                <span style={styles.mutedSmall}>+{r.qty} · {r.company}</span>
-                <span style={{ ...styles.mutedSmall, color: "#D9720A", fontWeight: 600 }}>{r.receivedBy || "Owner"}</span>
-                <span style={styles.mutedSmall}>{fmtDate(r.date)}{r.time ? ` ${r.time}` : ""}</span>
+                <span style={{ flex: 1, fontWeight: 600, textAlign: "left" }}>{r.product}</span>
+                <span style={{ ...styles.mutedSmall, textAlign: "right", minWidth: 100 }}>+{r.qty} · {r.company}</span>
+                <span style={{ ...styles.mutedSmall, color: "#D9720A", fontWeight: 600, textAlign: "right", minWidth: 70 }}>{r.receivedBy || "Owner"}</span>
+                <span style={{ ...styles.mutedSmall, textAlign: "right", minWidth: 80 }}>{fmtDate(r.date)}{r.time ? ` ${r.time}` : ""}</span>
               </div>
             ))}
           </div>
@@ -5522,7 +5522,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         <CollapsibleSection title="Stock Received by Company">
           <div style={styles.card}>
             {companyTotals.map((c) => (
-              <div key={c.company} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{c.company}</span><span style={styles.mutedSmall}>{c.qty} units</span></div>
+              <div key={c.company} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600, textAlign: "left" }}>{c.company}</span><span style={{ ...styles.mutedSmall, textAlign: "right", minWidth: 80 }}>{c.qty} units</span></div>
             ))}
           </div>
         </CollapsibleSection>
@@ -5580,7 +5580,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         {dresserStats.length === 0 ? <EmptyState text="No dressing changes logged yet." /> : (
           <div style={styles.card}>
             {dresserStats.map((d, i) => (
-              <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span><span style={styles.mutedSmall}>{d.count} dressings</span></div>
+              <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600, textAlign: "left" }}>{d.name}</span><span style={{ ...styles.mutedSmall, textAlign: "right", minWidth: 80 }}>{d.count} dressings</span></div>
             ))}
           </div>
         )}
