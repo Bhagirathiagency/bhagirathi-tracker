@@ -5151,7 +5151,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         </div>
       )}
 
-      <CollapsibleSection title="Payment Received">
+      <CollapsibleSection title="Mode of Payment Received">
         <div style={styles.card}>
           {PAY_MODES.map((m) => (
             <div key={m} style={styles.dresserLine}>
