@@ -81,6 +81,27 @@ async function flushOfflineQueue() {
 }
 
 const PDF_FONT = "Arial, Helvetica, sans-serif";
+const TRANSLATIONS = {
+  en: {
+    myProfile: "My Profile", todaysVisits: "Today's & Tomorrow's Visits", casesOnTherapy: "Cases on Therapy",
+    patientHistory: "Patient History (Stopped / Reapplied)", yourReporting: "Your Reporting", myQuotations: "My Quotations",
+    doctorCalls: "Doctor Calls", newCase: "+ New Case", callPatient: "Call Patient", callDoctor: "Call Dr.",
+    logChange: "Log Today's Change", language: "Language",
+  },
+  hi: {
+    myProfile: "मेरी प्रोफ़ाइल", todaysVisits: "आज और कल के विज़िट", casesOnTherapy: "थेरेपी पर मरीज़",
+    patientHistory: "मरीज़ इतिहास (बंद / पुनः लागू)", yourReporting: "आपकी रिपोर्टिंग", myQuotations: "मेरे कोटेशन",
+    doctorCalls: "डॉक्टर कॉल्स", newCase: "+ नया केस", callPatient: "मरीज़ को कॉल करें", callDoctor: "डॉ. को कॉल करें",
+    logChange: "आज का बदलाव दर्ज करें", language: "भाषा",
+  },
+  mr: {
+    myProfile: "माझी प्रोफाइल", todaysVisits: "आज आणि उद्याच्या भेटी", casesOnTherapy: "थेरपीवरील रुग्ण",
+    patientHistory: "रुग्ण इतिहास (बंद / पुन्हा सुरू)", yourReporting: "तुमचा अहवाल", myQuotations: "माझी कोटेशन्स",
+    doctorCalls: "डॉक्टर कॉल्स", newCase: "+ नवीन केस", callPatient: "रुग्णाला कॉल करा", callDoctor: "डॉ.ना कॉल करा",
+    logChange: "आजचा बदल नोंदवा", language: "भाषा",
+  },
+};
+
 const BUSINESSES = [
   { id: "bhagirathi", name: "Bhagirathi Agency", tagline: "Wound Care & NPWT Supplies", address: "Shop No.1, Malhar Bunglow, Opp. Atal Bihari Vajpayee School, Bankar Chowk, Kathe Lane, Nashik-422011", phone: "7507777127", email: "bhagirathiagency@gmail.com", gstin: "27AAWFB2771R1ZG", dlNo: "MH-NZ1-373839, 20B-373840, 21B-373841, 20D-373842" },
   { id: "leelavac", name: "Leela Medical", tagline: "Wound Care & NPWT Supplies", address: "Room No.01, Shop No.804, Opp. Waiting Area, 8th Floor, S.K. Empire, Nr. Ved Mandir, Mico Circle, Tidke Colony, Nashik", phone: "9673069779", email: "jmhnsk@gmail.com", gstin: "27DAJPS2132H2ZL", dlNo: "MH-NZ1-583399, MH-NZ1-583400" },
@@ -1546,6 +1567,14 @@ function DresserProfileForm({ name, profile, setDresserProfile, businessName = "
 }
 
 function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, deleteDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+  const [lang, setLang] = useState(() => {
+    try { return localStorage.getItem(`wca-lang-${name}`) || "en"; } catch (e) { return "en"; }
+  });
+  const t = (key) => (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.en[key] || key;
+  const changeLang = (newLang) => {
+    setLang(newLang);
+    try { localStorage.setItem(`wca-lang-${name}`, newLang); } catch (e) {}
+  };
   const [showForm, setShowForm] = useState(false);
   const [editingCase, setEditingCase] = useState(null);
   const [savedConfirm, setSavedConfirm] = useState(false);
@@ -1669,14 +1698,22 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
       )}
 
       <main style={styles.main}>
-        <CollapsibleSection title="My Profile">
+        <CollapsibleSection title={t("myProfile")}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <span style={{ ...styles.fieldLabel, marginBottom: 0 }}>{t("language")}:</span>
+            <select value={lang} onChange={(e) => changeLang(e.target.value)} style={styles.smallInput}>
+              <option value="en">English</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+              <option value="mr">मराठी (Marathi)</option>
+            </select>
+          </div>
           <DresserProfileForm name={name} profile={profile} setDresserProfile={setDresserProfile} businessName={business.name} />
         </CollapsibleSection>
 
-        <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
+        <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>{t("newCase")}</button>
 
         {myTodaysVisits.length > 0 && (
-          <CollapsibleSection title="Today's & Tomorrow's Visits" right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
+          <CollapsibleSection title={t("todaysVisits")} right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
             <div style={styles.card}>
               {myTodaysVisits.map((c) => (
                 <div key={c.id} style={styles.dresserLine}>
@@ -1710,11 +1747,11 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Cases on Therapy">
+        <CollapsibleSection title={t("casesOnTherapy")}>
           {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
             <div style={styles.list}>
               {myCasesActive.map((c) => (
-                <DresserCaseRow key={c.id} c={c} dresserName={name} products={products} doctorsList={doctorsList} onAddPayment={(p) => addPayment(c.id, p)}
+                <DresserCaseRow key={c.id} c={c} dresserName={name} products={products} doctorsList={doctorsList} t={t} onAddPayment={(p) => addPayment(c.id, p)}
                   onAddDressingChange={(e) => addDressingChange(c.id, e)}
                   onDeleteDressingChange={(changeId) => deleteDressingChange(c.id, changeId)}
                   onUpdateStatus={(status, endDate) => saveCase({ ...c, status, endDate }, c.id)}
@@ -1726,7 +1763,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Patient History (Stopped / Reapplied)" right={myCasesHistory.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#8A9A96" }}>{myCasesHistory.length}</span> : null}>
+        <CollapsibleSection title={t("patientHistory")} right={myCasesHistory.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#8A9A96" }}>{myCasesHistory.length}</span> : null}>
           {myCasesHistory.length === 0 ? <EmptyState text="Patients you've treated will show up here once their therapy is stopped or reapplied." /> : (
             <div style={styles.list}>
               {myCasesHistory.map((c) => (
@@ -1761,7 +1798,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Your Reporting">
+        <CollapsibleSection title={t("yourReporting")}>
           <div style={styles.cardGrid}>
             <div style={{ ...styles.statCard, borderColor: "#D9720A33" }} onClick={() => setMyReportView(myReportView === "changes" ? null : "changes")}>
               <div style={{ ...styles.statValue, color: "#D9720A" }}>{myChanges.length}</div>
@@ -1798,13 +1835,13 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="My Quotations">
+        <CollapsibleSection title={t("myQuotations")}>
           <QuotationsTab quotations={quotations} products={products} saveQuotation={saveQuotation}
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
             creatorName={name} restrictToCreator businessName={business.name} />
         </CollapsibleSection>
 
-        <CollapsibleSection title="Doctor Calls">
+        <CollapsibleSection title={t("doctorCalls")}>
           <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} doctorsList={doctorsList} addDoctorMaster={addDoctorMaster}
             discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic} />
         </CollapsibleSection>
@@ -2064,7 +2101,7 @@ function ProductsUsedPicker({ products, selected, onChange }) {
   );
 }
 
-function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingChange, onDeleteDressingChange, onUpdateStatus, onAddAdditionalItem, onAddPayment, onCapturePhoto, onEdit }) {
+function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRANSLATIONS.en[k] || k, onAddDressingChange, onDeleteDressingChange, onUpdateStatus, onAddAdditionalItem, onAddPayment, onCapturePhoto, onEdit }) {
   const draftKey = `wca-draft-${c.id}`;
   const loadDraft = () => {
     try {
@@ -2126,10 +2163,10 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, onAddDressingCh
               <div style={styles.mutedSmall}>{doneCount}/3 photos captured</div>
               <div style={{ display: "flex", gap: 8, marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
                 {c.patientMobile && (
-                  <a href={`tel:${c.patientMobile}`} style={{ ...styles.smallBtn, textDecoration: "none", display: "inline-flex", alignItems: "center", background: "#128577" }}>📞 Call Patient</a>
+                  <a href={`tel:${c.patientMobile}`} style={{ ...styles.smallBtn, textDecoration: "none", display: "inline-flex", alignItems: "center", background: "#128577" }}>📞 {t("callPatient")}</a>
                 )}
                 {doctorMobile && (
-                  <a href={`tel:${doctorMobile}`} style={{ ...styles.smallBtn, textDecoration: "none", display: "inline-flex", alignItems: "center", background: "#3B5BA5" }}>📞 Call Dr. {c.doctorName}</a>
+                  <a href={`tel:${doctorMobile}`} style={{ ...styles.smallBtn, textDecoration: "none", display: "inline-flex", alignItems: "center", background: "#3B5BA5" }}>📞 {t("callDoctor")} {c.doctorName}</a>
                 )}
               </div>
             </>
