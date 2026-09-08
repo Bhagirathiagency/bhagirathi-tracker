@@ -723,6 +723,12 @@ export default function App() {
   const addPayment = (caseId, payment) => {
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, payments: [...(c.payments || []), { id: uid(), ...payment }] } : c));
   };
+  const markPaymentHandedOver = (caseId, paymentId) => {
+    setCases((prev) => prev.map((c) => c.id === caseId ? {
+      ...c,
+      payments: (c.payments || []).map((p) => p.id === paymentId ? { ...p, handedOver: true, handedOverDate: todayISO() } : p),
+    } : c));
+  };
   const addDressingChange = (caseId, entry) => {
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, dressingChanges: [...(c.dressingChanges || []), { id: uid(), loggedAt: new Date().toISOString(), ...entry }] } : c));
     // Deduct stock for whatever was actually used at this specific visit.
@@ -979,7 +985,7 @@ export default function App() {
           dresserPins={dresserPins} setDresserPin={setDresserPin}
           dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess}
           dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess}
-          saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
+          saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
           generateInvoiceNumber={generateInvoiceNumber}
           challans={challans} createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
@@ -1146,7 +1152,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, markPaymentHandedOver, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("reports");
   const [casesInitialFilter, setCasesInitialFilter] = useState(null);
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
@@ -1257,7 +1263,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "settings" && (
           <MasterSettingsTab outstandingTotal={outstandingTotal} clearAllOutstanding={clearAllOutstanding} resetTestData={resetTestData} factoryResetApp={factoryResetApp} businessName={business.name} />
         )}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} dresserProfiles={dresserProfiles} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} dresserProfiles={dresserProfiles} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
     </>
@@ -1818,6 +1824,18 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         </CollapsibleSection>
 
         <CollapsibleSection title={t("yourReporting")}>
+          {(() => {
+            let cashPending = 0;
+            cases.forEach((c) => (c.payments || []).forEach((p) => {
+              if (p.mode === "Cash" && p.collectedBy === name && !p.handedOver) cashPending += Number(p.amount || 0);
+            }));
+            return cashPending > 0 ? (
+              <div style={{ ...styles.card, padding: 14, marginBottom: 14, border: "1px solid #FCE7E4", background: "#FFF7F5" }}>
+                <div style={{ fontWeight: 700, color: "#E1483C" }}>💵 Cash you're holding: {fmtMoney(cashPending)}</div>
+                <div style={{ fontSize: 12, color: "#5B6864", marginTop: 4 }}>Please hand this over to the Owner as soon as possible.</div>
+              </div>
+            ) : null;
+          })()}
           <div style={styles.cardGrid}>
             <div style={{ ...styles.statCard, borderColor: "#D9720A33" }} onClick={() => setMyReportView(myReportView === "changes" ? null : "changes")}>
               <div style={{ ...styles.statValue, color: "#D9720A" }}>{myChanges.length}</div>
@@ -2283,7 +2301,7 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
                   <button style={styles.smallBtn} onClick={() => {
                     const amt = Number(payAmount);
                     if (!amt || amt <= 0) return;
-                    onAddPayment({ amount: amt, mode: payMode, note: payNote.trim(), date: todayISO() });
+                    onAddPayment({ amount: amt, mode: payMode, note: payNote.trim(), date: todayISO(), handedOver: true });
                     setPayAmount(""); setPayNote("");
                   }}>Collect Payment</button>
                 </div>
@@ -2597,7 +2615,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
                 <button style={styles.smallBtn} onClick={() => {
                   const amt = Number(payAmount);
                   if (!amt || amt <= 0) return;
-                  onAddPayment({ amount: amt, mode: payMode, note: payNote, date: todayISO() });
+                  onAddPayment({ amount: amt, mode: payMode, note: payNote, date: todayISO(), collectedBy: dresserName, handedOver: payMode !== "Cash" });
                   setPayAmount(""); setPayNote("");
                 }}>Add</button>
               </div>
@@ -4569,7 +4587,22 @@ function ExpensesTab({ expenses, addExpense, deleteExpense, fixedExpenses, addFi
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, previousOutstanding = [], addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, dresserProfiles = {}, machines, addPayment, readOnly = false }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, previousOutstanding = [], addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, dresserProfiles = {}, machines, addPayment, markPaymentHandedOver, readOnly = false }) {
+  const cashPendingHandover = useMemo(() => {
+    const byDresser = {};
+    cases.forEach((c) => {
+      (c.payments || []).forEach((p) => {
+        if (p.mode === "Cash" && p.collectedBy && !p.handedOver) {
+          if (!byDresser[p.collectedBy]) byDresser[p.collectedBy] = { total: 0, items: [] };
+          byDresser[p.collectedBy].total += Number(p.amount || 0);
+          byDresser[p.collectedBy].items.push({ ...p, caseId: c.id, patientName: c.patientName });
+        }
+      });
+    });
+    return Object.entries(byDresser).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.total - a.total);
+  }, [cases]);
+  const cashPendingTotal = cashPendingHandover.reduce((s, d) => s + d.total, 0);
+  const [expandedCashDresser, setExpandedCashDresser] = useState(null);
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [expCategory, setExpCategory] = useState("Salary");
@@ -5086,6 +5119,35 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       )}
 
       {reportSubTab === "team" && (
+      <>
+      <CollapsibleSection title="Cash Pending Handover" right={cashPendingTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(cashPendingTotal)}</span> : null}>
+        <div style={styles.emptyState2}>Cash your dressers have collected from patients/doctors/hospitals but haven't physically handed over to you yet.</div>
+        {cashPendingHandover.length === 0 ? <EmptyState text="No cash pending handover — all collected cash has been received." /> : (
+          <div style={styles.card}>
+            {cashPendingHandover.map((d) => (
+              <div key={d.name}>
+                <div style={styles.dresserLine} onClick={() => setExpandedCashDresser(expandedCashDresser === d.name ? null : d.name)}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span>
+                  <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(d.total)}</span>
+                </div>
+                {expandedCashDresser === d.name && d.items.map((p) => (
+                  <div key={p.id} style={{ padding: "8px 14px 8px 24px", borderBottom: "1px solid #F0EEE3" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                      <span>{p.patientName} — {fmtMoney(p.amount)} ({fmtDate(p.date)})</span>
+                    </div>
+                    {!readOnly && markPaymentHandedOver && (
+                      <button style={{ ...styles.linkBtn, color: "#128577", marginTop: 4 }} onClick={() => markPaymentHandedOver(p.caseId, p.id)}>
+                        ✓ Mark Received from {d.name}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
       <CollapsibleSection title="SWOT Analysis — Team (per Dresser)">
         {dresserSWOT.length === 0 ? <EmptyState text="No dressers added yet." /> : (
           <div style={styles.list}>
@@ -5120,6 +5182,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
           </div>
         )}
       </CollapsibleSection>
+      </>
       )}
 
       <SectionTitle>Revenue</SectionTitle>
