@@ -841,6 +841,27 @@ export default function App() {
   const deletePreviousOutstanding = (id) => setPreviousOutstanding((prev) => prev.filter((e) => e.id !== id));
   const addPreviousOutstandingPayment = (id, payment) => setPreviousOutstanding((prev) => prev.map((e) => e.id === id ? { ...e, payments: [...(e.payments || []), { id: uid(), date: todayISO(), ...payment }] } : e));
   const resetTestData = () => { setCases([]); setProducts([]); };
+  const factoryResetApp = () => {
+    setCases([]);
+    setMachines([]);
+    setProducts(DEFAULT_PRODUCTS);
+    setDressers([]);
+    setDresserPins({});
+    setDresserStockAccessState({});
+    setOwnerLogins([]);
+    setDresserProfiles({});
+    setQuotations([]);
+    setDoctorCalls([]);
+    setExpenses([]);
+    setSupplierLedger([]);
+    setFixedExpenses([]);
+    setPreviousOutstanding([]);
+    setChallans([]);
+    setDoctorsList([]);
+    setDiscussionTopics(["VAC Therapy", "Oxygen Therapy", "Matriderm", "Wound Dressing", "General Consultation"]);
+    setPin(null);
+    setAccountantPinState(null);
+  };
   const logOwnerLogin = () => {
     const ua = navigator.userAgent || "";
     let device = "Unknown device";
@@ -926,7 +947,7 @@ export default function App() {
           generateInvoiceNumber={generateInvoiceNumber}
           challans={challans} createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
-          resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding}
+          resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} factoryResetApp={factoryResetApp}
           ownerLogins={ownerLogins}
           doctorCalls={doctorCalls}
           doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster}
@@ -1089,7 +1110,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("reports");
   const [casesInitialFilter, setCasesInitialFilter] = useState(null);
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
@@ -1198,7 +1219,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
           />
         )}
         {tab === "settings" && (
-          <MasterSettingsTab outstandingTotal={outstandingTotal} clearAllOutstanding={clearAllOutstanding} resetTestData={resetTestData} />
+          <MasterSettingsTab outstandingTotal={outstandingTotal} clearAllOutstanding={clearAllOutstanding} resetTestData={resetTestData} factoryResetApp={factoryResetApp} businessName={business.name} />
         )}
         {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} dresserProfiles={dresserProfiles} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
@@ -5738,7 +5759,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   );
 }
 
-function MasterSettingsTab({ outstandingTotal, clearAllOutstanding, resetTestData }) {
+function MasterSettingsTab({ outstandingTotal, clearAllOutstanding, resetTestData, factoryResetApp, businessName = "this business" }) {
   return (
     <div>
       <SectionTitle>Danger Zone</SectionTitle>
@@ -5760,6 +5781,19 @@ function MasterSettingsTab({ outstandingTotal, clearAllOutstanding, resetTestDat
           const typed = window.prompt('This will permanently delete ALL cases and ALL stock/products. Type "RESET" to confirm:');
           if (typed === "RESET") resetTestData();
         }}>Clear All Cases &amp; Stock</button>
+      </div>
+
+      <SectionTitle>White Label — Prepare for a New Client</SectionTitle>
+      <div style={{ ...styles.emptyState2, marginBottom: 10 }}>Use this only when handing this exact app off to a brand-new client. It wipes absolutely everything for {businessName} so they start with a completely clean slate.</div>
+      <div style={{ ...styles.card, padding: 14, border: "2px solid #E1483C" }}>
+        <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 6 }}>Reset Entire App for New Client</div>
+        <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+          Deletes every case, product, machine, dresser, quotation, expense, doctor, challan, and outstanding balance — and resets both the Owner PIN and Accountant PIN so the new client can set their own. This cannot be undone.
+        </div>
+        <button style={{ ...styles.smallBtn, background: "#E1483C", fontWeight: 700 }} onClick={() => {
+          const typed = window.prompt('This wipes EVERYTHING in this app for a new client. Type "WHITE LABEL RESET" exactly to confirm:');
+          if (typed === "WHITE LABEL RESET") factoryResetApp();
+        }}>Reset Entire App for New Client</button>
       </div>
     </div>
   );
