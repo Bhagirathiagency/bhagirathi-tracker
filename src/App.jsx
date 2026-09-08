@@ -1756,6 +1756,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
       const paid = (c.payments || []).reduce((a, p) => a + Number(p.amount || 0), 0);
       return s + Math.max(0, Number(c.totalAmount || 0) - paid);
     }, 0), [cases, name]);
+  const myOverdueCount = useMemo(() => myCasesActive.filter((c) => overdueDays(c) > 0).length, [myCasesActive]);
   const myOutstandingCases = useMemo(() => cases
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
     .map((c) => {
@@ -1831,6 +1832,25 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
       )}
 
       <main style={styles.main}>
+        <div style={styles.cardGrid}>
+          <div style={{ ...styles.statCard, borderColor: "#1B6B6333", cursor: "default" }}>
+            <div style={{ ...styles.statValue, color: "#1B6B63" }}>{myCasesActive.length}</div>
+            <div style={styles.statLabel}>Active patients</div>
+          </div>
+          <div style={{ ...styles.statCard, borderColor: myOverdueCount > 0 ? "#E1483C33" : "#3B5BA533", cursor: "default" }}>
+            <div style={{ ...styles.statValue, color: myOverdueCount > 0 ? "#E1483C" : "#3B5BA5" }}>{myTodaysVisits.length}</div>
+            <div style={styles.statLabel}>Due today/tomorrow{myOverdueCount > 0 ? ` (${myOverdueCount} overdue)` : ""}</div>
+          </div>
+          <div style={{ ...styles.statCard, borderColor: myOutstandingTotal > 0 ? "#E1483C33" : "#D9720A33", cursor: "default" }}>
+            <div style={{ ...styles.statValue, color: myOutstandingTotal > 0 ? "#E1483C" : "#D9720A" }}>{fmtMoney(myOutstandingTotal)}</div>
+            <div style={styles.statLabel}>Outstanding on your cases</div>
+          </div>
+          <div style={{ ...styles.statCard, borderColor: "#D9720A33", cursor: "default" }}>
+            <div style={{ ...styles.statValue, color: "#D9720A" }}>{myChanges.length}</div>
+            <div style={styles.statLabel}>Dressings logged (all-time)</div>
+          </div>
+        </div>
+
         <CollapsibleSection title={t("myProfile")}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <span style={{ ...styles.fieldLabel, marginBottom: 0 }}>{t("language")}:</span>
