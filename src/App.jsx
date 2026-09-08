@@ -402,7 +402,8 @@ export default function App() {
   const switchBusiness = (id) => {
     if (id === businessId) return;
     try { localStorage.setItem("wca-active-business", id); } catch (e) { /* ignore */ }
-    setRolePersisted(null);
+    // Keep the current role/session — the switcher only ever offers businesses this
+    // person already has access to, so there's no need to make them log in again.
     setLoaded(false);
     setBusinessId(id);
   };
