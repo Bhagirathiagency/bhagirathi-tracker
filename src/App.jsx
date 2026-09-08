@@ -162,11 +162,12 @@ function nextQuoteNumber(quotations) {
 function quoteTotals(q) {
   const items = q.items || [];
   const subtotal = items.reduce((s, it) => s + Number(it.qty || 0) * Number(it.rate || 0), 0);
-  const discount = Number(q.discount || 0);
+  const discountPercent = Number(q.discount || 0);
+  const discount = subtotal * (discountPercent / 100);
   const taxable = Math.max(0, subtotal - discount);
   const gstAmount = (taxable * Number(q.gstPercent || 0)) / 100;
   const total = taxable + gstAmount;
-  return { subtotal, discount, taxable, gstAmount, total };
+  return { subtotal, discount, discountPercent, taxable, gstAmount, total };
 }
 
 function latestChange(c) {
@@ -2946,14 +2947,15 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
 
 
         <div style={styles.detailGrid}>
-          <div style={styles.field}><span style={styles.fieldLabel}>Discount (₹)</span>
-            <input style={styles.input} type="number" value={form.discount} onChange={(e) => set("discount", e.target.value)} /></div>
+          <div style={styles.field}><span style={styles.fieldLabel}>Discount (%)</span>
+            <input style={styles.input} type="number" min="0" max="100" value={form.discount} onChange={(e) => set("discount", e.target.value)} /></div>
           <div style={styles.field}><span style={styles.fieldLabel}>GST %</span>
             <input style={styles.input} type="number" value={form.gstPercent} onChange={(e) => set("gstPercent", e.target.value)} /></div>
         </div>
 
         <div style={styles.notesBox}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>Subtotal</span><span>{fmtMoney(subtotal)}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>Discount ({Number(form.discount) || 0}%)</span><span>-{fmtMoney(discount)}</span></div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>After discount</span><span>{fmtMoney(taxable)}</span></div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>GST</span><span>{fmtMoney(gstAmount)}</span></div>
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, marginTop: 4 }}><span>Total</span><span>{fmtMoney(total)}</span></div>
@@ -3109,7 +3111,7 @@ function QuotationView({ q, onBack, onEdit, onStatus, businessName = "Bhagirathi
         </table>
         <div style={{ marginLeft: "auto", width: 220, marginTop: 10, fontSize: 13 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}><span>Subtotal</span><span>{fmtMoney(subtotal)}</span></div>
-          {discount > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Discount</span><span>-{fmtMoney(discount)}</span></div>}
+          {discount > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>Discount ({q.discount || 0}%)</span><span>-{fmtMoney(discount)}</span></div>}
           {Number(q.gstPercent) > 0 && <div style={{ display: "flex", justifyContent: "space-between" }}><span>GST ({q.gstPercent}%)</span><span>{fmtMoney(gstAmount)}</span></div>}
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, borderTop: "1px solid #DCE4DF", marginTop: 4, paddingTop: 4 }}><span>Total</span><span>{fmtMoney(total)}</span></div>
         </div>
@@ -5765,9 +5767,11 @@ function MasterSettingsTab({ outstandingTotal, clearAllOutstanding, resetTestDat
 // ---------------- styles ----------------
 const printStyles = `
 @media print {
+  @page { size: A4; margin: 12mm; }
   header, nav, .no-print { display: none !important; }
-  body, .app-root { background: #fff !important; }
+  body, .app-root { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   main { max-width: 100% !important; padding: 0 !important; }
+  * { box-shadow: none !important; }
 }
 `;
 
