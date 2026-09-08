@@ -2216,6 +2216,24 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList
       </div>
       <button style={styles.primaryBtn} onClick={submit}>Log Doctor Call</button>
 
+      <SectionTitle>Doctor Directory</SectionTitle>
+      <div style={styles.emptyState2}>Class A doctors get top priority for follow-up and attention. Ask the Owner to update a doctor's class as your relationship develops.</div>
+      {(doctorsList || []).length === 0 ? <EmptyState text="No doctors added yet." /> : (
+        <div style={styles.card}>
+          {[...(doctorsList || [])].sort((a, b) => (a.doctorClass || "A").localeCompare(b.doctorClass || "A") || a.name.localeCompare(b.name)).map((d) => {
+            const classInfo = { A: { color: "#128577", bg: "#E3F3EF" }, B: { color: "#D98D2B", bg: "#FBF0DE" }, C: { color: "#E1483C", bg: "#FCE7E4" } };
+            const cls = classInfo[d.doctorClass] || classInfo.A;
+            return (
+              <div key={d.id} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span>
+                <span style={styles.mutedSmall}>{d.speciality || ""}</span>
+                <span style={{ ...styles.badge, color: cls.color, background: cls.bg }}>{d.doctorClass || "A"} Class</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <SectionTitle>Your Doctor Calls</SectionTitle>
       {myCalls.length === 0 ? <EmptyState text="No doctor calls logged yet." /> : (
         <div style={styles.list}>
