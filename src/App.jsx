@@ -5776,7 +5776,7 @@ const fontImport = `
 `;
 
 const styles = {
-  app: { fontFamily: "'Inter', -apple-system, sans-serif", background: "#FBF6EC", minHeight: "100vh", color: "#182322", paddingBottom: 40 },
+  app: { fontFamily: "'Inter', -apple-system, sans-serif", background: "linear-gradient(160deg, #E9F5F2 0%, #FBF6EC 35%, #FDF1E4 70%, #FBF6EC 100%)", minHeight: "100vh", color: "#182322", paddingBottom: 40 },
   loadingScreen: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FBF6EC" },
   loadingText: { fontFamily: "'Space Grotesk', sans-serif", color: "#5B6864", fontWeight: 600 },
   header: { background: "linear-gradient(135deg, #6E0F1A 0%, #D9720A 100%)", padding: "18px 16px", borderRadius: "0 0 20px 20px", boxShadow: "0 8px 24px rgba(14,36,34,0.18)" },
@@ -5798,12 +5798,12 @@ const styles = {
   gateInput: { border: "1px solid #DCE4DF", borderRadius: 12, padding: "12px 14px", fontSize: 15, fontFamily: "inherit", background: "#fff", textAlign: "center" },
   gateError: { color: "#E1483C", fontSize: 12, textAlign: "center" },
   nav: { display: "flex", gap: 6, padding: "10px 16px", maxWidth: 640, margin: "0 auto", overflowX: "auto" },
-  navBtn: { display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #E3E7E2", background: "#fff", color: "#5B6864", padding: "8px 14px", borderRadius: 20, fontSize: 13, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
+  navBtn: { display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #E3E7E2", background: "linear-gradient(160deg, #FFFFFF 0%, #F3F8F6 100%)", color: "#5B6864", padding: "8px 14px", borderRadius: 20, fontSize: 13, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
   navBtnActive: { background: "#D9720A", color: "#fff", borderColor: "#D9720A", boxShadow: "0 4px 10px rgba(18,133,119,0.3)" },
   main: { maxWidth: 640, margin: "0 auto", padding: "8px 16px" },
   cardGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, margin: "10px 0 22px" },
   statCard: { textAlign: "left", border: "1px solid", background: "#fff", borderRadius: 16, padding: "16px 14px", cursor: "pointer", boxShadow: "0 1px 2px rgba(14,36,34,0.04), 0 8px 20px rgba(14,36,34,0.05)" },
-  reportCard: { textAlign: "left", border: "1px solid #E3E7E2", background: "#fff", borderRadius: 16, padding: "16px 14px", boxShadow: "0 1px 2px rgba(14,36,34,0.04), 0 8px 20px rgba(14,36,34,0.05)" },
+  reportCard: { textAlign: "left", border: "1px solid #E3E7E2", background: "linear-gradient(160deg, #FFFFFF 0%, #F0F8F6 100%)", borderRadius: 16, padding: "16px 14px", boxShadow: "0 1px 2px rgba(14,36,34,0.04), 0 8px 20px rgba(14,36,34,0.05)" },
   statValue: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 21, fontWeight: 700 },
   statLabel: { fontSize: 12, color: "#5B6864", marginTop: 4 },
   sectionTitle: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, color: "#182322", margin: "20px 0 8px", paddingLeft: 12, borderLeft: "4px solid #1B6B63", letterSpacing: 0.2 },
