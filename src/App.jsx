@@ -890,6 +890,22 @@ export default function App() {
     cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
     return cleaned;
   };
+  const COST_FORMULA_COMPANIES = ["solventum", "medskin solutions"];
+  const applyCostFormula = () => {
+    let updatedCount = 0;
+    setProducts((prev) => prev.map((p) => {
+      const company = productCompany(p).trim().toLowerCase();
+      if (!COST_FORMULA_COMPANIES.includes(company)) return p;
+      const mrp = Number(p.mrp || 0);
+      if (mrp <= 0) return p;
+      const newCost = Math.round(mrp * 0.6 * 1.05);
+      if (newCost === Number(p.costPrice || 0)) return p;
+      updatedCount++;
+      return { ...p, costPrice: newCost };
+    }));
+    return updatedCount;
+  };
+
   const standardizeAllProductNames = () => {
     const renameMap = {};
     products.forEach((p) => {
@@ -1343,7 +1359,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} businessName={business.name} />
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} businessId={businessId} />}
-        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} fixProductNamesOnCases={fixProductNamesOnCases} standardizeAllProductNames={standardizeAllProductNames} />}
+        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} fixProductNamesOnCases={fixProductNamesOnCases} standardizeAllProductNames={standardizeAllProductNames} applyCostFormula={applyCostFormula} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} cases={cases} />}
         {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
         {tab === "expenses" && (
@@ -1982,7 +1998,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         )}
         {canManageStock && (
           <CollapsibleSection title="Stock">
-            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} businessId={businessId} cases={cases} fixProductNamesOnCases={fixProductNamesOnCases} standardizeAllProductNames={standardizeAllProductNames} />
+            <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} businessId={businessId} cases={cases} fixProductNamesOnCases={fixProductNamesOnCases} standardizeAllProductNames={standardizeAllProductNames} applyCostFormula={applyCostFormula} />
           </CollapsibleSection>
         )}
         {canManageStock && (
@@ -3778,9 +3794,10 @@ function ChallanPdfView({ ch, onBack, businessName }) {
   );
 }
 
-function StockTab({ products, setProducts, receiveStock, actorName = "Owner", businessId, cases = [], fixProductNamesOnCases, standardizeAllProductNames }) {
+function StockTab({ products, setProducts, receiveStock, actorName = "Owner", businessId, cases = [], fixProductNamesOnCases, standardizeAllProductNames, applyCostFormula }) {
   const [fixedCasesMsg, setFixedCasesMsg] = useState(null);
   const [standardizeMsg, setStandardizeMsg] = useState(null);
+  const [costFormulaMsg, setCostFormulaMsg] = useState(null);
   const duplicateProducts = useMemo(() => {
     const byName = {};
     products.forEach((p) => {
@@ -3947,6 +3964,19 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
 
   return (
     <div>
+      {applyCostFormula && (
+        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #D9E4E0", background: "#F0F8F6" }}>
+          <div style={{ fontWeight: 700, color: "#1B6B63", marginBottom: 6 }}>Apply Cost Formula — Solventum &amp; MedSkin Solutions</div>
+          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+            Sets each product's cost price to 63% of its MRP (MRP minus 40% trade discount, plus 5% added on that discounted price) — for every product from Solventum or MedSkin Solutions that has an MRP entered.
+          </div>
+          <button style={{ ...styles.smallBtn, background: "#1B6B63" }} onClick={() => {
+            const updated = applyCostFormula();
+            setCostFormulaMsg(updated === 0 ? "No changes needed — costs already match the formula, or no MRP entered yet." : `Updated cost price on ${updated} product${updated === 1 ? "" : "s"}.`);
+          }}>Apply Cost Formula</button>
+          {costFormulaMsg && <div style={{ fontSize: 12, color: "#128577", marginTop: 8, fontWeight: 600 }}>✓ {costFormulaMsg}</div>}
+        </div>
+      )}
       {standardizeAllProductNames && (
         <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #D9E4E0", background: "#F0F8F6" }}>
           <div style={{ fontWeight: 700, color: "#1B6B63", marginBottom: 6 }}>Standardize Product Names</div>
