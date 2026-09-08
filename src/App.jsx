@@ -5439,6 +5439,8 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       </>
       )}
 
+      {reportSubTab === "financial" && (
+      <>
       <SectionTitle>Revenue</SectionTitle>
       <div style={styles.cardGrid}>
         <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(totalBilled)}</div><div style={styles.statLabel}>Total Billed</div></div>
@@ -5480,6 +5482,8 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       </CollapsibleSection>
 
       <button style={styles.primaryBtn} onClick={sendSummary}>Send Summary on WhatsApp</button>
+      </>
+      )}
 
       {reportSubTab === "financial" && (
       <CollapsibleSection title="Profit & Loss Statement" right={<span style={{ fontSize: 12, fontWeight: 700, color: pnlTotals.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(pnlTotals.profit)}</span>}>
