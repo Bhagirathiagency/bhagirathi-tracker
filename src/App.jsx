@@ -2314,7 +2314,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
 
   const filtered = cases.filter((c) => {
     if (filter === "all") return true;
-    if (filter === "overdue") return overdueDays(c) > 0;
+    if (filter === "overdue") return c.status === "active" && nextDueDate(c) <= addDays(todayISO(), 1);
     if (filter === "outstanding") {
       const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
       return Math.max(0, Number(c.totalAmount || 0) - paid) > 0;
