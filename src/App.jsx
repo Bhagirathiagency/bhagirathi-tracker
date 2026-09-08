@@ -5744,6 +5744,8 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       </CollapsibleSection>
       )}
 
+      {reportSubTab === "stock" && (
+      <>
       {companyTotals.length > 0 && (
         <CollapsibleSection title="Stock Received by Company">
           <div style={styles.card}>
@@ -5774,6 +5776,8 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
             </div>
           ))}
         </CollapsibleSection>
+      )}
+      </>
       )}
 
       {reportSubTab === "financial" && (
