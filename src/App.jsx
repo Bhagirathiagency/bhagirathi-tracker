@@ -1452,7 +1452,13 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} businessName={business.name} />
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} businessId={businessId} />}
-        {tab === "stock" && <TabErrorBoundary><StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} fixProductNamesOnCases={fixProductNamesOnCases} standardizeAllProductNames={standardizeAllProductNames} applyCostFormula={applyCostFormula} removeSensaTRACFromNames={removeSensaTRACFromNames} /></TabErrorBoundary>}
+        {tab === "stock" && (
+          <div style={{ padding: 30, background: "#E4F1EE", borderRadius: 12, margin: 16, textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#1B6B63" }}>DIAGNOSTIC TEST — If you see this, tab switching works fine</div>
+            <div style={{ fontSize: 13, color: "#5B6864", marginTop: 8 }}>Products loaded: {products ? products.length : "products is null/undefined!"}</div>
+            <div style={{ fontSize: 13, color: "#5B6864", marginTop: 4 }}>Cases loaded: {cases ? cases.length : "cases is null/undefined!"}</div>
+          </div>
+        )}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} cases={cases} />}
         {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
         {tab === "expenses" && (
