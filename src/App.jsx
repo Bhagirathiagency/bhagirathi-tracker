@@ -921,11 +921,11 @@ function AppInner() {
   const deleteQuotation = (id) => setQuotations((prev) => prev.filter((q) => q.id !== id));
   const setQuotationStatus = (id, status) =>
     setQuotations((prev) => prev.map((q) => (q.id === id ? { ...q, status } : q)));
-  const receiveStock = (productId, qty, company, receivedBy, billAmount) => {
+  const receiveStock = (productId, qty, company, receivedBy, billAmount, batchNo, expiryDate) => {
     setProducts((prev) => prev.map((p) => p.id === productId ? {
       ...p,
       available: (p.available || 0) + qty,
-      receipts: [...(p.receipts || []), { id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), qty, company: company || "Unspecified", receivedBy: receivedBy || "Owner", billAmount: Number(billAmount) || 0 }],
+      receipts: [...(p.receipts || []), { id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), qty, company: company || "Unspecified", receivedBy: receivedBy || "Owner", billAmount: Number(billAmount) || 0, batchNo: batchNo || "", expiryDate: expiryDate || "" }],
     } : p));
   };
   const addSupplierLedgerEntry = (entry) => setSupplierLedger((prev) => [...prev, { id: uid(), date: todayISO(), ...entry }]);
@@ -4033,10 +4033,16 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
   };
 
   const doReceive = (id) => {
-    const qty = Number((receiveForm[id] || {}).qty) || 0;
+    const form = receiveForm[id] || {};
+    const qty = Number(form.qty) || 0;
     if (qty <= 0) return;
-    receiveStock(id, qty, actorName);
-    setReceiveForm((prev) => ({ ...prev, [id]: { qty: "" } }));
+    receiveStock(id, qty, actorName, actorName, 0, form.batchNo || "", form.expiryDate || "");
+    setReceiveForm((prev) => ({ ...prev, [id]: { qty: "", batchNo: "", expiryDate: "" } }));
+  };
+  const nearestExpiry = (p) => {
+    const dated = (p.receipts || []).filter((r) => r.expiryDate);
+    if (!dated.length) return null;
+    return [...dated].sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate))[0];
   };
 
   return (
@@ -4071,6 +4077,12 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
                     <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.used || 0} used</div>
                   </div>
                 </div>
+                {nearestExpiry(p) && (
+                  <div style={{ fontSize: 11, marginBottom: 6, color: new Date(nearestExpiry(p).expiryDate) < new Date() ? "#E1483C" : "#D98D2B", fontWeight: 700 }}>
+                    {new Date(nearestExpiry(p).expiryDate) < new Date() ? "⚠️ Expired batch: " : "Nearest expiry: "}
+                    {fmtDate(nearestExpiry(p).expiryDate)}{nearestExpiry(p).batchNo ? ` (Batch ${nearestExpiry(p).batchNo})` : ""}
+                  </div>
+                )}
                 <div style={styles.addPaymentRow}>
                   <span style={{ fontSize: 12, color: "#8A9A96" }}>Cost ₹</span>
                   <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, "costPrice", e.target.value)} />
@@ -4078,7 +4090,9 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
                   <input type="number" style={styles.smallInput} defaultValue={p.mrp || 0} onBlur={(e) => updateCost(p.id, "mrp", e.target.value)} />
                 </div>
                 <div style={styles.addPaymentRow}>
-                  <input type="number" placeholder="Qty received" style={styles.smallInput} value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { qty: e.target.value } }))} />
+                  <input type="number" placeholder="Qty received" style={{ ...styles.smallInput, width: 90 }} value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { ...prev[p.id], qty: e.target.value } }))} />
+                  <input type="text" placeholder="Batch no." style={{ ...styles.smallInput, width: 100 }} value={(receiveForm[p.id] || {}).batchNo || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { ...prev[p.id], batchNo: e.target.value } }))} />
+                  <input type="date" placeholder="Expiry" style={{ ...styles.smallInput, width: 130 }} value={(receiveForm[p.id] || {}).expiryDate || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { ...prev[p.id], expiryDate: e.target.value } }))} />
                   <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
                   <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => remove(p.id)}>Remove</button>
                 </div>
