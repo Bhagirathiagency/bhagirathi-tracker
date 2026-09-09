@@ -4155,6 +4155,7 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
     setProducts([...untouched, ...Object.values(merged)]);
   };
 
+  try {
   return (
     <div>
       {debugError && (
@@ -4380,6 +4381,18 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
       )}
     </div>
   );
+  } catch (renderError) {
+    return (
+      <div style={{ padding: 16, background: "#FFF3EE", border: "2px solid #E1483C", borderRadius: 12, margin: 16 }}>
+        <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 6 }}>Found it - render crash</div>
+        <div style={{ fontFamily: "monospace", fontSize: 12, background: "#fff", padding: 10, borderRadius: 8, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+          {String(renderError && renderError.message || renderError)}
+          {"\n\n"}
+          {renderError && renderError.stack ? String(renderError.stack).split("\n").slice(0, 6).join("\n") : ""}
+        </div>
+      </div>
+    );
+  }
 }
 
 // ---------------- Dressers (Owner) ----------------
