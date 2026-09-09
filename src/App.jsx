@@ -3041,6 +3041,27 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         </div>
       </div>
       <div style={styles.formGrid}>
+        <Field label="Application Date & Time">
+          <div style={{ display: "flex", gap: 8 }}>
+            <input type="date" style={{ ...styles.input, flex: 1 }} value={form.applicationDate} onChange={(e) => set("applicationDate", e.target.value)} />
+            <input type="time" style={{ ...styles.input, flex: 1 }} value={form.applicationTime} onChange={(e) => set("applicationTime", e.target.value)} />
+          </div>
+        </Field>
+        <Field label="Machine Serial No.">
+          <select style={styles.input} value={form.machineSerial} onChange={(e) => {
+            const val = e.target.value;
+            set("machineSerial", val);
+            if (!val) set("status", "na");
+            else if (form.status === "na") set("status", "active");
+          }}>
+            <option value="">— None —</option>
+            {machines.map((m) => (
+              <option key={m.id} value={m.serial} disabled={inUseSerials.has(m.serial)}>
+                {m.serial} ({m.model}){inUseSerials.has(m.serial) ? " — In Use" : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
         <Field label="Patient Name & Mobile Number *">
           <div style={{ display: "flex", gap: 8 }}>
             <input style={{ ...styles.input, flex: 1 }} value={form.patientName} onChange={(e) => set("patientName", e.target.value)} placeholder="Patient name" />
@@ -3111,21 +3132,6 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             })()}
           </div>
         </Field>
-        <Field label="Machine Serial No.">
-          <select style={styles.input} value={form.machineSerial} onChange={(e) => {
-            const val = e.target.value;
-            set("machineSerial", val);
-            if (!val) set("status", "na");
-            else if (form.status === "na") set("status", "active");
-          }}>
-            <option value="">— None —</option>
-            {machines.map((m) => (
-              <option key={m.id} value={m.serial} disabled={inUseSerials.has(m.serial)}>
-                {m.serial} ({m.model}){inUseSerials.has(m.serial) ? " — In Use" : ""}
-              </option>
-            ))}
-          </select>
-        </Field>
         {form.machineSerial && (
           <Field label="Machine Rental Amount (₹)">
             <input type="number" style={styles.input} value={form.machineRentalAmount} onChange={(e) => set("machineRentalAmount", e.target.value)} placeholder="0 if no rental charged" />
@@ -3147,12 +3153,6 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             )}
           </Field>
         )}
-        <Field label="Application Date & Time">
-          <div style={{ display: "flex", gap: 8 }}>
-            <input type="date" style={{ ...styles.input, flex: 1 }} value={form.applicationDate} onChange={(e) => set("applicationDate", e.target.value)} />
-            <input type="time" style={{ ...styles.input, flex: 1 }} value={form.applicationTime} onChange={(e) => set("applicationTime", e.target.value)} />
-          </div>
-        </Field>
         <Field label="Status">
           <select style={styles.input} value={form.machineSerial ? form.status : "na"} disabled={!form.machineSerial} onChange={(e) => set("status", e.target.value)}>
             <option value="active">VAC Therapy Applied</option>
