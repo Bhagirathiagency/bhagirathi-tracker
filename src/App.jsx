@@ -3170,9 +3170,12 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         {form.billTo === "Hospital" && (
           <Field label="Hospital Name"><input style={styles.input} value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)} /></Field>
         )}
-        <Field label="Total Amount (₹)">
-          <input type="number" style={styles.input} value={form.totalAmount}
-            onChange={(e) => { setAmountTouched(true); set("totalAmount", e.target.value); }} />
+        <Field label="Total Amount & Amount Received (₹)">
+          <div style={{ display: "flex", gap: 8 }}>
+            <input type="number" style={{ ...styles.input, flex: 1 }} value={form.totalAmount} placeholder="Total"
+              onChange={(e) => { setAmountTouched(true); set("totalAmount", e.target.value); }} />
+            <input type="number" style={{ ...styles.input, flex: 1 }} value={form.amountReceived} onChange={(e) => set("amountReceived", e.target.value)} placeholder="Received (0 if none)" />
+          </div>
           {mrpTotal > 0 && (
             <span style={styles.mutedSmall}>
               MRP for selected item(s): {fmtMoney(mrpTotal)}
@@ -3182,7 +3185,6 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             </span>
           )}
         </Field>
-        <Field label="Amount Received (₹)"><input type="number" style={styles.input} value={form.amountReceived} onChange={(e) => set("amountReceived", e.target.value)} placeholder="0 if none yet" /></Field>
         <Field label="Notes"><textarea style={{ ...styles.input, minHeight: 60 }} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
       </div>
       {formError && <div style={{ color: "#E1483C", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>{formError}</div>}
