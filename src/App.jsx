@@ -3062,6 +3062,15 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             ))}
           </select>
         </Field>
+        <Field label="Bill To">
+          <select style={styles.input} value={form.billTo} onChange={(e) => set("billTo", e.target.value)}>
+            <option value="Patient">Patient</option>
+            <option value="Hospital">Hospital</option>
+          </select>
+        </Field>
+        {form.billTo === "Hospital" && (
+          <Field label="Hospital Name"><input style={styles.input} value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)} /></Field>
+        )}
         <Field label="Patient Name & Mobile Number *">
           <div style={{ display: "flex", gap: 8 }}>
             <input style={{ ...styles.input, flex: 1 }} value={form.patientName} onChange={(e) => set("patientName", e.target.value)} placeholder="Patient name" />
@@ -3166,15 +3175,6 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
           <Field label={form.status === "stopped" ? "Stop Date" : "Reapply Date"}>
             <input type="date" style={styles.input} value={form.endDate} onChange={(e) => set("endDate", e.target.value)} />
           </Field>
-        )}
-        <Field label="Bill To">
-          <select style={styles.input} value={form.billTo} onChange={(e) => set("billTo", e.target.value)}>
-            <option value="Patient">Patient</option>
-            <option value="Hospital">Hospital</option>
-          </select>
-        </Field>
-        {form.billTo === "Hospital" && (
-          <Field label="Hospital Name"><input style={styles.input} value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)} /></Field>
         )}
         <Field label="Total Amount & Amount Received (₹)">
           <div style={{ display: "flex", gap: 8 }}>
