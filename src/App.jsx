@@ -3041,8 +3041,12 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         </div>
       </div>
       <div style={styles.formGrid}>
-        <Field label="Patient Name"><input style={styles.input} value={form.patientName} onChange={(e) => set("patientName", e.target.value)} /></Field>
-        <Field label="Patient Mobile Number *"><input type="tel" style={styles.input} value={form.patientMobile} onChange={(e) => set("patientMobile", e.target.value)} placeholder="10-digit number — required" /></Field>
+        <Field label="Patient Name & Mobile Number *">
+          <div style={{ display: "flex", gap: 8 }}>
+            <input style={{ ...styles.input, flex: 1 }} value={form.patientName} onChange={(e) => set("patientName", e.target.value)} placeholder="Patient name" />
+            <input type="tel" style={{ ...styles.input, flex: 1 }} value={form.patientMobile} onChange={(e) => set("patientMobile", e.target.value)} placeholder="10-digit mobile" />
+          </div>
+        </Field>
         <Field label="Doctor Name & Commission (₹)">
           <div style={{ display: "flex", gap: 8 }}>
             <input style={{ ...styles.input, flex: 2 }} list="doctor-master-list" value={form.doctorName} onChange={(e) => set("doctorName", e.target.value)} placeholder="Doctor name" />
