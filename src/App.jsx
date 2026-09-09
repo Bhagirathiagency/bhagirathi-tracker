@@ -884,7 +884,7 @@ export default function App() {
   const addPreviousOutstandingPayment = (id, payment) => setPreviousOutstanding((prev) => prev.map((e) => e.id === id ? { ...e, payments: [...(e.payments || []), { id: uid(), date: todayISO(), ...payment }] } : e));
   const resetTestData = () => { setCases([]); setProducts([]); };
   const stripPackSuffix = (name) => {
-    let cleaned = (name || "").replace(/\s*\d+\s*\/?\s*(pack|pk|case)s?\b\.?/gi, "");
+    let cleaned = String(name || "").replace(/\s*\d+\s*\/?\s*(pack|pk|case)s?\b\.?/gi, "");
     cleaned = cleaned.replace(/\s*,\s*$/, "");
     cleaned = cleaned.replace(/,\s*,/g, ",");
     cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
@@ -910,21 +910,23 @@ export default function App() {
     const wordRegex = new RegExp(`\\b${word}\\b`, "gi");
     const renameMap = {};
     products.forEach((p) => {
-      let clean = p.name.replace(wordRegex, "").replace(/\s{2,}/g, " ").trim();
+      let clean = (p.name || "").replace(wordRegex, "").replace(/\s{2,}/g, " ").trim();
       clean = clean.replace(/^[-,]\s*/, "").replace(/\s*[-,]\s*$/, "");
-      if (clean && clean.toLowerCase() !== p.name.trim().toLowerCase()) {
-        renameMap[p.name.trim().toLowerCase()] = clean;
+      const currentName = (p.name || "").trim();
+      if (clean && currentName && clean.toLowerCase() !== currentName.toLowerCase()) {
+        renameMap[currentName.toLowerCase()] = clean;
       }
     });
     if (Object.keys(renameMap).length === 0) return { renamedProducts: 0, renamedCases: 0 };
 
     const renamed = products.map((p) => {
-      const target = renameMap[p.name.trim().toLowerCase()];
+      const target = renameMap[(p.name || "").trim().toLowerCase()];
       return target ? { ...p, name: target } : p;
     });
     const byName = {};
     renamed.forEach((p) => {
-      const key = p.name.trim().toLowerCase();
+      const key = (p.name || "").trim().toLowerCase();
+      if (!key) return;
       if (!byName[key]) byName[key] = [];
       byName[key].push(p);
     });
@@ -970,20 +972,22 @@ export default function App() {
   const standardizeAllProductNames = () => {
     const renameMap = {};
     products.forEach((p) => {
-      const clean = stripPackSuffix(p.name);
-      if (clean && clean.toLowerCase() !== p.name.trim().toLowerCase()) {
-        renameMap[p.name.trim().toLowerCase()] = clean;
+      const currentName = (p.name || "").trim();
+      const clean = stripPackSuffix(currentName);
+      if (clean && currentName && clean.toLowerCase() !== currentName.toLowerCase()) {
+        renameMap[currentName.toLowerCase()] = clean;
       }
     });
     if (Object.keys(renameMap).length === 0) return { renamedProducts: 0, renamedCases: 0 };
 
     const renamed = products.map((p) => {
-      const target = renameMap[p.name.trim().toLowerCase()];
+      const target = renameMap[(p.name || "").trim().toLowerCase()];
       return target ? { ...p, name: target } : p;
     });
     const byName = {};
     renamed.forEach((p) => {
-      const key = p.name.trim().toLowerCase();
+      const key = (p.name || "").trim().toLowerCase();
+      if (!key) return;
       if (!byName[key]) byName[key] = [];
       byName[key].push(p);
     });
@@ -3947,7 +3951,8 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
   const duplicateProducts = useMemo(() => {
     const byName = {};
     products.forEach((p) => {
-      const key = p.name.trim().toLowerCase();
+      const key = (p.name || "").trim().toLowerCase();
+      if (!key) return;
       if (!byName[key]) byName[key] = [];
       byName[key].push(p);
     });
@@ -3956,7 +3961,8 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
   const mergeDuplicateProducts = () => {
     const byName = {};
     products.forEach((p) => {
-      const key = p.name.trim().toLowerCase();
+      const key = (p.name || "").trim().toLowerCase();
+      if (!key) return;
       if (!byName[key]) byName[key] = [];
       byName[key].push(p);
     });
@@ -3978,7 +3984,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
   };
 
   const productMismatches = useMemo(() => {
-    const knownNames = new Set(products.map((p) => p.name.trim().toLowerCase()));
+    const knownNames = new Set(products.map((p) => (p.name || "").trim().toLowerCase()));
     const found = {};
     cases.forEach((c) => {
       getCaseProductLines(c).forEach((line) => {
@@ -4005,7 +4011,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
 
   const addProduct = () => {
     if (!name.trim() || !initCompany.trim()) return;
-    if (products.some((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase())) {
+    if (products.some((p) => (p.name || "").trim().toLowerCase() === name.trim().toLowerCase())) {
       alert(`A product named "${name.trim()}" already exists. Use the existing one instead of adding a duplicate.`);
       return;
     }
@@ -4044,7 +4050,7 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
 
   const [importDone, setImportDone] = useState(false);
   const importPriceList = () => {
-    const existingNames = new Set(products.map((p) => p.name.toLowerCase()));
+    const existingNames = new Set(products.map((p) => (p.name || "").toLowerCase()));
     const toAdd = PRICE_LIST_IMPORT.filter((item) => !existingNames.has(item.name.toLowerCase()));
     if (toAdd.length === 0) { setImportDone(true); return; }
     const newProducts = toAdd.map((item) => ({
@@ -4060,11 +4066,11 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
     setProducts((prev) => [...prev, ...newProducts]);
     setImportDone(true);
   };
-  const newImportCount = PRICE_LIST_IMPORT.filter((item) => !products.some((p) => p.name.toLowerCase() === item.name.toLowerCase())).length;
+  const newImportCount = PRICE_LIST_IMPORT.filter((item) => !products.some((p) => (p.name || "").toLowerCase() === item.name.toLowerCase())).length;
 
   const [iwacImportDone, setIwacImportDone] = useState(false);
   const importIwacList = () => {
-    const existingNames = new Set(products.map((p) => p.name.toLowerCase()));
+    const existingNames = new Set(products.map((p) => (p.name || "").toLowerCase()));
     const toAdd = IWAC_PRICE_LIST.filter((item) => !existingNames.has(item.name.toLowerCase()));
     if (toAdd.length === 0) { setIwacImportDone(true); return; }
     const newProducts = toAdd.map((item) => ({
@@ -4080,14 +4086,14 @@ function StockTab({ products, setProducts, receiveStock, actorName = "Owner", bu
     setProducts((prev) => [...prev, ...newProducts]);
     setIwacImportDone(true);
   };
-  const newIwacCount = businessId === "leelavac" ? IWAC_PRICE_LIST.filter((item) => !products.some((p) => p.name.toLowerCase() === item.name.toLowerCase())).length : 0;
+  const newIwacCount = businessId === "leelavac" ? IWAC_PRICE_LIST.filter((item) => !products.some((p) => (p.name || "").toLowerCase() === item.name.toLowerCase())).length : 0;
 
-  const packDupCount = products.filter((p) => PACK_NAME_CLEANUP[p.name.toLowerCase()]).length;
+  const packDupCount = products.filter((p) => PACK_NAME_CLEANUP[(p.name || "").toLowerCase()]).length;
   const cleanupPackDuplicates = () => {
     const merged = {}; // target name (lowercase) -> merged product
     const untouched = [];
     products.forEach((p) => {
-      const target = PACK_NAME_CLEANUP[p.name.toLowerCase()];
+      const target = PACK_NAME_CLEANUP[(p.name || "").toLowerCase()];
       if (!target) { untouched.push(p); return; }
       const key = target.toLowerCase();
       if (!merged[key]) {
@@ -5419,7 +5425,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       }).length;
       if (outstandingCasesCount / cases.length > 0.3) t.push("Over 30% of cases carry an outstanding balance — cash-flow risk if collections slip further.");
     }
-    if (lowStock.some((p) => ["Canister", "Foam"].some((k) => p.name.toLowerCase().includes(k.toLowerCase())))) {
+    if (lowStock.some((p) => ["Canister", "Foam"].some((k) => (p.name || "").toLowerCase().includes(k.toLowerCase())))) {
       t.push("Core VAC consumables (canister/foam) running low — risk of therapy disruption if not restocked soon.");
     }
     if (dresserStats.length > 0) {
