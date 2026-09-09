@@ -459,7 +459,32 @@ class TabErrorBoundary extends React.Component {
   }
 }
 
-export default function App() {
+class GlobalErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error: error || new Error("Unknown error") }; }
+  componentDidCatch(error, info) { try { console.error("GlobalErrorBoundary caught:", error, info); } catch (e) {} }
+  render() {
+    if (this.state.error) {
+      let message = "Unknown error";
+      let stackLines = "";
+      try { message = String(this.state.error.message || this.state.error || "Unknown error"); } catch (e) {}
+      try { stackLines = this.state.error.stack ? String(this.state.error.stack).split("\n").slice(0, 8).join("\n") : ""; } catch (e) {}
+      return (
+        <div style={{ padding: 24, background: "#FFF3EE", minHeight: "100vh" }}>
+          <div style={{ fontWeight: 700, color: "#E1483C", fontSize: 20, marginBottom: 10 }}>App crashed - here's exactly why:</div>
+          <div style={{ fontFamily: "monospace", fontSize: 13, background: "#fff", padding: 14, borderRadius: 8, whiteSpace: "pre-wrap", wordBreak: "break-word", border: "2px solid #E1483C" }}>
+            {message}
+            {"\n\n--- Stack trace ---\n"}
+            {stackLines}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AppInner() {
   const [businessId, setBusinessId] = useState(() => {
     try { return localStorage.getItem("wca-active-business") || "bhagirathi"; } catch (e) { return "bhagirathi"; }
   });
@@ -1231,6 +1256,14 @@ export default function App() {
         />
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <GlobalErrorBoundary>
+      <AppInner />
+    </GlobalErrorBoundary>
   );
 }
 
