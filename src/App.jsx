@@ -3052,7 +3052,9 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             {(doctorsList || []).map((d) => <option key={d.id} value={d.name} />)}
           </datalist>
         </Field>
-        <Field label="Dresser Name (applied by)"><input style={styles.input} value={form.dresserName} onChange={(e) => set("dresserName", e.target.value)} /></Field>
+        {!presetDresserName && (
+          <Field label="Dresser Name (applied by)"><input style={styles.input} value={form.dresserName} onChange={(e) => set("dresserName", e.target.value)} /></Field>
+        )}
                 <Field label="Product(s)">
           <div style={{ border: "1px solid #DCE4DF", borderRadius: 10, padding: 8 }}>
             <select style={{ ...styles.input, marginBottom: 6 }} value={pickerCompany} onChange={(e) => setPickerCompany(e.target.value)}>
