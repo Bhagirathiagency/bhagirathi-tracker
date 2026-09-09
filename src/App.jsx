@@ -1452,7 +1452,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} businessName={business.name} />
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} businessId={businessId} />}
-        {tab === "stock" && <div style={{ padding: 40, fontSize: 24, fontWeight: 700, color: "red", background: "yellow" }}>ABSOLUTE MINIMAL TEST - HELLO WORLD</div>}
+        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} fixProductNamesOnCases={fixProductNamesOnCases} standardizeAllProductNames={standardizeAllProductNames} applyCostFormula={applyCostFormula} removeSensaTRACFromNames={removeSensaTRACFromNames} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} cases={cases} />}
         {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
         {tab === "expenses" && (
@@ -3967,36 +3967,32 @@ function ChallanPdfView({ ch, onBack, businessName }) {
 }
 
 function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner", businessId, cases = [], fixProductNamesOnCases, standardizeAllProductNames, applyCostFormula, removeSensaTRACFromNames }) {
-  // TEMPORARY: dump raw data so we can see exactly what's in it
-  return (
-    <div style={{ padding: 16, fontFamily: "monospace", fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>RAW DATA DUMP (temporary)</div>
-      <div style={{ marginBottom: 10 }}>Total products: {products.length}</div>
-      {products.map((p, i) => (
-        <div key={i} style={{ marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #ccc" }}>
-          #{i}: {(() => { try { return JSON.stringify(p); } catch (e) { return "COULD NOT STRINGIFY: " + e.message; } })()}
-        </div>
-      ))}
-    </div>
-  );
   const [fixedCasesMsg, setFixedCasesMsg] = useState(null);
   const [standardizeMsg, setStandardizeMsg] = useState(null);
   const [costFormulaMsg, setCostFormulaMsg] = useState(null);
   const [sensaTracMsg, setSensaTracMsg] = useState(null);
+  const [debugError, setDebugError] = useState(null);
   const costFormulaCompanies = ["solventum", "medskin solutions"];
-  const costFormulaProducts = useMemo(() =>
-    products.filter((p) => costFormulaCompanies.includes(productCompany(p).trim().toLowerCase())),
-    [products]);
-  const costFormulaMissingMrp = costFormulaProducts.filter((p) => !(Number(p.mrp) > 0));
+  const costFormulaProducts = useMemo(() => {
+    try {
+      return products.filter((p) => costFormulaCompanies.includes(productCompany(p).trim().toLowerCase()));
+    } catch (e) { console.error("costFormulaProducts crash:", e); if (!debugError) setTimeout(() => setDebugError("costFormulaProducts: " + e.message), 0); return []; }
+  }, [products]);
+  const costFormulaMissingMrp = useMemo(() => {
+    try { return costFormulaProducts.filter((p) => !(Number(p.mrp) > 0)); }
+    catch (e) { console.error("costFormulaMissingMrp crash:", e); if (!debugError) setTimeout(() => setDebugError("costFormulaMissingMrp: " + e.message), 0); return []; }
+  }, [costFormulaProducts]);
   const duplicateProducts = useMemo(() => {
-    const byName = {};
-    products.forEach((p) => {
-      const key = (p.name || "").trim().toLowerCase();
-      if (!key) return;
-      if (!byName[key]) byName[key] = [];
-      byName[key].push(p);
-    });
-    return Object.values(byName).filter((group) => group.length > 1);
+    try {
+      const byName = {};
+      products.forEach((p) => {
+        const key = (p.name || "").trim().toLowerCase();
+        if (!key) return;
+        if (!byName[key]) byName[key] = [];
+        byName[key].push(p);
+      });
+      return Object.values(byName).filter((group) => group.length > 1);
+    } catch (e) { console.error("duplicateProducts crash:", e); if (!debugError) setTimeout(() => setDebugError("duplicateProducts: " + e.message), 0); return []; }
   }, [products]);
   const mergeDuplicateProducts = () => {
     const byName = {};
@@ -4024,20 +4020,22 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
   };
 
   const productMismatches = useMemo(() => {
-    const knownNames = new Set(products.map((p) => (p.name || "").trim().toLowerCase()));
-    const found = {};
-    cases.forEach((c) => {
-      getCaseProductLines(c).forEach((line) => {
-        const raw = (line.name || "").trim();
-        if (!raw) return;
-        if (!knownNames.has(raw.toLowerCase())) {
-          if (!found[raw]) found[raw] = { count: 0, patients: [] };
-          found[raw].count++;
-          if (found[raw].patients.length < 5) found[raw].patients.push(c.patientName);
-        }
+    try {
+      const knownNames = new Set(products.map((p) => (p.name || "").trim().toLowerCase()));
+      const found = {};
+      cases.forEach((c) => {
+        getCaseProductLines(c).forEach((line) => {
+          const raw = (line.name || "").trim();
+          if (!raw) return;
+          if (!knownNames.has(raw.toLowerCase())) {
+            if (!found[raw]) found[raw] = { count: 0, patients: [] };
+            found[raw].count++;
+            if (found[raw].patients.length < 5) found[raw].patients.push(c.patientName);
+          }
+        });
       });
-    });
-    return Object.entries(found).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.count - a.count);
+      return Object.entries(found).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.count - a.count);
+    } catch (e) { console.error("productMismatches crash:", e); if (!debugError) setTimeout(() => setDebugError("productMismatches: " + e.message), 0); return []; }
   }, [cases, products]);
   const [name, setName] = useState("");
   const [initQty, setInitQty] = useState("");
@@ -4047,7 +4045,10 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
   const [receiveForm, setReceiveForm] = useState({});
   const [variantInput, setVariantInput] = useState({});
   const [openId, setOpenId] = useState(null);
-  const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
+  const productsByCompany = useMemo(() => {
+    try { return groupProductsByCompany(products); }
+    catch (e) { console.error("productsByCompany crash:", e); if (!debugError) setTimeout(() => setDebugError("productsByCompany: " + e.message), 0); return []; }
+  }, [products]);
 
   const addProduct = () => {
     if (!name.trim() || !initCompany.trim()) return;
@@ -4156,6 +4157,12 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
 
   return (
     <div>
+      {debugError && (
+        <div style={{ padding: 16, background: "#FFF3EE", border: "2px solid #E1483C", borderRadius: 12, marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 6 }}>Found the exact problem</div>
+          <div style={{ fontFamily: "monospace", fontSize: 13, background: "#fff", padding: 10, borderRadius: 8, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{debugError}</div>
+        </div>
+      )}
       {applyCostFormula && (
         <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #D9E4E0", background: "#F0F8F6" }}>
           <div style={{ fontWeight: 700, color: "#1B6B63", marginBottom: 6 }}>Apply Cost Formula — Solventum &amp; MedSkin Solutions</div>
