@@ -1355,6 +1355,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 // ================= OWNER SHELL =================
 function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, markPaymentHandedOver, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("reports");
+  const [debugClickCount, setDebugClickCount] = useState(0);
   const [casesInitialFilter, setCasesInitialFilter] = useState(null);
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
   const [showPinForm, setShowPinForm] = useState(false);
@@ -1423,9 +1424,12 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         </div>
       )}
 
+      <div style={{ padding: 10, background: "yellow", fontWeight: 700, fontSize: 14 }}>
+        DEBUG: Stock clicks = {debugClickCount} | Current tab = "{tab}"
+      </div>
       <nav style={styles.nav}>
         {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "TAP THIS EXACT BUTTON", "stock"], ["expenses", "Expenses", "reports"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "dressers"], ["combined", "All Business", "overview"], ["settings", "Master Settings", "reports"]].map(([key, label, icon]) => (
-          <button key={key} onClick={() => { if (key === "stock") alert("BUTTON CLICKED - key is: " + key); setTab(key); }} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
+          <button key={key} onClick={() => { if (key === "stock") setDebugClickCount((c) => c + 1); setTab(key); }} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
             <Icon name={icon} size={16} />{label}
           </button>
         ))}
