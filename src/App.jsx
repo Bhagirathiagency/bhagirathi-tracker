@@ -3966,8 +3966,96 @@ function ChallanPdfView({ ch, onBack, businessName }) {
   );
 }
 
-function StockTab() {
-  return <div style={{ padding: 40, background: "cyan", fontSize: 24 }}>STOCKTAB FUNCTION COMPONENT TEST</div>;
+function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner", businessId, cases = [] }) {
+  const [name, setName] = useState("");
+  const [initCompany, setInitCompany] = useState("");
+  const [initQty, setInitQty] = useState("");
+  const [initCost, setInitCost] = useState("");
+  const [initMrp, setInitMrp] = useState("");
+  const [receiveForm, setReceiveForm] = useState({});
+
+  const addProduct = () => {
+    if (!name.trim() || !initCompany.trim()) return;
+    if (products.some((p) => (p.name || "").trim().toLowerCase() === name.trim().toLowerCase())) {
+      alert(`A product named "${name.trim()}" already exists.`);
+      return;
+    }
+    setProducts((prev) => [...prev, {
+      id: uid(), name: name.trim(), company: initCompany.trim(),
+      available: Number(initQty) || 0, used: 0,
+      costPrice: Number(initCost) || 0, mrp: Number(initMrp) || 0,
+      receipts: [], variants: [],
+    }]);
+    setName(""); setInitCompany(""); setInitQty(""); setInitCost(""); setInitMrp("");
+  };
+
+  const remove = (id) => {
+    if (window.confirm("Remove this product from stock?")) {
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    }
+  };
+
+  const updateCost = (id, field, value) => {
+    setProducts((prev) => prev.map((p) => p.id === id ? { ...p, [field]: Number(value) || 0 } : p));
+  };
+
+  const doReceive = (id) => {
+    const qty = Number((receiveForm[id] || {}).qty) || 0;
+    if (qty <= 0) return;
+    receiveStock(id, qty, actorName);
+    setReceiveForm((prev) => ({ ...prev, [id]: { qty: "" } }));
+  };
+
+  return (
+    <div>
+      <SectionTitle>Add Product</SectionTitle>
+      <div style={{ ...styles.card, padding: 14, marginBottom: 16 }}>
+        <div style={styles.addPaymentRow}>
+          <input style={{ ...styles.smallInput, flex: 1 }} placeholder="Product name" value={name} onChange={(e) => setName(e.target.value)} />
+          <input style={{ ...styles.smallInput, flex: 1 }} placeholder="Company / brand" value={initCompany} onChange={(e) => setInitCompany(e.target.value)} />
+        </div>
+        <div style={styles.addPaymentRow}>
+          <input style={{ ...styles.smallInput, width: 70 }} type="number" placeholder="Qty" value={initQty} onChange={(e) => setInitQty(e.target.value)} />
+          <input style={{ ...styles.smallInput, width: 90 }} type="number" placeholder="Cost ₹" value={initCost} onChange={(e) => setInitCost(e.target.value)} />
+          <input style={{ ...styles.smallInput, width: 90 }} type="number" placeholder="MRP ₹" value={initMrp} onChange={(e) => setInitMrp(e.target.value)} />
+        </div>
+        <button style={styles.primaryBtn} onClick={addProduct} disabled={!name.trim() || !initCompany.trim()}>Add Product</button>
+      </div>
+
+      <SectionTitle>Inventory ({products.length})</SectionTitle>
+      {products.length === 0 ? <EmptyState text="No products added yet." /> : (
+        <div style={styles.list}>
+          {products.map((p) => (
+            <div key={p.id} style={styles.card}>
+              <div style={{ padding: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{p.name || "(unnamed product)"}</div>
+                    <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.company || "Unspecified"}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 700, color: (p.available || 0) <= LOW_STOCK_THRESHOLD ? "#E1483C" : "#128577" }}>{p.available || 0} available</div>
+                    <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.used || 0} used</div>
+                  </div>
+                </div>
+                <div style={styles.addPaymentRow}>
+                  <span style={{ fontSize: 12, color: "#8A9A96" }}>Cost ₹</span>
+                  <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, "costPrice", e.target.value)} />
+                  <span style={{ fontSize: 12, color: "#8A9A96" }}>MRP ₹</span>
+                  <input type="number" style={styles.smallInput} defaultValue={p.mrp || 0} onBlur={(e) => updateCost(p.id, "mrp", e.target.value)} />
+                </div>
+                <div style={styles.addPaymentRow}>
+                  <input type="number" placeholder="Qty received" style={styles.smallInput} value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { qty: e.target.value } }))} />
+                  <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
+                  <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => remove(p.id)}>Remove</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ---------------- Dressers (Owner) ----------------
