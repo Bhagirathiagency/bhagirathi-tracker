@@ -2368,7 +2368,8 @@ function AdditionalItemsBlock({ c, products, onAddAdditionalItem }) {
 
   return (
     <div style={{ marginTop: 14 }}>
-      <div style={styles.detailLabel}>Additional items used (e.g. extra canister, foam)</div>
+      <div style={{ ...styles.detailLabel, color: "#D9720A" }}>💰 Extra Products Needed (This Charges the Patient)</div>
+      <div style={{ ...styles.mutedSmall, marginBottom: 6 }}>Only use this if the patient needs something EXTRA beyond what was already included — like an additional canister for reapplication. This ADDS to their bill.</div>
       {items.length > 0 && (
         <div style={{ ...styles.card, margin: "6px 0" }}>
           {items.map((it) => (
@@ -2556,7 +2557,8 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
           </div>
           <input type="text" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)}
             style={{ ...styles.smallInput, width: "100%", marginTop: 8, boxSizing: "border-box" }} />
-          <div style={styles.mutedSmall}>Products used at this visit (select what was actually used, single or multiple)</div>
+          <div style={{ ...styles.detailLabel, marginTop: 12, color: "#128577" }}>✅ Routine Products Used (Free — No Extra Charge)</div>
+          <div style={{ ...styles.mutedSmall, marginBottom: 6 }}>Products already included in the patient's original bill — like fixing a leak, replacing tubing, or a normal dressing change. This only tracks stock, it does NOT charge the patient anything extra.</div>
           <ProductsUsedPicker products={products} selected={changeProducts} onChange={setChangeProducts} />
 
           {onUpdateStatus && (
