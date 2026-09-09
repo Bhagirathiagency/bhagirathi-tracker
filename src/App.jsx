@@ -431,6 +431,27 @@ function compressProfilePhoto(file) {
   });
 }
 
+class TabErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 20, background: "#FFF3EE", border: "1px solid #E1483C", borderRadius: 12, margin: 16 }}>
+          <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 8 }}>⚠️ This section hit an error and couldn't load</div>
+          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>Please screenshot this exact text and share it — it tells us precisely what to fix:</div>
+          <div style={{ fontFamily: "monospace", fontSize: 12, background: "#fff", padding: 10, borderRadius: 8, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {this.state.error.message}
+            {"\n\n"}
+            {this.state.error.stack ? this.state.error.stack.split("\n").slice(0, 4).join("\n") : ""}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [businessId, setBusinessId] = useState(() => {
     try { return localStorage.getItem("wca-active-business") || "bhagirathi"; } catch (e) { return "bhagirathi"; }
@@ -1424,7 +1445,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} businessName={business.name} />
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} businessId={businessId} />}
-        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} fixProductNamesOnCases={fixProductNamesOnCases} standardizeAllProductNames={standardizeAllProductNames} applyCostFormula={applyCostFormula} removeSensaTRACFromNames={removeSensaTRACFromNames} />}
+        {tab === "stock" && <TabErrorBoundary><StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} fixProductNamesOnCases={fixProductNamesOnCases} standardizeAllProductNames={standardizeAllProductNames} applyCostFormula={applyCostFormula} removeSensaTRACFromNames={removeSensaTRACFromNames} /></TabErrorBoundary>}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} cases={cases} />}
         {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
         {tab === "expenses" && (
