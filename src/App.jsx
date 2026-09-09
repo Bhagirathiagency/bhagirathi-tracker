@@ -3141,8 +3141,12 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
             )}
           </Field>
         )}
-        <Field label="Application Date"><input type="date" style={styles.input} value={form.applicationDate} onChange={(e) => set("applicationDate", e.target.value)} /></Field>
-        <Field label="Application Time"><input type="time" style={styles.input} value={form.applicationTime} onChange={(e) => set("applicationTime", e.target.value)} /></Field>
+        <Field label="Application Date & Time">
+          <div style={{ display: "flex", gap: 8 }}>
+            <input type="date" style={{ ...styles.input, flex: 1 }} value={form.applicationDate} onChange={(e) => set("applicationDate", e.target.value)} />
+            <input type="time" style={{ ...styles.input, flex: 1 }} value={form.applicationTime} onChange={(e) => set("applicationTime", e.target.value)} />
+          </div>
+        </Field>
         <Field label="Status">
           <select style={styles.input} value={form.machineSerial ? form.status : "na"} disabled={!form.machineSerial} onChange={(e) => set("status", e.target.value)}>
             <option value="active">VAC Therapy Applied</option>
