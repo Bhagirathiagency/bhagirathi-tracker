@@ -3043,14 +3043,14 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
       <div style={styles.formGrid}>
         <Field label="Patient Name"><input style={styles.input} value={form.patientName} onChange={(e) => set("patientName", e.target.value)} /></Field>
         <Field label="Patient Mobile Number *"><input type="tel" style={styles.input} value={form.patientMobile} onChange={(e) => set("patientMobile", e.target.value)} placeholder="10-digit number — required" /></Field>
-        <Field label="Doctor Name">
-          <input style={styles.input} list="doctor-master-list" value={form.doctorName} onChange={(e) => set("doctorName", e.target.value)} />
+        <Field label="Doctor Name & Commission (₹)">
+          <div style={{ display: "flex", gap: 8 }}>
+            <input style={{ ...styles.input, flex: 2 }} list="doctor-master-list" value={form.doctorName} onChange={(e) => set("doctorName", e.target.value)} placeholder="Doctor name" />
+            <input type="number" style={{ ...styles.input, flex: 1 }} value={form.doctorCommission} onChange={(e) => set("doctorCommission", e.target.value)} placeholder="Commission" />
+          </div>
           <datalist id="doctor-master-list">
             {(doctorsList || []).map((d) => <option key={d.id} value={d.name} />)}
           </datalist>
-        </Field>
-        <Field label="Doctor Commission (₹, optional)">
-          <input type="number" style={styles.input} value={form.doctorCommission} onChange={(e) => set("doctorCommission", e.target.value)} placeholder="0 if none" />
         </Field>
         <Field label="Dresser Name (applied by)"><input style={styles.input} value={form.dresserName} onChange={(e) => set("dresserName", e.target.value)} /></Field>
                 <Field label="Product(s)">
