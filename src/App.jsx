@@ -213,11 +213,13 @@ function overdueDays(c) {
 }
 function normalizeProducts(raw) {
   if (!Array.isArray(raw)) return DEFAULT_PRODUCTS;
-  return raw.map((p) =>
-    typeof p === "string"
-      ? { id: uid(), name: p, available: 0, used: 0, costPrice: 0, mrp: 0, receipts: [], variants: [] }
-      : { available: 0, used: 0, costPrice: 0, mrp: 0, receipts: [], variants: [], ...p, variants: Array.isArray(p.variants) ? p.variants : [] }
-  );
+  return raw
+    .filter((p) => p !== null && p !== undefined) // guard against corrupted/null entries
+    .map((p) =>
+      typeof p === "string"
+        ? { id: uid(), name: p, available: 0, used: 0, costPrice: 0, mrp: 0, receipts: [], variants: [] }
+        : { id: uid(), name: "", available: 0, used: 0, costPrice: 0, mrp: 0, receipts: [], variants: [], ...p, variants: Array.isArray(p.variants) ? p.variants : [] }
+    );
 }
 function productCompany(p) {
   if (p.company && p.company.trim()) return p.company.trim();
@@ -433,17 +435,22 @@ function compressProfilePhoto(file) {
 
 class TabErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
-  static getDerivedStateFromError(error) { return { error }; }
+  static getDerivedStateFromError(error) { return { error: error || new Error("Unknown error") }; }
+  componentDidCatch(error, info) { try { console.error("TabErrorBoundary caught:", error, info); } catch (e) {} }
   render() {
     if (this.state.error) {
+      let message = "Unknown error";
+      let stackLines = "";
+      try { message = String(this.state.error.message || this.state.error || "Unknown error"); } catch (e) {}
+      try { stackLines = this.state.error.stack ? String(this.state.error.stack).split("\n").slice(0, 5).join("\n") : ""; } catch (e) {}
       return (
         <div style={{ padding: 20, background: "#FFF3EE", border: "1px solid #E1483C", borderRadius: 12, margin: 16 }}>
-          <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 8 }}>⚠️ This section hit an error and couldn't load</div>
-          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>Please screenshot this exact text and share it — it tells us precisely what to fix:</div>
+          <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 8 }}>This section hit an error and could not load</div>
+          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>Please screenshot this exact text and share it:</div>
           <div style={{ fontFamily: "monospace", fontSize: 12, background: "#fff", padding: 10, borderRadius: 8, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {this.state.error.message}
+            {message}
             {"\n\n"}
-            {this.state.error.stack ? this.state.error.stack.split("\n").slice(0, 4).join("\n") : ""}
+            {stackLines}
           </div>
         </div>
       );
@@ -3959,7 +3966,7 @@ function ChallanPdfView({ ch, onBack, businessName }) {
   );
 }
 
-function StockTab({ products, setProducts, receiveStock, actorName = "Owner", businessId, cases = [], fixProductNamesOnCases, standardizeAllProductNames, applyCostFormula, removeSensaTRACFromNames }) {
+function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner", businessId, cases = [], fixProductNamesOnCases, standardizeAllProductNames, applyCostFormula, removeSensaTRACFromNames }) {
   const [fixedCasesMsg, setFixedCasesMsg] = useState(null);
   const [standardizeMsg, setStandardizeMsg] = useState(null);
   const [costFormulaMsg, setCostFormulaMsg] = useState(null);
