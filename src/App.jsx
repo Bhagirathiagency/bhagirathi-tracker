@@ -1424,7 +1424,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.nav}>
-        {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["expenses", "Expenses", "reports"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "dressers"], ["combined", "All Business", "overview"], ["settings", "Master Settings", "reports"]].map(([key, label, icon]) => (
+        {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "TAP THIS EXACT BUTTON", "stock"], ["expenses", "Expenses", "reports"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "dressers"], ["combined", "All Business", "overview"], ["settings", "Master Settings", "reports"]].map(([key, label, icon]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
             <Icon name={icon} size={16} />{label}
           </button>
