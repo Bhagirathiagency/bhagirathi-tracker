@@ -3966,301 +3966,53 @@ function ChallanPdfView({ ch, onBack, businessName }) {
   );
 }
 
-function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner", businessId, cases = [], fixProductNamesOnCases, standardizeAllProductNames, applyCostFormula, removeSensaTRACFromNames }) {
-  const [fixedCasesMsg, setFixedCasesMsg] = useState(null);
-  const [standardizeMsg, setStandardizeMsg] = useState(null);
-  const [costFormulaMsg, setCostFormulaMsg] = useState(null);
-  const [sensaTracMsg, setSensaTracMsg] = useState(null);
-  const [debugError, setDebugError] = useState(null);
-  const costFormulaCompanies = ["solventum", "medskin solutions"];
-  const costFormulaProducts = [];
-
-  const costFormulaMissingMrp = [];
-
-  const duplicateProducts = [];
-
-  const mergeDuplicateProducts = () => {
-    const byName = {};
-    products.forEach((p) => {
-      const key = (p.name || "").trim().toLowerCase();
-      if (!key) return;
-      if (!byName[key]) byName[key] = [];
-      byName[key].push(p);
-    });
-    const merged = [];
-    Object.values(byName).forEach((group) => {
-      if (group.length === 1) { merged.push(group[0]); return; }
-      const base = group[0];
-      const combined = group.reduce((acc, p) => ({
-        ...acc,
-        available: (acc.available || 0) + (p.available || 0),
-        used: (acc.used || 0) + (p.used || 0),
-        costPrice: acc.costPrice || p.costPrice || 0,
-        mrp: acc.mrp || p.mrp || 0,
-        receipts: [...(acc.receipts || []), ...(p.receipts || [])],
-      }), { ...base, available: 0, used: 0, receipts: [] });
-      merged.push(combined);
-    });
-    setProducts(merged);
-  };
-
-  const productMismatches = [];
-
+function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner", businessId, cases = [] }) {
   const [name, setName] = useState("");
+  const [initCompany, setInitCompany] = useState("");
   const [initQty, setInitQty] = useState("");
   const [initCost, setInitCost] = useState("");
   const [initMrp, setInitMrp] = useState("");
-  const [initCompany, setInitCompany] = useState("");
   const [receiveForm, setReceiveForm] = useState({});
-  const [variantInput, setVariantInput] = useState({});
-  const [openId, setOpenId] = useState(null);
-  const productsByCompany = [];
-
 
   const addProduct = () => {
     if (!name.trim() || !initCompany.trim()) return;
     if (products.some((p) => (p.name || "").trim().toLowerCase() === name.trim().toLowerCase())) {
-      alert(`A product named "${name.trim()}" already exists. Use the existing one instead of adding a duplicate.`);
+      alert(`A product named "${name.trim()}" already exists.`);
       return;
     }
-    const qty = Number(initQty) || 0;
-    const co = initCompany.trim();
     setProducts((prev) => [...prev, {
-      id: uid(), name: name.trim(), company: co, available: qty, used: 0, costPrice: Number(initCost) || 0, mrp: Number(initMrp) || 0,
-      receipts: qty > 0 ? [{ id: uid(), date: todayISO(), time: new Date().toLocaleTimeString("en-IN"), qty, company: co, receivedBy: actorName }] : [],
-      variants: [],
+      id: uid(), name: name.trim(), company: initCompany.trim(),
+      available: Number(initQty) || 0, used: 0,
+      costPrice: Number(initCost) || 0, mrp: Number(initMrp) || 0,
+      receipts: [], variants: [],
     }]);
-    setName(""); setInitQty(""); setInitCost(""); setInitMrp(""); setInitCompany("");
+    setName(""); setInitCompany(""); setInitQty(""); setInitCost(""); setInitMrp("");
   };
-  const updateCompany = (id, company) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, company: (company || "").trim() } : p));
-  const remove = (id) => setProducts((prev) => prev.filter((p) => p.id !== id));
-  const updateCost = (id, cost) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, costPrice: Number(cost) || 0 } : p));
-  const updateMrp = (id, mrp) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, mrp: Number(mrp) || 0 } : p));
-  const updateAvailable = (id, qty) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, available: Math.max(0, Number(qty) || 0) } : p));
-  const setField = (id, field, val) => setReceiveForm((prev) => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
+
+  const remove = (id) => {
+    if (window.confirm("Remove this product from stock?")) {
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    }
+  };
+
+  const updateCost = (id, field, value) => {
+    setProducts((prev) => prev.map((p) => p.id === id ? { ...p, [field]: Number(value) || 0 } : p));
+  };
+
   const doReceive = (id) => {
-    const f = receiveForm[id] || {};
-    const qty = Number(f.qty);
-    if (!qty || qty <= 0) return;
-    receiveStock(id, qty, f.company, actorName, f.billAmount);
-    setReceiveForm((prev) => ({ ...prev, [id]: { qty: "", company: "", billAmount: "" } }));
-  };
-  const addVariant = (id) => {
-    const val = (variantInput[id] || "").trim();
-    if (!val) return;
-    setProducts((prev) => prev.map((p) => p.id === id
-      ? { ...p, variants: (p.variants || []).includes(val) ? p.variants : [...(p.variants || []), val] }
-      : p));
-    setVariantInput((prev) => ({ ...prev, [id]: "" }));
-  };
-  const removeVariant = (id, v) => setProducts((prev) => prev.map((p) => p.id === id
-    ? { ...p, variants: (p.variants || []).filter((x) => x !== v) } : p));
-
-  const [importDone, setImportDone] = useState(false);
-  const importPriceList = () => {
-    const existingNames = new Set(products.map((p) => (p.name || "").toLowerCase()));
-    const toAdd = PRICE_LIST_IMPORT.filter((item) => !existingNames.has(item.name.toLowerCase()));
-    if (toAdd.length === 0) { setImportDone(true); return; }
-    const newProducts = toAdd.map((item) => ({
-      id: uid(),
-      name: item.name,
-      available: 0,
-      used: 0,
-      costPrice: 0,
-      mrp: item.mrp,
-      variants: [],
-      receipts: [{ id: uid(), date: todayISO(), qty: 0, company: item.company }],
-    }));
-    setProducts((prev) => [...prev, ...newProducts]);
-    setImportDone(true);
-  };
-  const newImportCount = 0;
-
-  const [iwacImportDone, setIwacImportDone] = useState(false);
-  const importIwacList = () => {
-    const existingNames = new Set(products.map((p) => (p.name || "").toLowerCase()));
-    const toAdd = IWAC_PRICE_LIST.filter((item) => !existingNames.has(item.name.toLowerCase()));
-    if (toAdd.length === 0) { setIwacImportDone(true); return; }
-    const newProducts = toAdd.map((item) => ({
-      id: uid(),
-      name: item.name,
-      available: item.qty || 0,
-      used: 0,
-      costPrice: item.costPrice,
-      mrp: item.mrp,
-      variants: [],
-      receipts: item.qty > 0 ? [{ id: uid(), date: todayISO(), qty: item.qty, company: item.company }] : [],
-    }));
-    setProducts((prev) => [...prev, ...newProducts]);
-    setIwacImportDone(true);
-  };
-  const newIwacCount = 0;
-
-  const packDupCount = 0;
-  const cleanupPackDuplicates = () => {
-    const merged = {}; // target name (lowercase) -> merged product
-    const untouched = [];
-    products.forEach((p) => {
-      const target = PACK_NAME_CLEANUP[(p.name || "").toLowerCase()];
-      if (!target) { untouched.push(p); return; }
-      const key = target.toLowerCase();
-      if (!merged[key]) {
-        merged[key] = { ...p, name: target };
-      } else {
-        const m = merged[key];
-        merged[key] = {
-          ...m,
-          available: (m.available || 0) + (p.available || 0),
-          used: (m.used || 0) + (p.used || 0),
-          costPrice: m.costPrice || p.costPrice || 0,
-          mrp: m.mrp || p.mrp || 0,
-          receipts: [...(m.receipts || []), ...(p.receipts || [])],
-          variants: Array.from(new Set([...(m.variants || []), ...(p.variants || [])])),
-        };
-      }
-    });
-    setProducts([...untouched, ...Object.values(merged)]);
+    const qty = Number((receiveForm[id] || {}).qty) || 0;
+    if (qty <= 0) return;
+    receiveStock(id, qty, actorName);
+    setReceiveForm((prev) => ({ ...prev, [id]: { qty: "" } }));
   };
 
   return (
     <div>
-      {debugError && (
-        <div style={{ padding: 16, background: "#FFF3EE", border: "2px solid #E1483C", borderRadius: 12, marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 6 }}>Found the exact problem</div>
-          <div style={{ fontFamily: "monospace", fontSize: 13, background: "#fff", padding: 10, borderRadius: 8, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{debugError}</div>
-        </div>
-      )}
-      {applyCostFormula && (
-        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #D9E4E0", background: "#F0F8F6" }}>
-          <div style={{ fontWeight: 700, color: "#1B6B63", marginBottom: 6 }}>Apply Cost Formula — Solventum &amp; MedSkin Solutions</div>
-          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
-            Sets each product's cost price to 63% of its MRP (MRP minus 40% trade discount, plus 5% added on that discounted price) — for every product from Solventum or MedSkin Solutions that has an MRP entered.
-          </div>
-          <button style={{ ...styles.smallBtn, background: "#1B6B63" }} onClick={() => {
-            const updated = applyCostFormula();
-            setCostFormulaMsg(updated === 0 ? "No changes needed — costs already match the formula, or no MRP entered yet." : `Updated cost price on ${updated} product${updated === 1 ? "" : "s"}.`);
-          }}>Apply Cost Formula</button>
-          {costFormulaMsg && <div style={{ fontSize: 12, color: "#128577", marginTop: 8, fontWeight: 600 }}>✓ {costFormulaMsg}</div>}
-
-          {costFormulaProducts.length > 0 && (
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #D9E4E0" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#5B6864", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 }}>
-                {costFormulaProducts.length} Solventum/MedSkin product{costFormulaProducts.length === 1 ? "" : "s"} found
-                {costFormulaMissingMrp.length > 0 ? ` — ${costFormulaMissingMrp.length} missing MRP` : " — all have MRP set"}
-              </div>
-              {costFormulaProducts.map((p) => (
-                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: "1px solid #EEF1EC" }}>
-                  <span>{p.name}</span>
-                  <span style={{ color: Number(p.mrp) > 0 ? "#5B6864" : "#E1483C", fontWeight: Number(p.mrp) > 0 ? 400 : 700 }}>
-                    MRP: {Number(p.mrp) > 0 ? fmtMoney(p.mrp) : "Not set"} · Cost: {fmtMoney(p.costPrice)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      {removeSensaTRACFromNames && (
-        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #D9E4E0", background: "#F0F8F6" }}>
-          <div style={{ fontWeight: 700, color: "#1B6B63", marginBottom: 6 }}>Remove "SensaTRAC" from Product Names</div>
-          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
-            Removes the word "SensaTRAC" from every product name in one go. Any cases that used the old names are automatically updated too, so cost and profit stay accurate.
-          </div>
-          <button style={{ ...styles.smallBtn, background: "#1B6B63" }} onClick={() => {
-            const result = removeSensaTRACFromNames();
-            if (result.renamedProducts === 0) setSensaTracMsg('No product names contain "SensaTRAC".');
-            else setSensaTracMsg(`Cleaned ${result.renamedProducts} product name${result.renamedProducts === 1 ? "" : "s"}, and updated ${result.renamedCases} case${result.renamedCases === 1 ? "" : "s"} that referenced the old names.`);
-          }}>Remove "SensaTRAC" from All Products</button>
-          {sensaTracMsg && <div style={{ fontSize: 12, color: "#128577", marginTop: 8, fontWeight: 600 }}>✓ {sensaTracMsg}</div>}
-        </div>
-      )}
-      {standardizeAllProductNames && (
-        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #D9E4E0", background: "#F0F8F6" }}>
-          <div style={{ fontWeight: 700, color: "#1B6B63", marginBottom: 6 }}>Standardize Product Names</div>
-          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
-            Removes pack-size wording (like "5 Pack", "10 Pack", "5/pk", "10/case") from every product name in one go, so everything is named per single unit. Any cases that used the old pack-style names are automatically updated too, so cost and profit stay accurate.
-          </div>
-          <button style={{ ...styles.smallBtn, background: "#1B6B63" }} onClick={() => {
-            const result = standardizeAllProductNames();
-            if (result.renamedProducts === 0) setStandardizeMsg("No pack-size wording found — all product names are already clean.");
-            else setStandardizeMsg(`Cleaned ${result.renamedProducts} product name${result.renamedProducts === 1 ? "" : "s"}, and updated ${result.renamedCases} case${result.renamedCases === 1 ? "" : "s"} that referenced the old names.`);
-          }}>Remove Pack-Size Wording from All Products</button>
-          {standardizeMsg && <div style={{ fontSize: 12, color: "#128577", marginTop: 8, fontWeight: 600 }}>✓ {standardizeMsg}</div>}
-        </div>
-      )}
-      {duplicateProducts.length > 0 && (
-        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FCE7E4", background: "#FFF7F5" }}>
-          <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 6 }}>⚠️ Duplicate Products Found in Your List</div>
-          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
-            The same product name appears more than once (often from typing it slightly differently, like different capitalization). Merging combines their stock counts into one clean entry.
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-            {duplicateProducts.map((group) => (
-              <div key={group[0].id} style={{ fontSize: 13 }}>
-                <strong>"{group[0].name}"</strong> — appears {group.length} times
-              </div>
-            ))}
-          </div>
-          <button style={{ ...styles.smallBtn, background: "#128577" }} onClick={mergeDuplicateProducts}>Merge Duplicate Products</button>
-        </div>
-      )}
-      {productMismatches.length > 0 && (
-        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FCE7E4", background: "#FFF7F5" }}>
-          <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 6 }}>⚠️ Product Name Mismatch Found — Profit May Be Wrong</div>
-          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
-            These product names appear on cases but don't exactly match anything in your current product list below. Since profit is calculated using each product's saved cost price, any case using one of these unmatched names is being counted with ₹0 cost — overstating that case's profit. This usually happens when a product was renamed after cases were already created using the old name.
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-            {productMismatches.map((m) => (
-              <div key={m.name} style={{ fontSize: 13 }}>
-                <strong>"{m.name}"</strong> — used in {m.count} case{m.count > 1 ? "s" : ""} ({m.patients.join(", ")}{m.count > m.patients.length ? "…" : ""})
-              </div>
-            ))}
-          </div>
-          {fixProductNamesOnCases && (
-            <button style={{ ...styles.smallBtn, background: "#128577" }} onClick={() => {
-              const fixed = fixProductNamesOnCases();
-              setFixedCasesMsg(`Updated ${fixed} case${fixed === 1 ? "" : "s"} to use the current product names. Profit will now recalculate correctly.`);
-            }}>Fix Old Product Names on These Cases</button>
-          )}
-          {fixedCasesMsg && <div style={{ fontSize: 12, color: "#128577", marginTop: 8, fontWeight: 600 }}>✓ {fixedCasesMsg}</div>}
-        </div>
-      )}
-      {packDupCount > 0 && (
-        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FCE7E4" }}>
-          <div style={{ fontSize: 13, marginBottom: 8 }}>
-            <strong>{packDupCount} item{packDupCount > 1 ? "s" : ""}</strong> still have "5 Pack"/"10 Pack" in the name from an earlier import. Since you sell per unit, this merges any duplicates (like the 5-pack and 10-pack of the same dressing) into one per-unit product, combining their stock counts.
-          </div>
-          <button style={{ ...styles.smallBtn, background: "#E1483C" }} onClick={cleanupPackDuplicates}>Clean Up Pack-Size Duplicates ({packDupCount})</button>
-        </div>
-      )}
-      {newImportCount > 0 && (
-        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FBEAD3" }}>
-          <div style={{ fontSize: 13, marginBottom: 8 }}>
-            <strong>{newImportCount} product{newImportCount > 1 ? "s" : ""}</strong> from the MedSkin Solutions (MatriDerm) and Solventum (VAC/Prevena) price lists can be imported with their MRP and company tagged — set your cost price and opening stock after.
-          </div>
-          <button style={styles.primaryBtn} onClick={importPriceList}>Import Price List ({newImportCount})</button>
-        </div>
-      )}
-      {importDone && newImportCount === 0 && (
-        <div style={{ ...styles.emptyState2, marginBottom: 10, color: "#128577" }}>All MedSkin Solutions &amp; Solventum items are imported.</div>
-      )}
-      {newIwacCount > 0 && (
-        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FBEAD3" }}>
-          <div style={{ fontSize: 13, marginBottom: 8 }}>
-            <strong>{newIwacCount} Iwac product{newIwacCount > 1 ? "s" : ""}</strong> (Airfoam, Gigafoam, Canister Pro) ready to import with cost price, MRP, and opening stock already filled in.
-          </div>
-          <button style={styles.primaryBtn} onClick={importIwacList}>Import Iwac Price List ({newIwacCount})</button>
-        </div>
-      )}
-      {iwacImportDone && newIwacCount === 0 && businessId === "leelavac" && (
-        <div style={{ ...styles.emptyState2, marginBottom: 10, color: "#128577" }}>All Iwac items are imported.</div>
-      )}
       <SectionTitle>Add Product</SectionTitle>
-      <div style={styles.formGrid}>
+      <div style={{ ...styles.card, padding: 14, marginBottom: 16 }}>
         <div style={styles.addPaymentRow}>
           <input style={{ ...styles.smallInput, flex: 1 }} placeholder="Product name" value={name} onChange={(e) => setName(e.target.value)} />
-          <input style={{ ...styles.smallInput, flex: 1 }} placeholder="Company / brand *" value={initCompany} onChange={(e) => setInitCompany(e.target.value)} />
+          <input style={{ ...styles.smallInput, flex: 1 }} placeholder="Company / brand" value={initCompany} onChange={(e) => setInitCompany(e.target.value)} />
         </div>
         <div style={styles.addPaymentRow}>
           <input style={{ ...styles.smallInput, width: 70 }} type="number" placeholder="Qty" value={initQty} onChange={(e) => setInitQty(e.target.value)} />
@@ -4270,78 +4022,35 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
         <button style={styles.primaryBtn} onClick={addProduct} disabled={!name.trim() || !initCompany.trim()}>Add Product</button>
       </div>
 
-      <SectionTitle>Inventory</SectionTitle>
+      <SectionTitle>Inventory ({products.length})</SectionTitle>
       {products.length === 0 ? <EmptyState text="No products added yet." /> : (
-        <div>
-          {productsByCompany.map(([company, prods]) => (
-            <CollapsibleSection key={company} title={company} right={<span style={{ fontSize: 11, color: "#8A9A96" }}>{prods.length}</span>}>
-              <div style={styles.list}>
-                {prods.map((p) => {
-                  const open = openId === p.id;
-                  return (
-                  <div key={p.id} style={styles.card}>
-                    <div style={styles.cardTop} onClick={() => setOpenId(open ? null : p.id)}>
-                      <div style={{ flex: 1 }}>
-                        <div style={styles.cardTitle}>{p.name}</div>
-                        <div style={styles.cardMeta}>
-                          {p.used || 0} used all-time{(p.variants || []).length > 0 ? ` · ${p.variants.length} size${p.variants.length > 1 ? "s" : ""}` : ""}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                        <span style={{ ...styles.badge, color: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#E1483C" : "#D9720A", background: (p.available || 0) < LOW_STOCK_THRESHOLD ? "#FCE7E4" : "#FBEAD3" }}>{p.available || 0} available</span>
-                        <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
-                      </div>
-                    </div>
-                    {open && (
-                      <div style={{ padding: "0 14px 14px" }}>
-                        <div style={styles.addPaymentRow}>
-                          <span style={styles.mutedSmall}>Available qty</span>
-                          <input type="number" style={styles.smallInput} defaultValue={p.available || 0} onBlur={(e) => updateAvailable(p.id, e.target.value)} />
-                          <span style={{ ...styles.mutedSmall, color: "#D9720A" }}>Fix a wrong entry directly here</span>
-                        </div>
-                        <div style={styles.addPaymentRow}>
-                          <span style={styles.mutedSmall}>Company / brand</span>
-                          <input type="text" style={{ ...styles.smallInput, flex: 1 }} defaultValue={p.company || ""} placeholder="Required" onBlur={(e) => updateCompany(p.id, e.target.value)} />
-                        </div>
-                        <div style={styles.addPaymentRow}>
-                          <span style={styles.mutedSmall}>Cost price ₹</span>
-                          <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, e.target.value)} />
-                          <span style={styles.mutedSmall}>MRP ₹</span>
-                          <input type="number" style={styles.smallInput} defaultValue={p.mrp || 0} onBlur={(e) => updateMrp(p.id, e.target.value)} />
-                        </div>
-                        <div style={styles.addPaymentRow}>
-                          <input type="number" placeholder="Qty received" value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setField(p.id, "qty", e.target.value)} style={styles.smallInput} />
-                          <input type="text" placeholder="Company / supplier" value={(receiveForm[p.id] || {}).company || ""} onChange={(e) => setField(p.id, "company", e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
-                          <input type="number" placeholder="Bill amount ₹ (optional)" value={(receiveForm[p.id] || {}).billAmount || ""} onChange={(e) => setField(p.id, "billAmount", e.target.value)} style={styles.smallInput} />
-                          <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
-                        </div>
-
-                        <div style={{ marginTop: 10 }}>
-                          <span style={styles.mutedSmall}>Sizes / variants (e.g. 300ml, 500ml, 1000ml)</span>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0" }}>
-                            {(p.variants || []).map((v) => (
-                              <span key={v} style={{ ...styles.photoChip, ...styles.photoChipDone, cursor: "default", display: "flex", alignItems: "center", gap: 6 }}>
-                                {v}
-                                <span style={{ cursor: "pointer", color: "#E1483C", fontWeight: 700 }} onClick={() => removeVariant(p.id, v)}>✕</span>
-                              </span>
-                            ))}
-                          </div>
-                          <div style={styles.addPaymentRow}>
-                            <input type="text" placeholder="Add size, e.g. 500ml" style={{ ...styles.smallInput, flex: 1 }}
-                              value={variantInput[p.id] || ""} onChange={(e) => setVariantInput((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                              onKeyDown={(e) => { if (e.key === "Enter") addVariant(p.id); }} />
-                            <button style={styles.smallBtn} onClick={() => addVariant(p.id)}>Add Size</button>
-                          </div>
-                        </div>
-
-                        <button style={{ ...styles.linkBtn, color: "#E1483C", marginTop: 12 }} onClick={() => { if (window.confirm("Remove this product from stock? This does not undo past case usage.")) remove(p.id); }}>Remove Product</button>
-                      </div>
-                    )}
+        <div style={styles.list}>
+          {products.map((p) => (
+            <div key={p.id} style={styles.card}>
+              <div style={{ padding: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{p.name || "(unnamed product)"}</div>
+                    <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.company || "Unspecified"}</div>
                   </div>
-                  );
-                })}
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 700, color: (p.available || 0) <= LOW_STOCK_THRESHOLD ? "#E1483C" : "#128577" }}>{p.available || 0} available</div>
+                    <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.used || 0} used</div>
+                  </div>
+                </div>
+                <div style={styles.addPaymentRow}>
+                  <span style={{ fontSize: 12, color: "#8A9A96" }}>Cost ₹</span>
+                  <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, "costPrice", e.target.value)} />
+                  <span style={{ fontSize: 12, color: "#8A9A96" }}>MRP ₹</span>
+                  <input type="number" style={styles.smallInput} defaultValue={p.mrp || 0} onBlur={(e) => updateCost(p.id, "mrp", e.target.value)} />
+                </div>
+                <div style={styles.addPaymentRow}>
+                  <input type="number" placeholder="Qty received" style={styles.smallInput} value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { qty: e.target.value } }))} />
+                  <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
+                  <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => remove(p.id)}>Remove</button>
+                </div>
               </div>
-            </CollapsibleSection>
+            </div>
           ))}
         </div>
       )}
