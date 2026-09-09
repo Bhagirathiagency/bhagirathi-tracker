@@ -890,6 +890,7 @@ function AppInner() {
   const addDresser = (name, dresserPin) => {
     const trimmed = name.trim();
     if (!trimmed || dressers.some((d) => d.toLowerCase() === trimmed.toLowerCase())) return;
+    if (!window.confirm(`Add "${trimmed}" as a new dresser?`)) return;
     setDressers((prev) => [...prev, trimmed]);
     if (dresserPin) setDresserPins((prev) => ({ ...prev, [trimmed]: String(dresserPin) }));
   };
@@ -2306,6 +2307,7 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList
               if (!newDocName.trim()) return;
               const alreadyKnown = (doctorsList || []).some((d) => d.name.trim().toLowerCase() === newDocName.trim().toLowerCase());
               if (alreadyKnown) { setAddDocMsg("This doctor is already in the list."); return; }
+              if (!window.confirm(`Add "${newDocName.trim()}" as a new doctor?`)) return;
               addDoctorMaster({ name: newDocName.trim(), mobile: newDocMobile.trim(), speciality: newDocSpeciality.trim(), doctorClass: newDocClass });
               setNewDocName(""); setNewDocMobile(""); setNewDocSpeciality(""); setNewDocClass("A");
               setAddDocMsg("Doctor added.");
@@ -3018,6 +3020,7 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
     if (!form.patientMobile || !form.patientMobile.trim()) { setFormError("Patient mobile number is required — enter it before proceeding."); return; }
     setFormError("");
     const cleanedProducts = (form.products || []).filter((it) => (typeof it === "string" ? true : Number(it.qty) > 0));
+    if (!initial && !window.confirm(`Save new case for ${form.patientName.trim()}?`)) return;
     try { localStorage.removeItem(newCaseDraftKey); } catch (e) {}
     onSave({ ...form, products: cleanedProducts, totalAmount: Number(form.totalAmount) || 0, machineRentalAmount: Number(form.machineRentalAmount) || 0, doctorCommission: Number(form.doctorCommission) || 0, protocolDays: form.machineSerial ? (Number(form.protocolDays) || 5) : 0, status: form.machineSerial ? form.status : "na" });
   };
@@ -3232,6 +3235,7 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
         <QuotationForm products={products} initial={editing} quotations={quotations}
           onCancel={() => { setShowForm(false); setEditing(null); }}
           onSave={(data) => {
+            if (!editing && !window.confirm(`Save new quotation for ${data.customerName || "this customer"}?`)) return;
             saveQuotation({ ...data, createdBy: editing ? (editing.createdBy || creatorName) : creatorName }, editing?.id);
             setShowForm(false); setEditing(null);
           }} />
@@ -3583,6 +3587,7 @@ function MachinesTab({ machines, setMachines, machineInUse, cases, businessId })
       alert(`A machine with serial "${serial.trim()}" already exists.`);
       return;
     }
+    if (!window.confirm(`Add machine with serial "${serial.trim()}"?`)) return;
     setMachines((prev) => [...prev, { id: uid(), serial: serial.trim(), model: model.trim() || "NPWT Unit" }]);
     setSerial(""); setModel(""); setShowForm(false);
   };
@@ -4015,6 +4020,7 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
       alert(`A product named "${name.trim()}" already exists.`);
       return;
     }
+    if (!window.confirm(`Add "${name.trim()}" as a new product?`)) return;
     setProducts((prev) => [...prev, {
       id: uid(), name: name.trim(), company: initCompany.trim(),
       available: Number(initQty) || 0, used: 0,
@@ -4139,6 +4145,7 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
   const submit = () => {
     if (!name.trim()) return;
     if (doctorsList.some((d) => d.name.trim().toLowerCase() === name.trim().toLowerCase())) { alert("This doctor is already in the list."); return; }
+    if (!window.confirm(`Add "${name.trim()}" as a new doctor?`)) return;
     addDoctorMaster({ name: name.trim(), mobile: mobile.trim(), speciality: speciality.trim(), doctorClass });
     setName(""); setMobile(""); setSpeciality(""); setDoctorClass("A");
   };
