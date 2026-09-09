@@ -4005,6 +4005,8 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
   const [initQty, setInitQty] = useState("");
   const [initCost, setInitCost] = useState("");
   const [initMrp, setInitMrp] = useState("");
+  const [initHsn, setInitHsn] = useState("");
+  const [initGst, setInitGst] = useState("");
   const [receiveForm, setReceiveForm] = useState({});
 
   const addProduct = () => {
@@ -4017,9 +4019,10 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
       id: uid(), name: name.trim(), company: initCompany.trim(),
       available: Number(initQty) || 0, used: 0,
       costPrice: Number(initCost) || 0, mrp: Number(initMrp) || 0,
+      hsnCode: initHsn.trim(), gstPercent: Number(initGst) || 0,
       receipts: [], variants: [],
     }]);
-    setName(""); setInitCompany(""); setInitQty(""); setInitCost(""); setInitMrp("");
+    setName(""); setInitCompany(""); setInitQty(""); setInitCost(""); setInitMrp(""); setInitHsn(""); setInitGst("");
   };
 
   const remove = (id) => {
@@ -4058,6 +4061,10 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
           <input style={{ ...styles.smallInput, width: 90 }} type="number" placeholder="Cost ₹" value={initCost} onChange={(e) => setInitCost(e.target.value)} />
           <input style={{ ...styles.smallInput, width: 90 }} type="number" placeholder="MRP ₹" value={initMrp} onChange={(e) => setInitMrp(e.target.value)} />
         </div>
+        <div style={styles.addPaymentRow}>
+          <input style={{ ...styles.smallInput, width: 110 }} type="text" placeholder="HSN code" value={initHsn} onChange={(e) => setInitHsn(e.target.value)} />
+          <input style={{ ...styles.smallInput, width: 90 }} type="number" placeholder="GST %" value={initGst} onChange={(e) => setInitGst(e.target.value)} />
+        </div>
         <button style={styles.primaryBtn} onClick={addProduct} disabled={!name.trim() || !initCompany.trim()}>Add Product</button>
       </div>
 
@@ -4077,12 +4084,17 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
                     <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.used || 0} used</div>
                   </div>
                 </div>
-                {nearestExpiry(p) && (
-                  <div style={{ fontSize: 11, marginBottom: 6, color: new Date(nearestExpiry(p).expiryDate) < new Date() ? "#E1483C" : "#D98D2B", fontWeight: 700 }}>
-                    {new Date(nearestExpiry(p).expiryDate) < new Date() ? "⚠️ Expired batch: " : "Nearest expiry: "}
-                    {fmtDate(nearestExpiry(p).expiryDate)}{nearestExpiry(p).batchNo ? ` (Batch ${nearestExpiry(p).batchNo})` : ""}
-                  </div>
-                )}
+                {nearestExpiry(p) && (() => {
+                  const [ey, em] = nearestExpiry(p).expiryDate.split("-");
+                  const expiryCompare = new Date(Number(ey), Number(em), 0); // last day of that month
+                  const isExpired = expiryCompare < new Date();
+                  return (
+                    <div style={{ fontSize: 11, marginBottom: 6, color: isExpired ? "#E1483C" : "#D98D2B", fontWeight: 700 }}>
+                      {isExpired ? "⚠️ Expired batch: " : "Nearest expiry: "}
+                      {em}/{ey}{nearestExpiry(p).batchNo ? ` (Batch ${nearestExpiry(p).batchNo})` : ""}
+                    </div>
+                  );
+                })()}
                 <div style={styles.addPaymentRow}>
                   <span style={{ fontSize: 12, color: "#8A9A96" }}>Cost ₹</span>
                   <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, "costPrice", e.target.value)} />
@@ -4090,9 +4102,15 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
                   <input type="number" style={styles.smallInput} defaultValue={p.mrp || 0} onBlur={(e) => updateCost(p.id, "mrp", e.target.value)} />
                 </div>
                 <div style={styles.addPaymentRow}>
+                  <span style={{ fontSize: 12, color: "#8A9A96" }}>HSN</span>
+                  <input type="text" style={styles.smallInput} defaultValue={p.hsnCode || ""} onBlur={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, hsnCode: e.target.value.trim() } : x))} />
+                  <span style={{ fontSize: 12, color: "#8A9A96" }}>GST %</span>
+                  <input type="number" style={styles.smallInput} defaultValue={p.gstPercent || 0} onBlur={(e) => updateCost(p.id, "gstPercent", e.target.value)} />
+                </div>
+                <div style={styles.addPaymentRow}>
                   <input type="number" placeholder="Qty received" style={{ ...styles.smallInput, width: 90 }} value={(receiveForm[p.id] || {}).qty || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { ...prev[p.id], qty: e.target.value } }))} />
                   <input type="text" placeholder="Batch no." style={{ ...styles.smallInput, width: 100 }} value={(receiveForm[p.id] || {}).batchNo || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { ...prev[p.id], batchNo: e.target.value } }))} />
-                  <input type="date" placeholder="Expiry" style={{ ...styles.smallInput, width: 130 }} value={(receiveForm[p.id] || {}).expiryDate || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { ...prev[p.id], expiryDate: e.target.value } }))} />
+                  <input type="month" placeholder="Expiry (MM/YYYY)" style={{ ...styles.smallInput, width: 130 }} value={(receiveForm[p.id] || {}).expiryDate || ""} onChange={(e) => setReceiveForm((prev) => ({ ...prev, [p.id]: { ...prev[p.id], expiryDate: e.target.value } }))} />
                   <button style={styles.smallBtn} onClick={() => doReceive(p.id)}>Receive Stock</button>
                   <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => remove(p.id)}>Remove</button>
                 </div>
