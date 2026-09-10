@@ -1614,12 +1614,52 @@ function CombinedSummaryTab({ businesses }) {
     profit: acc.profit + b.profit, activeCount: acc.activeCount + b.activeCount, caseCount: acc.caseCount + b.caseCount,
   }), { revenue: 0, collected: 0, outstanding: 0, profit: 0, activeCount: 0, caseCount: 0 }), [perBusiness]);
 
+  const comparisonChartData = useMemo(() => [
+    { metric: "Revenue", ...Object.fromEntries(perBusiness.map((b) => [b.name, b.revenue])) },
+    { metric: "Collected", ...Object.fromEntries(perBusiness.map((b) => [b.name, b.collected])) },
+    { metric: "Outstanding", ...Object.fromEntries(perBusiness.map((b) => [b.name, b.outstanding])) },
+    { metric: "Expenses", ...Object.fromEntries(perBusiness.map((b) => [b.name, b.opex])) },
+    { metric: "Profit", ...Object.fromEntries(perBusiness.map((b) => [b.name, b.profit])) },
+  ], [perBusiness]);
+
   if (loading) return <div style={styles.emptyState2}>Loading both businesses…</div>;
 
   return (
     <div>
       <div style={styles.emptyState2}>Combined totals across all businesses. Pulled fresh each time you open this tab.</div>
       <button style={{ ...styles.linkBtn, marginBottom: 12 }} onClick={load}>↻ Refresh</button>
+
+      <SectionTitle>Business Comparison</SectionTitle>
+      <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={comparisonChartData} margin={{ left: 0, right: 10, top: 5, bottom: 5 }}>
+            <CartesianGrid stroke="#EEF1EC" vertical={false} />
+            <XAxis dataKey="metric" tick={{ fontSize: 10, fill: "#8A9A96" }} />
+            <YAxis tick={{ fontSize: 10, fill: "#8A9A96" }} />
+            <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {perBusiness.map((b, i) => (
+              <Bar key={b.id} dataKey={b.name} name={b.name} fill={["#3B5BA5", "#D9720A"][i % 2]} radius={[4, 4, 0, 0]} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div style={{ ...styles.card, marginBottom: 16 }}>
+        <div style={{ display: "flex", padding: "10px 14px", borderBottom: "1px solid #F0EEE3", fontWeight: 700, fontSize: 12, color: "#8A9A96" }}>
+          <span style={{ flex: 1.4 }}>Metric</span>
+          {perBusiness.map((b) => <span key={b.id} style={{ flex: 1, textAlign: "right" }}>{b.name}</span>)}
+        </div>
+        {comparisonChartData.map((row) => (
+          <div key={row.metric} style={{ display: "flex", padding: "10px 14px", borderBottom: "1px solid #F0EEE3", fontSize: 13 }}>
+            <span style={{ flex: 1.4, fontWeight: 600 }}>{row.metric}</span>
+            {perBusiness.map((b) => (
+              <span key={b.id} style={{ flex: 1, textAlign: "right", color: row.metric === "Profit" ? (row[b.name] >= 0 ? "#128577" : "#E1483C") : "inherit" }}>
+                {fmtMoney(row[b.name] || 0)}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
 
       <SectionTitle>Combined Totals</SectionTitle>
       <div style={styles.cardGrid}>
@@ -5961,6 +6001,18 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         <div style={styles.emptyState2}>View only — add or edit these in the Expenses tab.</div>
         {expensesByCategory.length === 0 ? <EmptyState text="No expenses logged yet." /> : (
           <>
+            <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 12 }}>
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie data={expensesByCategory} dataKey="amount" nameKey="category" cx="50%" cy="50%" outerRadius={80}
+                    label={(d) => `${d.category} ${((d.amount / expensesTotal) * 100).toFixed(0)}%`}>
+                    {expensesByCategory.map((c, i) => <Cell key={i} fill={["#3B5BA5", "#D9720A", "#128577", "#E1483C", "#D98D2B", "#6E0F1A", "#8A9A96"][i % 7]} />)}
+                  </Pie>
+                  <Tooltip formatter={(v) => fmtMoney(v)} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
             <div style={{ ...styles.card, marginBottom: 12 }}>
               {expensesByCategory.map((c) => (
                 <div key={c.category} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{c.category}</span><span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(c.amount)}</span></div>
