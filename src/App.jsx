@@ -3088,6 +3088,25 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
       .sort((a, b) => b.overdue - a.overdue || new Date(a.due) - new Date(b.due));
   }, [cases]);
 
+  const activityTrend = useMemo(() => {
+    const days = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = addDays(todayISO(), -i);
+      days.push({ date: d, label: new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }), changes: 0, newCases: 0 });
+    }
+    const byDate = Object.fromEntries(days.map((d) => [d.date, d]));
+    cases.forEach((c) => {
+      if (byDate[c.applicationDate]) byDate[c.applicationDate].newCases += 1;
+      (c.dressingChanges || []).forEach((e) => {
+        if (e.loggedAt) {
+          const d = e.loggedAt.slice(0, 10);
+          if (byDate[d]) byDate[d].changes += 1;
+        }
+      });
+    });
+    return days;
+  }, [cases]);
+
   return (
     <div>
       <div style={styles.cardGrid}>
@@ -3096,6 +3115,21 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
         <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => goToCases("outstanding")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
         <StatCard label="Cash Pending Handover" value={fmtMoney(cashPendingHandoverTotal)} accent={cashPendingHandoverTotal > 0 ? "#E1483C" : "#128577"} icon="reports" onClick={() => setTab("reports")} />
+      </div>
+
+      <SectionTitle>14-Day Activity Trend</SectionTitle>
+      <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 20 }}>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={activityTrend} margin={{ left: -10, right: 15, top: 5, bottom: 5 }}>
+            <CartesianGrid stroke="#EEF1EC" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 9, fill: "#8A9A96" }} interval={1} />
+            <YAxis tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="changes" name="Dressing Changes" stroke="#3B5BA5" strokeWidth={2.5} dot={{ r: 2 }} />
+            <Line type="monotone" dataKey="newCases" name="New Cases" stroke="#D9720A" strokeWidth={2.5} dot={{ r: 2 }} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
 
       {todaysVisits.length > 0 && (
