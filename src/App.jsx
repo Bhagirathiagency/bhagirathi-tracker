@@ -2812,6 +2812,13 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
 // ---------------- Dashboard ----------------
 function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInUseCount, overdueCount, dueSoonCount, dresserStats, lowStock, products, setTab, goToCases, doctorsList = [], businessName = "Bhagirathi Agency" }) {
   const recentCases = [...cases].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)).slice(0, 5);
+  const cashPendingHandoverTotal = useMemo(() => {
+    let total = 0;
+    cases.forEach((c) => (c.payments || []).forEach((p) => {
+      if (p.mode === "Cash" && p.collectedBy && !p.handedOver) total += Number(p.amount || 0);
+    }));
+    return total;
+  }, [cases]);
 
   const todaysVisits = useMemo(() => {
     const tomorrow = addDays(todayISO(), 1);
@@ -2829,6 +2836,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
         <StatCard label="Change Due / Overdue" value={dueSoonCount} accent="#E1483C" icon="reports" onClick={() => goToCases("overdue")} />
         <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => goToCases("outstanding")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
+        <StatCard label="Cash Pending Handover" value={fmtMoney(cashPendingHandoverTotal)} accent={cashPendingHandoverTotal > 0 ? "#E1483C" : "#128577"} icon="reports" onClick={() => setTab("reports")} />
       </div>
 
       {todaysVisits.length > 0 && (
