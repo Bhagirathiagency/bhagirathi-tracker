@@ -4244,6 +4244,9 @@ function MachinesTab({ machines, setMachines, machineInUse, cases, businessId })
             return (
               <div key={m.id} style={{ ...styles.card, background: inUse ? "#FBEAD3" : "#E3F3EF", border: `1px solid ${inUse ? "#D9720A" : "#128577"}` }}>
                 <div style={styles.cardTop} onClick={() => setOpenId(open ? null : m.id)}>
+                  <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: `linear-gradient(135deg, ${inUse ? "#D9720A" : "#128577"} 0%, ${inUse ? "#D9720A" : "#128577"}CC 100%)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 10px ${inUse ? "#D9720A" : "#128577"}40`, marginRight: 10 }}>
+                    <Icon name="machines" size={18} />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={styles.cardTitle}>{m.serial}</div>
                     <div style={styles.cardMeta}>{m.model}</div>
@@ -4806,8 +4809,11 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
             const editing = edits[d.id];
             const cls = classInfo[d.doctorClass] || classInfo.A;
             return (
-              <div key={d.id} style={styles.card}>
+              <div key={d.id} style={{ ...styles.card, borderLeft: `4px solid ${cls.color}` }}>
                 <div style={styles.cardTop} onClick={() => setOpenId(open ? null : d.id)}>
+                  <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: `linear-gradient(135deg, ${cls.color} 0%, ${cls.color}CC 100%)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 10px ${cls.color}40`, marginRight: 10 }}>
+                    <Icon name="doctor" size={18} />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={styles.cardTitle}>{d.name}</div>
                     <div style={styles.cardMeta}>{d.speciality || "—"} · {caseCountFor(d.name)} case{caseCountFor(d.name) === 1 ? "" : "s"}</div>
@@ -4941,12 +4947,12 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
           {dressers.map((d) => {
             const open = openId === d;
             return (
-            <div key={d} style={styles.card}>
+            <div key={d} style={{ ...styles.card, borderLeft: "4px solid #D9720A" }}>
               <div style={styles.cardTop} onClick={() => setOpenId(open ? null : d)}>
                 {(dresserProfiles && dresserProfiles[d] && dresserProfiles[d].photo) ? (
-                  <img src={dresserProfiles[d].photo} alt={d} style={{ width: 40, height: 40, borderRadius: 10, objectFit: "cover", marginRight: 10 }} />
+                  <img src={dresserProfiles[d].photo} alt={d} style={{ width: 40, height: 40, borderRadius: 10, objectFit: "cover", marginRight: 10, boxShadow: "0 4px 10px rgba(217,114,10,0.3)" }} />
                 ) : (
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "#FBEAD3", color: "#D9720A", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, marginRight: 10, fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #D9720A 0%, #D9720ACC 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, marginRight: 10, fontFamily: "'Space Grotesk', sans-serif", boxShadow: "0 4px 10px rgba(217,114,10,0.4)" }}>
                     {d.charAt(0).toUpperCase()}
                   </div>
                 )}
