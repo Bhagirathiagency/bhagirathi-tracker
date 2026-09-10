@@ -2049,14 +2049,16 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
     return list;
   }, [cases, name]);
   const myCashPendingTotal = myCashPendingList.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const [activeDresserSection, setActiveDresserSection] = useState(null);
+  const DRESSER_SECTION_ID_MAP = {
+    "dresser-cash-with-me": "cashWithMe",
+    "dresser-due-visits": "todaysVisits",
+    "dresser-active-cases": "casesOnTherapy",
+    "dresser-your-reporting": "yourReporting",
+  };
   const goToDresserSection = (sectionId) => {
-    const header = document.querySelector(`[data-collapsible-header="${sectionId}-header"]`);
-    const wrapper = document.getElementById(sectionId);
-    if (header && wrapper) {
-      const arrow = header.querySelector("span:last-child");
-      if (arrow && arrow.textContent === "▼") header.click();
-      setTimeout(() => wrapper.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    }
+    setActiveDresserSection(DRESSER_SECTION_ID_MAP[sectionId] || sectionId);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   };
   const myOutstandingCases = useMemo(() => cases
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
@@ -2156,37 +2158,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           </button>
         </div>
 
-        <CollapsibleSection id="dresser-cash-with-me" title="Cash With Me" defaultOpen={myCashPendingList.length > 0}
-          right={myCashPendingList.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(myCashPendingTotal)}</span> : null}>
-          {myCashPendingList.length === 0 ? (
-            <EmptyState text="You're not holding any cash right now — everything's been handed over." />
-          ) : (
-            <div style={styles.card}>
-              {myCashPendingList.map((p, i) => (
-                <div key={i} style={{ padding: "10px 14px", borderBottom: i < myCashPendingList.length - 1 ? "1px solid #F0EEE3" : "none" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: 700, fontSize: 13 }}>{p.source}</span>
-                    <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(p.amount)}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#8A9A96", marginTop: 2 }}>Collected {fmtDate(p.date)} — waiting for Owner to confirm received</div>
-                </div>
-              ))}
-              <div style={{ padding: "10px 14px", fontSize: 12, color: "#5B6864", background: "#FFF7F5" }}>Please hand this over to the Owner as soon as possible.</div>
-            </div>
-          )}
-        </CollapsibleSection>
 
-        <CollapsibleSection title={t("myProfile")}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <span style={{ ...styles.fieldLabel, marginBottom: 0 }}>{t("language")}:</span>
-            <select value={lang} onChange={(e) => changeLang(e.target.value)} style={styles.smallInput}>
-              <option value="en">English</option>
-              <option value="hi">हिन्दी (Hindi)</option>
-              <option value="mr">मराठी (Marathi)</option>
-            </select>
-          </div>
-          <DresserProfileForm name={name} profile={profile} setDresserProfile={setDresserProfile} businessName={business.name} />
-        </CollapsibleSection>
 
         <div style={{ display: "flex", gap: 8, margin: "6px 0 16px" }}>
           <button style={{ ...styles.primaryBtn, margin: 0, flex: 1 }} onClick={() => setShowForm(true)}>{t("newCase")}</button>
@@ -2285,6 +2257,142 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           </div>
         )}
 
+
+
+
+
+
+
+
+
+        {activeDresserSection === null && (
+          <nav style={styles.navGrid}>
+          <button onClick={() => setActiveDresserSection("cashWithMe")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#E1483C1A", borderColor: "#E1483C40", color: "#E1483C" }}>
+              <Icon name="expense" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Cash With Me</span>
+          </button>
+          <button onClick={() => setActiveDresserSection("myProfile")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#5B68641A", borderColor: "#5B686440", color: "#5B6864" }}>
+              <Icon name="settings" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>My Profile</span>
+          </button>
+          <button onClick={() => setActiveDresserSection("todaysVisits")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#D9720A1A", borderColor: "#D9720A40", color: "#D9720A" }}>
+              <Icon name="bell" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Today's Visits</span>
+          </button>
+          <button onClick={() => setActiveDresserSection("monthlyActivity")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#3B5BA51A", borderColor: "#3B5BA540", color: "#3B5BA5" }}>
+              <Icon name="overview" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>This Month's Activity</span>
+          </button>
+          <button onClick={() => setActiveDresserSection("casesOnTherapy")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#1285771A", borderColor: "#12857740", color: "#128577" }}>
+              <Icon name="cases" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Patients on Therapy</span>
+          </button>
+          <button onClick={() => setActiveDresserSection("patientHistory")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#8A9A961A", borderColor: "#8A9A9640", color: "#8A9A96" }}>
+              <Icon name="reports" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Patient History</span>
+          </button>
+          <button onClick={() => setActiveDresserSection("yourReporting")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#D98D2B1A", borderColor: "#D98D2B40", color: "#D98D2B" }}>
+              <Icon name="quotes" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Your Reporting</span>
+          </button>
+          <button onClick={() => setActiveDresserSection("myQuotations")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#2A9D8F1A", borderColor: "#2A9D8F40", color: "#2A9D8F" }}>
+              <Icon name="quotes" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>My Quotations</span>
+          </button>
+          <button onClick={() => setActiveDresserSection("doctorCalls")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#06A77D1A", borderColor: "#06A77D40", color: "#06A77D" }}>
+              <Icon name="doctor" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Doctor Calls</span>
+          </button>
+          {name.trim().toLowerCase() === "devashish" && (
+          <button onClick={() => setActiveDresserSection("previousOutstanding")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#C1121F1A", borderColor: "#C1121F40", color: "#C1121F" }}>
+              <Icon name="expense" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Previous Outstanding</span>
+          </button>
+          )}
+          {canManageStock && (
+          <button onClick={() => setActiveDresserSection("stockAccess")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#457B9D1A", borderColor: "#457B9D40", color: "#457B9D" }}>
+              <Icon name="stock" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Stock</span>
+          </button>
+          )}
+          {canManageStock && (
+          <button onClick={() => setActiveDresserSection("challansAccess")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#8B5CF61A", borderColor: "#8B5CF640", color: "#8B5CF6" }}>
+              <Icon name="challan" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Delivery Challans</span>
+          </button>
+          )}
+          </nav>
+        )}
+
+        {activeDresserSection === "cashWithMe" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
+        <CollapsibleSection id="dresser-cash-with-me" title="Cash With Me" defaultOpen={myCashPendingList.length > 0}
+          right={myCashPendingList.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(myCashPendingTotal)}</span> : null}>
+          {myCashPendingList.length === 0 ? (
+            <EmptyState text="You're not holding any cash right now — everything's been handed over." />
+          ) : (
+            <div style={styles.card}>
+              {myCashPendingList.map((p, i) => (
+                <div key={i} style={{ padding: "10px 14px", borderBottom: i < myCashPendingList.length - 1 ? "1px solid #F0EEE3" : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{p.source}</span>
+                    <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(p.amount)}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#8A9A96", marginTop: 2 }}>Collected {fmtDate(p.date)} — waiting for Owner to confirm received</div>
+                </div>
+              ))}
+              <div style={{ padding: "10px 14px", fontSize: 12, color: "#5B6864", background: "#FFF7F5" }}>Please hand this over to the Owner as soon as possible.</div>
+            </div>
+          )}
+        </CollapsibleSection>
+          </div>
+        )}
+
+        {activeDresserSection === "myProfile" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
+        <CollapsibleSection title={t("myProfile")}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <span style={{ ...styles.fieldLabel, marginBottom: 0 }}>{t("language")}:</span>
+            <select value={lang} onChange={(e) => changeLang(e.target.value)} style={styles.smallInput}>
+              <option value="en">English</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+              <option value="mr">मराठी (Marathi)</option>
+            </select>
+          </div>
+          <DresserProfileForm name={name} profile={profile} setDresserProfile={setDresserProfile} businessName={business.name} />
+        </CollapsibleSection>
+          </div>
+        )}
+
+        {activeDresserSection === "todaysVisits" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         {myTodaysVisits.length > 0 && (
           <CollapsibleSection id="dresser-due-visits" title={t("todaysVisits")} right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
             <div style={styles.card}>
@@ -2299,7 +2407,12 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             </div>
           </CollapsibleSection>
         )}
+          </div>
+        )}
 
+        {activeDresserSection === "monthlyActivity" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         <CollapsibleSection title="This Month's Activity">
           {monthlyPieTotal === 0 ? <EmptyState text="No activity logged yet this month." /> : (
             <>
@@ -2319,7 +2432,12 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             </>
           )}
         </CollapsibleSection>
+          </div>
+        )}
 
+        {activeDresserSection === "casesOnTherapy" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         <CollapsibleSection id="dresser-active-cases" title={t("casesOnTherapy")}>
           {myCasesActive.length === 0 ? <EmptyState text="No active cases right now." /> : (
             <div style={styles.list}>
@@ -2335,7 +2453,12 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             </div>
           )}
         </CollapsibleSection>
+          </div>
+        )}
 
+        {activeDresserSection === "patientHistory" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         <CollapsibleSection title={t("patientHistory")} right={myCasesHistory.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#8A9A96" }}>{myCasesHistory.length}</span> : null}>
           {myCasesHistory.length === 0 ? <EmptyState text="Patients you've treated will show up here once their therapy is stopped or reapplied." /> : (
             <div style={styles.list}>
@@ -2370,7 +2493,12 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             </div>
           )}
         </CollapsibleSection>
+          </div>
+        )}
 
+        {activeDresserSection === "yourReporting" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         <CollapsibleSection id="dresser-your-reporting" title={t("yourReporting")}>
           <div style={styles.cardGrid}>
             <div style={{ ...styles.statCard, borderColor: "#D9720A33" }} onClick={() => setMyReportView(myReportView === "changes" ? null : "changes")}>
@@ -2407,34 +2535,63 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             )
           )}
         </CollapsibleSection>
+          </div>
+        )}
 
+        {activeDresserSection === "myQuotations" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         <CollapsibleSection title={t("myQuotations")}>
           <QuotationsTab quotations={quotations} products={products} saveQuotation={saveQuotation}
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
             creatorName={name} restrictToCreator businessName={business.name} />
         </CollapsibleSection>
+          </div>
+        )}
 
+        {activeDresserSection === "doctorCalls" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         <CollapsibleSection title={t("doctorCalls")}>
           <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} doctorsList={doctorsList} addDoctorMaster={addDoctorMaster}
             discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic} />
         </CollapsibleSection>
+          </div>
+        )}
 
+        {activeDresserSection === "previousOutstanding" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         {name.trim().toLowerCase() === "devashish" && (
           <CollapsibleSection title="Add Previous Outstanding">
             <PreviousOutstandingQuickAdd addPreviousOutstanding={addPreviousOutstanding} />
           </CollapsibleSection>
         )}
+          </div>
+        )}
+
+        {activeDresserSection === "stockAccess" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         {canManageStock && (
           <CollapsibleSection title="Stock">
             <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} actorName={name} businessId={businessId} cases={cases} />
           </CollapsibleSection>
         )}
+          </div>
+        )}
+
+        {activeDresserSection === "challansAccess" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         {canManageStock && (
           <CollapsibleSection title="Delivery Challans">
             <ChallansTab challans={challans} products={products} cases={cases}
               createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
               businessName={business.name} />
           </CollapsibleSection>
+        )}
+          </div>
         )}
       </main>
     </>
