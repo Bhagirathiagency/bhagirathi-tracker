@@ -1937,6 +1937,16 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
       return s + Math.max(0, Number(c.totalAmount || 0) - paid);
     }, 0), [cases, name]);
   const myOverdueCount = useMemo(() => myCasesActive.filter((c) => overdueDays(c) > 0).length, [myCasesActive]);
+  const myCashPendingList = useMemo(() => {
+    const list = [];
+    cases.forEach((c) => (c.payments || []).forEach((p) => {
+      if (p.mode === "Cash" && p.collectedBy === name && !p.handedOver) {
+        list.push({ amount: p.amount, source: c.billTo === "Hospital" ? (c.hospitalName || "Hospital") : c.patientName, date: p.date });
+      }
+    }));
+    return list;
+  }, [cases, name]);
+  const myCashPendingTotal = myCashPendingList.reduce((s, p) => s + Number(p.amount || 0), 0);
   const goToDresserSection = (sectionId) => {
     const header = document.querySelector(`[data-collapsible-header="${sectionId}-header"]`);
     const wrapper = document.getElementById(sectionId);
@@ -2038,38 +2048,31 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             <div style={{ ...styles.statValue, color: "#D9720A" }}>{myChanges.length}</div>
             <div style={styles.statLabel}>Dressings logged (all-time)</div>
           </button>
+          <button onClick={() => goToDresserSection("dresser-cash-with-me")} style={{ ...styles.statCard, borderColor: myCashPendingTotal > 0 ? "#E1483C33" : "#12857733" }}>
+            <div style={{ ...styles.statValue, color: myCashPendingTotal > 0 ? "#E1483C" : "#128577" }}>{fmtMoney(myCashPendingTotal)}</div>
+            <div style={styles.statLabel}>Cash With Me</div>
+          </button>
         </div>
 
-        {(() => {
-          const myCashPending = [];
-          cases.forEach((c) => (c.payments || []).forEach((p) => {
-            if (p.mode === "Cash" && p.collectedBy === name && !p.handedOver) {
-              myCashPending.push({ amount: p.amount, source: c.billTo === "Hospital" ? (c.hospitalName || "Hospital") : c.patientName, date: p.date });
-            }
-          }));
-          const total = myCashPending.reduce((s, p) => s + Number(p.amount || 0), 0);
-          return (
-            <CollapsibleSection id="dresser-cash-with-me" title="Cash With Me" defaultOpen={myCashPending.length > 0}
-              right={myCashPending.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(total)}</span> : null}>
-              {myCashPending.length === 0 ? (
-                <EmptyState text="You're not holding any cash right now — everything's been handed over." />
-              ) : (
-                <div style={styles.card}>
-                  {myCashPending.map((p, i) => (
-                    <div key={i} style={{ padding: "10px 14px", borderBottom: i < myCashPending.length - 1 ? "1px solid #F0EEE3" : "none" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontWeight: 700, fontSize: 13 }}>{p.source}</span>
-                        <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(p.amount)}</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: "#8A9A96", marginTop: 2 }}>Collected {fmtDate(p.date)} — waiting for Owner to confirm received</div>
-                    </div>
-                  ))}
-                  <div style={{ padding: "10px 14px", fontSize: 12, color: "#5B6864", background: "#FFF7F5" }}>Please hand this over to the Owner as soon as possible.</div>
+        <CollapsibleSection id="dresser-cash-with-me" title="Cash With Me" defaultOpen={myCashPendingList.length > 0}
+          right={myCashPendingList.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(myCashPendingTotal)}</span> : null}>
+          {myCashPendingList.length === 0 ? (
+            <EmptyState text="You're not holding any cash right now — everything's been handed over." />
+          ) : (
+            <div style={styles.card}>
+              {myCashPendingList.map((p, i) => (
+                <div key={i} style={{ padding: "10px 14px", borderBottom: i < myCashPendingList.length - 1 ? "1px solid #F0EEE3" : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{p.source}</span>
+                    <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(p.amount)}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#8A9A96", marginTop: 2 }}>Collected {fmtDate(p.date)} — waiting for Owner to confirm received</div>
                 </div>
-              )}
-            </CollapsibleSection>
-          );
-        })()}
+              ))}
+              <div style={{ padding: "10px 14px", fontSize: 12, color: "#5B6864", background: "#FFF7F5" }}>Please hand this over to the Owner as soon as possible.</div>
+            </div>
+          )}
+        </CollapsibleSection>
 
         <CollapsibleSection title={t("myProfile")}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
