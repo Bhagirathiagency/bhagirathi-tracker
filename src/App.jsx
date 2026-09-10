@@ -1392,6 +1392,33 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
   const [casesInitialFilter, setCasesInitialFilter] = useState(null);
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
   const [showPinForm, setShowPinForm] = useState(false);
+  const [liveAlert, setLiveAlert] = useState(null);
+  const activityCountRef = useRef(null);
+
+  // Poll for new dresser activity every 45s while the Owner has the app open, and play a sound if anything new shows up.
+  useEffect(() => {
+    const countActivity = (list) => list.reduce((total, c) => total + (c.dressingChanges || []).length + (c.payments || []).length, 0);
+    if (activityCountRef.current === null) activityCountRef.current = countActivity(cases);
+
+    const checkForUpdates = async () => {
+      try {
+        const fresh = await loadKey(bkey(businessId, "wca-cases"), null);
+        if (!Array.isArray(fresh)) return;
+        const freshCount = countActivity(fresh);
+        if (activityCountRef.current !== null && freshCount > activityCountRef.current) {
+          setLiveAlert("New activity logged by your team — tap Refresh to see it.");
+          try {
+            const audio = new Audio("data:audio/wav;base64,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");
+            audio.play().catch(() => {});
+          } catch (e) {}
+        }
+        activityCountRef.current = freshCount;
+      } catch (e) { /* silent - just skip this check */ }
+    };
+    const interval = setInterval(checkForUpdates, 45000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line
+  }, [businessId]);
 
   const machineInUse = (serial) => cases.some((c) => c.machineSerial === serial && (c.status === "active" || c.status === "reapplied"));
   const outstandingTotal = useMemo(() => cases.reduce((sum, c) => {
@@ -1420,6 +1447,13 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
 
   return (
     <>
+      {liveAlert && (
+        <div style={{ padding: "12px 16px", background: "#128577", color: "#fff", display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 600 }}>
+          <span style={{ flex: 1 }}>🔔 {liveAlert}</span>
+          <button style={{ background: "#fff", color: "#128577", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700, cursor: "pointer" }} onClick={() => { setLiveAlert(null); refreshData(); }}>Refresh</button>
+          <button style={{ background: "transparent", border: "none", color: "#fff", fontSize: 18, cursor: "pointer", padding: "0 4px" }} onClick={() => setLiveAlert(null)}>×</button>
+        </div>
+      )}
       <header style={styles.header}>
         <div style={styles.headerInner}>
           <div style={styles.brandMark}><img src="/bhagirathi-logo.png" alt={business.name} style={styles.brandMarkImg} /></div>
