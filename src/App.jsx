@@ -4681,18 +4681,30 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
       <SectionTitle>Inventory ({products.length})</SectionTitle>
       {products.length === 0 ? <EmptyState text="No products added yet." /> : (
         <div style={styles.list}>
-          {products.map((p) => (
-            <div key={p.id} style={styles.card}>
+          {products.map((p) => {
+            const isLow = (p.available || 0) <= LOW_STOCK_THRESHOLD;
+            const stockColor = isLow ? "#E1483C" : "#128577";
+            const stockPct = Math.min(100, Math.round(((p.available || 0) / Math.max(1, LOW_STOCK_THRESHOLD * 4)) * 100));
+            return (
+            <div key={p.id} style={{ ...styles.card, borderLeft: `4px solid ${stockColor}` }}>
               <div style={{ padding: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{p.name || "(unnamed product)"}</div>
-                    <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.company || "Unspecified"}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: `linear-gradient(135deg, ${stockColor} 0%, ${stockColor}CC 100%)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 10px ${stockColor}40` }}>
+                      <Icon name="stock" size={18} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{p.name || "(unnamed product)"}</div>
+                      <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.company || "Unspecified"}</div>
+                    </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 700, color: (p.available || 0) <= LOW_STOCK_THRESHOLD ? "#E1483C" : "#128577" }}>{p.available || 0} available</div>
+                    <div style={{ fontWeight: 700, color: stockColor }}>{p.available || 0} available</div>
                     <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.used || 0} used</div>
                   </div>
+                </div>
+                <div style={{ height: 6, borderRadius: 4, background: "#EEF1EC", overflow: "hidden", marginBottom: 10 }}>
+                  <div style={{ height: "100%", width: `${stockPct}%`, background: stockColor, borderRadius: 4, transition: "width 0.3s" }} />
                 </div>
                 {nearestExpiry(p) && (() => {
                   const [ey, em] = nearestExpiry(p).expiryDate.split("-");
@@ -4726,7 +4738,8 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
