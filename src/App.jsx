@@ -1862,6 +1862,11 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
   const [quickProtocol, setQuickProtocol] = useState(5);
   const [quickProducts, setQuickProducts] = useState([]);
   const [quickNote, setQuickNote] = useState("");
+  const [quickExtraProduct, setQuickExtraProduct] = useState("");
+  const [quickExtraQty, setQuickExtraQty] = useState(1);
+  const [quickExtraCharge, setQuickExtraCharge] = useState("");
+  const [quickPayAmount, setQuickPayAmount] = useState("");
+  const [quickPayMode, setQuickPayMode] = useState("Cash");
   const [lang, setLang] = useState(() => {
     try { return localStorage.getItem(`wca-lang-${name}`) || "en"; } catch (e) { return "en"; }
   });
@@ -2064,6 +2069,25 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                 <div style={{ ...styles.detailLabel, marginTop: 8 }}>Products used for reapplication</div>
                 <ProductsUsedPicker products={products} selected={quickProducts} onChange={setQuickProducts} />
                 <Field label="Note (optional)"><input style={styles.input} value={quickNote} onChange={(e) => setQuickNote(e.target.value)} placeholder="e.g. wound reassessed, reapplied" /></Field>
+
+                <div style={{ ...styles.detailLabel, marginTop: 12, color: "#D9720A" }}>💰 Extra Product Needed (This Charges the Patient)</div>
+                <div style={{ ...styles.mutedSmall, marginBottom: 6 }}>Only if something extra beyond what's already included is needed — this adds to their bill.</div>
+                <div style={styles.addPaymentRow}>
+                  <select style={{ ...styles.smallInput, flex: 1 }} value={quickExtraProduct} onChange={(e) => setQuickExtraProduct(e.target.value)}>
+                    <option value="">— Select product —</option>
+                    {products.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                  <input type="number" placeholder="Qty" style={{ ...styles.smallInput, width: 70 }} value={quickExtraQty} onChange={(e) => setQuickExtraQty(e.target.value)} />
+                  <input type="number" placeholder="Charge ₹" style={{ ...styles.smallInput, width: 90 }} value={quickExtraCharge} onChange={(e) => setQuickExtraCharge(e.target.value)} />
+                </div>
+
+                <div style={{ ...styles.detailLabel, marginTop: 12 }}>Payment Collected Now (optional)</div>
+                <div style={styles.addPaymentRow}>
+                  <input type="number" placeholder="Amount ₹" style={styles.smallInput} value={quickPayAmount} onChange={(e) => setQuickPayAmount(e.target.value)} />
+                  <select style={styles.smallInput} value={quickPayMode} onChange={(e) => setQuickPayMode(e.target.value)}>
+                    {PAY_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
               </>
             )}
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
@@ -2073,7 +2097,14 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                 if (!c) return;
                 addDressingChange(c.id, { date: todayISO(), dresserName: name, protocolDays: quickProtocol, note: quickNote || "Reapplied", products: quickProducts.filter((p) => Number(p.qty) > 0) });
                 saveCase({ ...c, status: "reapplied", endDate: todayISO() }, c.id);
+                if (quickExtraProduct && Number(quickExtraCharge) > 0) {
+                  addAdditionalItem(c.id, { name: quickExtraProduct, qty: Number(quickExtraQty) || 1, extraCharge: Number(quickExtraCharge), note: "Reapplication" });
+                }
+                if (Number(quickPayAmount) > 0) {
+                  addPayment(c.id, { amount: Number(quickPayAmount), mode: quickPayMode, note: "Collected at reapplication", date: todayISO(), collectedBy: name, handedOver: quickPayMode !== "Cash" });
+                }
                 setQuickAction(null); setQuickPatientId(""); setQuickProducts([]); setQuickNote("");
+                setQuickExtraProduct(""); setQuickExtraQty(1); setQuickExtraCharge(""); setQuickPayAmount(""); setQuickPayMode("Cash");
               }}>Confirm Reapply</button>
             </div>
           </div>
