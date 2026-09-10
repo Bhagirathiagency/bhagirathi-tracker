@@ -1501,7 +1501,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.nav}>
-        {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["expenses", "Expenses", "reports"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "dressers"], ["combined", "All Business", "overview"], ["settings", "Master Settings", "reports"]].map(([key, label, icon]) => (
+        {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["notifications", "Notifications", "reports"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["expenses", "Expenses", "reports"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "dressers"], ["combined", "All Business", "overview"], ["settings", "Master Settings", "reports"]].map(([key, label, icon]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
             <Icon name={icon} size={16} />{label}
           </button>
@@ -1513,6 +1513,9 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
           <Dashboard cases={cases} machines={machines} outstandingTotal={outstandingTotal} activeCount={activeCount}
             machinesInUseCount={machinesInUseCount} overdueCount={overdueCount} dueSoonCount={dueSoonCount} dresserStats={dresserStats} lowStock={lowStock}
             products={products} setTab={setTab} goToCases={goToCases} doctorsList={doctorsList} businessName={business.name} />
+        )}
+        {tab === "notifications" && (
+          <NotificationsTab cases={cases} doctorCalls={doctorCalls} confirmPayment={confirmPayment} markPaymentHandedOver={markPaymentHandedOver} />
         )}
         {tab === "cases" && (
           <CasesTab cases={cases} machines={machines} products={products} saveCase={saveCase} deleteCase={deleteCase}
@@ -2894,6 +2897,82 @@ function SectionTitle({ children }) { return <div style={styles.sectionTitle}>{c
 function EmptyState({ text }) { return <div style={styles.emptyState}>{text}</div>; }
 
 // ---------------- Cases (Owner) ----------------
+function NotificationsTab({ cases, doctorCalls = [], confirmPayment, markPaymentHandedOver }) {
+  const [filter, setFilter] = useState("all"); // all | cases | payments | calls
+
+  const feed = useMemo(() => {
+    const items = [];
+    cases.forEach((c) => {
+      (c.dressingChanges || []).forEach((e) => {
+        if (!e.loggedAt) return; // skip the initial-application entry that has no loggedAt
+        items.push({
+          type: "change", timestamp: e.loggedAt, patientName: c.patientName, dresserName: e.dresserName,
+          detail: e.note || "Dressing change logged", caseId: c.id,
+        });
+      });
+      (c.payments || []).forEach((p) => {
+        if (!p.collectedBy) return; // only show dresser-collected payments here, not owner's own entries
+        items.push({
+          type: "payment", timestamp: p.date, patientName: c.patientName, dresserName: p.collectedBy,
+          detail: `${fmtMoney(p.amount)} via ${p.mode || "Cash"}${p.confirmed === false ? " — awaiting your confirmation" : " — confirmed"}`,
+          caseId: c.id, paymentId: p.id, needsConfirm: p.confirmed === false, needsHandover: p.mode === "Cash" && !p.handedOver,
+        });
+      });
+    });
+    doctorCalls.forEach((d) => {
+      items.push({
+        type: "call", timestamp: d.date, patientName: d.doctorName, dresserName: d.dresserName,
+        detail: "Doctor call logged",
+      });
+    });
+    return items
+      .filter((it) => it.timestamp)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 100);
+  }, [cases, doctorCalls]);
+
+  const filtered = filter === "all" ? feed : feed.filter((it) => it.type === (filter === "cases" ? "change" : filter === "payments" ? "payment" : "call"));
+
+  const iconFor = (type) => type === "change" ? "🩹" : type === "payment" ? "💰" : "📞";
+  const colorFor = (type) => type === "change" ? "#3B5BA5" : type === "payment" ? "#128577" : "#D9720A";
+
+  return (
+    <div>
+      <SectionTitle>Notifications</SectionTitle>
+      <div style={styles.emptyState2}>Everything your team has reported, most recent first.</div>
+      <div style={styles.filterRow}>
+        {["all", "cases", "payments", "calls"].map((f) => (
+          <button key={f} onClick={() => setFilter(f)} style={{ ...styles.filterChip, ...(filter === f ? styles.filterChipActive : {}) }}>
+            {f === "all" ? "All" : f === "cases" ? "Dressing Changes" : f === "payments" ? "Payments" : "Doctor Calls"}
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 ? <EmptyState text="No activity yet." /> : (
+        <div style={styles.list}>
+          {filtered.map((it, i) => (
+            <div key={i} style={styles.card}>
+              <div style={{ padding: 12, display: "flex", gap: 10 }}>
+                <div style={{ fontSize: 20 }}>{iconFor(it.type)}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{it.patientName}</div>
+                  <div style={{ fontSize: 12, color: colorFor(it.type) }}>{it.detail}</div>
+                  <div style={{ fontSize: 11, color: "#8A9A96", marginTop: 2 }}>{it.dresserName || "Unknown"} · {new Date(it.timestamp).toLocaleString("en-IN")}</div>
+                  {it.needsConfirm && confirmPayment && (
+                    <button style={{ ...styles.linkBtn, color: "#128577", marginTop: 4 }} onClick={() => confirmPayment(it.caseId, it.paymentId)}>✓ Confirm this payment</button>
+                  )}
+                  {it.needsHandover && markPaymentHandedOver && (
+                    <button style={{ ...styles.linkBtn, color: "#D9720A", marginTop: 4, marginLeft: it.needsConfirm ? 10 : 0 }} onClick={() => markPaymentHandedOver(it.caseId, it.paymentId)}>✓ Mark cash received</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, businessName, doctorsList, initialFilter }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
