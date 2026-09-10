@@ -2950,6 +2950,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
 
 function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, onAddDressingChange, onAddAdditionalItem }) {
   const [open, setOpen] = useState(false);
+  const [quickPayOpen, setQuickPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payNote, setPayNote] = useState("");
   const [payMode, setPayMode] = useState("Cash");
@@ -2998,8 +2999,28 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
           {c.status === "active" && overdue > 0 && <span style={styles.overdueTag}>{overdue}d change overdue</span>}
           {c.status === "active" && overdue === 0 && <span style={styles.mutedSmall}>Due {fmtDate(due)}</span>}
           {outstanding > 0 ? <span style={styles.dueTag}>{fmtMoney(outstanding)} due</span> : <span style={styles.paidTag}>Paid up</span>}
+          {!compact && outstanding > 0 && onAddPayment && (
+            <button style={{ ...styles.linkBtn, fontSize: 11 }} onClick={(e) => { e.stopPropagation(); setQuickPayOpen((o) => !o); }}>💰 Payment</button>
+          )}
         </div>
       </div>
+
+      {!compact && quickPayOpen && (
+        <div style={{ padding: "0 14px 14px" }} onClick={(e) => e.stopPropagation()}>
+          <div style={styles.addPaymentRow}>
+            <input type="number" placeholder="Amount ₹" style={styles.smallInput} value={payAmount} onChange={(e) => setPayAmount(e.target.value)} autoFocus />
+            <select style={styles.smallInput} value={payMode} onChange={(e) => setPayMode(e.target.value)}>
+              {PAY_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <button style={styles.smallBtn} onClick={() => {
+              const amt = Number(payAmount);
+              if (!amt || amt <= 0) return;
+              onAddPayment({ amount: amt, mode: payMode, note: "Quick entry", date: todayISO(), confirmed: true });
+              setPayAmount(""); setQuickPayOpen(false);
+            }}>Confirm</button>
+          </div>
+        </div>
+      )}
 
       {!compact && open && (
         <div style={styles.cardExpanded}>
