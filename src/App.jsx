@@ -1862,9 +1862,6 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
   const [quickProtocol, setQuickProtocol] = useState(5);
   const [quickProducts, setQuickProducts] = useState([]);
   const [quickNote, setQuickNote] = useState("");
-  const [quickExtraProduct, setQuickExtraProduct] = useState("");
-  const [quickExtraQty, setQuickExtraQty] = useState(1);
-  const [quickExtraCharge, setQuickExtraCharge] = useState("");
   const [quickPayAmount, setQuickPayAmount] = useState("");
   const [quickPayMode, setQuickPayMode] = useState("Cash");
   const [lang, setLang] = useState(() => {
@@ -2067,19 +2064,9 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                   </select>
                 </Field>
                 <div style={{ ...styles.detailLabel, marginTop: 8 }}>Products used for reapplication</div>
-                <ProductsUsedPicker products={products} selected={quickProducts} onChange={setQuickProducts} />
+                <div style={{ ...styles.mutedSmall, marginBottom: 4 }}>Leave "Charge ₹" blank if it's already included free — only fill it in if this product should be added to the patient's bill.</div>
+                <ProductsUsedPicker products={products} selected={quickProducts} onChange={setQuickProducts} allowCharge />
                 <Field label="Note (optional)"><input style={styles.input} value={quickNote} onChange={(e) => setQuickNote(e.target.value)} placeholder="e.g. wound reassessed, reapplied" /></Field>
-
-                <div style={{ ...styles.detailLabel, marginTop: 12, color: "#D9720A" }}>💰 Extra Product Needed (This Charges the Patient)</div>
-                <div style={{ ...styles.mutedSmall, marginBottom: 6 }}>Only if something extra beyond what's already included is needed — this adds to their bill.</div>
-                <div style={styles.addPaymentRow}>
-                  <select style={{ ...styles.smallInput, flex: 1 }} value={quickExtraProduct} onChange={(e) => setQuickExtraProduct(e.target.value)}>
-                    <option value="">— Select product —</option>
-                    {products.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
-                  </select>
-                  <input type="number" placeholder="Qty" style={{ ...styles.smallInput, width: 70 }} value={quickExtraQty} onChange={(e) => setQuickExtraQty(e.target.value)} />
-                  <input type="number" placeholder="Charge ₹" style={{ ...styles.smallInput, width: 90 }} value={quickExtraCharge} onChange={(e) => setQuickExtraCharge(e.target.value)} />
-                </div>
 
                 <div style={{ ...styles.detailLabel, marginTop: 12 }}>Payment Collected Now (optional)</div>
                 <div style={styles.addPaymentRow}>
@@ -2095,16 +2082,17 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
               <button style={{ ...styles.smallBtn, background: "#D9720A", flex: 1 }} disabled={!quickPatientId} onClick={() => {
                 const c = myCasesActive.find((x) => x.id === quickPatientId);
                 if (!c) return;
-                addDressingChange(c.id, { date: todayISO(), dresserName: name, protocolDays: quickProtocol, note: quickNote || "Reapplied", products: quickProducts.filter((p) => Number(p.qty) > 0) });
+                const usedLines = quickProducts.filter((p) => Number(p.qty) > 0);
+                addDressingChange(c.id, { date: todayISO(), dresserName: name, protocolDays: quickProtocol, note: quickNote || "Reapplied", products: usedLines });
                 saveCase({ ...c, status: "reapplied", endDate: todayISO() }, c.id);
-                if (quickExtraProduct && Number(quickExtraCharge) > 0) {
-                  addAdditionalItem(c.id, { name: quickExtraProduct, qty: Number(quickExtraQty) || 1, extraCharge: Number(quickExtraCharge), note: "Reapplication" });
-                }
+                usedLines.filter((p) => Number(p.charge) > 0).forEach((p) => {
+                  addAdditionalItem(c.id, { name: p.name, qty: Number(p.qty) || 1, extraCharge: Number(p.charge), note: "Reapplication" });
+                });
                 if (Number(quickPayAmount) > 0) {
                   addPayment(c.id, { amount: Number(quickPayAmount), mode: quickPayMode, note: "Collected at reapplication", date: todayISO(), collectedBy: name, handedOver: quickPayMode !== "Cash" });
                 }
                 setQuickAction(null); setQuickPatientId(""); setQuickProducts([]); setQuickNote("");
-                setQuickExtraProduct(""); setQuickExtraQty(1); setQuickExtraCharge(""); setQuickPayAmount(""); setQuickPayMode("Cash");
+                setQuickPayAmount(""); setQuickPayMode("Cash");
               }}>Confirm Reapply</button>
             </div>
           </div>
@@ -2532,7 +2520,7 @@ function AdditionalItemsBlock({ c, products, onAddAdditionalItem }) {
   );
 }
 
-function ProductsUsedPicker({ products, selected, onChange }) {
+function ProductsUsedPicker({ products, selected, onChange, allowCharge = false }) {
   const current = selected || [];
   const productsByCompany = useMemo(() => {
     const selectedNames = new Set(current.map((it) => it.name));
@@ -2575,7 +2563,15 @@ function ProductsUsedPicker({ products, selected, onChange }) {
                 <input type="number" min="0" max={p.available || undefined} placeholder="Qty" style={{ ...styles.smallInput, width: 55 }} value={qty}
                   onChange={(e) => {
                     const q = Math.max(0, Number(e.target.value) || 0);
-                    onChange(current.map((it) => it.name === p.name ? { name: p.name, qty: q } : it));
+                    onChange(current.map((it) => it.name === p.name ? { ...it, qty: q } : it));
+                  }} />
+              )}
+              {checked && allowCharge && (
+                <input type="number" min="0" placeholder="Charge ₹" style={{ ...styles.smallInput, width: 75 }} value={line.charge || ""}
+                  title="Leave blank if included free in the original bill"
+                  onChange={(e) => {
+                    const ch = Math.max(0, Number(e.target.value) || 0);
+                    onChange(current.map((it) => it.name === p.name ? { ...it, charge: ch } : it));
                   }} />
               )}
             </div>
