@@ -1511,9 +1511,15 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.navGrid}>
-        {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["notifications", "Notifications", "bell"], ["cases", "Cases", "cases"], ["challans", "Challans", "challan"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["expenses", "Expenses", "expense"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "doctor"], ["combined", "All Business", "overview"], ["settings", "Master Settings", "settings"]].map(([key, label, icon]) => (
+        {[["reports", "Reports", "reports", "#6E0F1A"], ["dashboard", "Command Center", "overview", "#3B5BA5"], ["notifications", "Notifications", "bell", "#D9720A"], ["cases", "Cases", "cases", "#128577"], ["challans", "Challans", "challan", "#8B5CF6"], ["quotations", "Quotes", "quotes", "#2A9D8F"], ["machines", "Machines", "machines", "#457B9D"], ["stock", "Stock", "stock", "#D98D2B"], ["expenses", "Expenses", "expense", "#E1483C"], ["dressers", "Dressers", "dressers", "#118AB2"], ["doctors", "Doctors", "doctor", "#06A77D"], ["combined", "All Business", "overview", "#C1121F"], ["settings", "Master Settings", "settings", "#5B6864"]].map(([key, label, icon, color]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navTile, ...(tab === key ? styles.navTileActive : {}) }}>
-            <div style={{ ...styles.navTileIconWrap, ...(tab === key ? styles.navTileIconWrapActive : {}) }}>
+            <div style={{
+              ...styles.navTileIconWrap,
+              background: tab === key ? color : `${color}1A`,
+              borderColor: tab === key ? color : `${color}40`,
+              color: tab === key ? "#fff" : color,
+              boxShadow: tab === key ? `0 4px 12px ${color}59` : styles.navTileIconWrap.boxShadow,
+            }}>
               <Icon name={icon} size={20} />
             </div>
             <span style={styles.navTileLabel}>{label}</span>
