@@ -1556,6 +1556,7 @@ function CombinedSummaryTab({ businesses }) {
   const [perBusiness, setPerBusiness] = useState([]);
   const [expandedMetric, setExpandedMetric] = useState(null);
 
+  const [allCasesByBusiness, setAllCasesByBusiness] = useState([]);
   const load = async () => {
     setLoading(true);
     const results = await Promise.all(businesses.map(async (b) => {
@@ -1579,11 +1580,32 @@ function CombinedSummaryTab({ businesses }) {
       const opex = (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
       const profit = revenue - cost - commission - opex;
       const activeCount = cases.filter((c) => c.status === "active").length;
-      return { id: b.id, name: b.name, revenue, collected, outstanding, cost, commission, opex, profit, activeCount, caseCount: cases.length };
+      return { id: b.id, name: b.name, revenue, collected, outstanding, cost, commission, opex, profit, activeCount, caseCount: cases.length, cases };
     }));
     setPerBusiness(results);
+    setAllCasesByBusiness(results.map((r) => ({ businessName: r.name, cases: r.cases })));
     setLoading(false);
   };
+
+  const dresserWorkloadCombined = useMemo(() => {
+    const byDresser = {};
+    allCasesByBusiness.forEach(({ businessName, cases }) => {
+      cases.forEach((c) => {
+        (c.dressingChanges || []).forEach((e) => {
+          const dName = (e.dresserName || "").trim();
+          if (!dName) return;
+          if (!byDresser[dName]) byDresser[dName] = { name: dName };
+          byDresser[dName][businessName] = (byDresser[dName][businessName] || 0) + 1;
+        });
+      });
+    });
+    return Object.values(byDresser).sort((a, b) => {
+      const totalA = businesses.reduce((s, biz) => s + (a[biz.name] || 0), 0);
+      const totalB = businesses.reduce((s, biz) => s + (b[biz.name] || 0), 0);
+      return totalB - totalA;
+    });
+  }, [allCasesByBusiness, businesses]);
+  const BUSINESS_BAR_COLORS = ["#3B5BA5", "#D9720A", "#128577", "#E1483C"];
 
   useEffect(() => { load(); }, []); // eslint-disable-line
 
@@ -1616,6 +1638,27 @@ function CombinedSummaryTab({ businesses }) {
         <div style={styles.reportCard}><div style={styles.statValue}>{combined.activeCount}</div><div style={styles.statLabel}>Active Cases (all businesses)</div></div>
         <div style={styles.reportCard}><div style={styles.statValue}>{combined.caseCount}</div><div style={styles.statLabel}>Total Cases (all-time)</div></div>
       </div>
+
+      {dresserWorkloadCombined.length > 0 && (
+        <>
+          <SectionTitle>Dresser Workload — All Businesses</SectionTitle>
+          <div style={styles.emptyState2}>Dressers who work across both businesses show a separate bar for each — so their combined workload is easy to see at a glance.</div>
+          <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 16 }}>
+            <ResponsiveContainer width="100%" height={Math.max(140, dresserWorkloadCombined.length * 40)}>
+              <BarChart data={dresserWorkloadCombined} layout="vertical" margin={{ left: 10, right: 20 }}>
+                <CartesianGrid stroke="#EEF1EC" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {businesses.map((b, i) => (
+                  <Bar key={b.id} dataKey={b.name} name={b.name} fill={BUSINESS_BAR_COLORS[i % BUSINESS_BAR_COLORS.length]} radius={[0, 6, 6, 0]} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
 
       {expandedMetric && (
         <div style={{ ...styles.card, marginBottom: 16 }}>
@@ -2888,10 +2931,16 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
 
       {dresserStats.length > 0 && (
         <CollapsibleSection title="Dresser Workload">
-          <div style={styles.card}>
-            {dresserStats.map((d, i) => (
-              <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600, textAlign: "left" }}>{d.name}</span><span style={{ ...styles.mutedSmall, textAlign: "right", minWidth: 80 }}>{d.count} dressing{d.count > 1 ? "s" : ""}</span></div>
-            ))}
+          <div style={{ ...styles.card, padding: "16px 8px 8px" }}>
+            <ResponsiveContainer width="100%" height={Math.max(120, dresserStats.length * 34)}>
+              <BarChart data={dresserStats} layout="vertical" margin={{ left: 10, right: 20 }}>
+                <CartesianGrid stroke="#EEF1EC" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
+                <Tooltip formatter={(v) => `${v} dressing${v > 1 ? "s" : ""}`} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                <Bar dataKey="count" name="Dressings" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </CollapsibleSection>
       )}
@@ -6112,10 +6161,16 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       {reportSubTab === "team" && (
       <CollapsibleSection title="Dresser Workload">
         {dresserStats.length === 0 ? <EmptyState text="No dressing changes logged yet." /> : (
-          <div style={styles.card}>
-            {dresserStats.map((d, i) => (
-              <div key={d.name} style={styles.dresserLine}><span style={styles.dresserRank}>{i + 1}</span><span style={{ flex: 1, fontWeight: 600, textAlign: "left" }}>{d.name}</span><span style={{ ...styles.mutedSmall, textAlign: "right", minWidth: 80 }}>{d.count} dressings</span></div>
-            ))}
+          <div style={{ ...styles.card, padding: "16px 8px 8px" }}>
+            <ResponsiveContainer width="100%" height={Math.max(120, dresserStats.length * 34)}>
+              <BarChart data={dresserStats} layout="vertical" margin={{ left: 10, right: 20 }}>
+                <CartesianGrid stroke="#EEF1EC" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
+                <Tooltip formatter={(v) => `${v} dressing${v > 1 ? "s" : ""}`} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+                <Bar dataKey="count" name="Dressings" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         )}
       </CollapsibleSection>
