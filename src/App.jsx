@@ -3132,6 +3132,9 @@ function Detail({ label, value, highlight, color, big }) {
 }
 
 function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName, doctorsList, cases = [] }) {
+  const knownHospitals = Array.from(new Set(
+    cases.map((c) => (c.hospitalName || "").trim()).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
   const inUseSerials = new Set(
     cases
       .filter((c) => (c.status === "active" || c.status === "reapplied") && (!initial || c.id !== initial.id))
@@ -3243,7 +3246,12 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
           </select>
         </Field>
         {form.billTo === "Hospital" && (
-          <Field label="Hospital Name"><input style={styles.input} value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)} /></Field>
+          <Field label="Hospital Name">
+            <input style={styles.input} list="hospital-name-list" value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)} placeholder="Select existing or type new" />
+            <datalist id="hospital-name-list">
+              {knownHospitals.map((h) => <option key={h} value={h} />)}
+            </datalist>
+          </Field>
         )}
         <Field label="Patient Name & Mobile Number *">
           <div style={{ display: "flex", gap: 8 }}>
