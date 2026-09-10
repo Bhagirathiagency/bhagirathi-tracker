@@ -1857,6 +1857,11 @@ function DresserProfileForm({ name, profile, setDresserProfile, businessName = "
 }
 
 function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, deleteDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+  const [quickAction, setQuickAction] = useState(null); // "reapply" | "stop" | null
+  const [quickPatientId, setQuickPatientId] = useState("");
+  const [quickProtocol, setQuickProtocol] = useState(5);
+  const [quickProducts, setQuickProducts] = useState([]);
+  const [quickNote, setQuickNote] = useState("");
   const [lang, setLang] = useState(() => {
     try { return localStorage.getItem(`wca-lang-${name}`) || "en"; } catch (e) { return "en"; }
   });
@@ -2033,7 +2038,69 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           <DresserProfileForm name={name} profile={profile} setDresserProfile={setDresserProfile} businessName={business.name} />
         </CollapsibleSection>
 
-        <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>{t("newCase")}</button>
+        <div style={{ display: "flex", gap: 8, margin: "6px 0 16px" }}>
+          <button style={{ ...styles.primaryBtn, margin: 0, flex: 1 }} onClick={() => setShowForm(true)}>{t("newCase")}</button>
+          <button style={{ ...styles.primaryBtn, margin: 0, flex: 1, background: "#D9720A" }} onClick={() => { setQuickAction("reapply"); setQuickPatientId(""); setQuickProducts([]); setQuickNote(""); }} disabled={myCasesActive.length === 0}>🔄 Reapply</button>
+          <button style={{ ...styles.primaryBtn, margin: 0, flex: 1, background: "#E1483C" }} onClick={() => { setQuickAction("stop"); setQuickPatientId(""); }} disabled={myCasesActive.length === 0}>⏹ Stop</button>
+        </div>
+
+        {quickAction === "reapply" && (
+          <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "2px solid #D9720A" }}>
+            <div style={{ fontWeight: 700, color: "#D9720A", marginBottom: 10 }}>🔄 Therapy Reapply</div>
+            <Field label="Select Patient">
+              <select style={styles.input} value={quickPatientId} onChange={(e) => setQuickPatientId(e.target.value)}>
+                <option value="">— Choose patient —</option>
+                {myCasesActive.map((c) => <option key={c.id} value={c.id}>{c.patientName} (Dr. {c.doctorName})</option>)}
+              </select>
+            </Field>
+            {quickPatientId && (
+              <>
+                <Field label="Protocol">
+                  <select style={styles.input} value={quickProtocol} onChange={(e) => setQuickProtocol(Number(e.target.value))}>
+                    <option value={5}>5-day protocol</option>
+                    <option value={7}>7-day protocol</option>
+                  </select>
+                </Field>
+                <div style={{ ...styles.detailLabel, marginTop: 8 }}>Products used for reapplication</div>
+                <ProductsUsedPicker products={products} selected={quickProducts} onChange={setQuickProducts} />
+                <Field label="Note (optional)"><input style={styles.input} value={quickNote} onChange={(e) => setQuickNote(e.target.value)} placeholder="e.g. wound reassessed, reapplied" /></Field>
+              </>
+            )}
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              <button style={styles.secondaryBtn} onClick={() => setQuickAction(null)}>Cancel</button>
+              <button style={{ ...styles.smallBtn, background: "#D9720A", flex: 1 }} disabled={!quickPatientId} onClick={() => {
+                const c = myCasesActive.find((x) => x.id === quickPatientId);
+                if (!c) return;
+                addDressingChange(c.id, { date: todayISO(), dresserName: name, protocolDays: quickProtocol, note: quickNote || "Reapplied", products: quickProducts.filter((p) => Number(p.qty) > 0) });
+                saveCase({ ...c, status: "reapplied", endDate: todayISO() }, c.id);
+                setQuickAction(null); setQuickPatientId(""); setQuickProducts([]); setQuickNote("");
+              }}>Confirm Reapply</button>
+            </div>
+          </div>
+        )}
+
+        {quickAction === "stop" && (
+          <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "2px solid #E1483C" }}>
+            <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 10 }}>⏹ Therapy Stop</div>
+            <div style={{ ...styles.mutedSmall, marginBottom: 10 }}>Just a quick intimation that therapy has ended — this frees up the machine right away. No form needed.</div>
+            <Field label="Select Patient">
+              <select style={styles.input} value={quickPatientId} onChange={(e) => setQuickPatientId(e.target.value)}>
+                <option value="">— Choose patient —</option>
+                {myCasesActive.map((c) => <option key={c.id} value={c.id}>{c.patientName} (Dr. {c.doctorName})</option>)}
+              </select>
+            </Field>
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              <button style={styles.secondaryBtn} onClick={() => setQuickAction(null)}>Cancel</button>
+              <button style={{ ...styles.smallBtn, background: "#E1483C", flex: 1 }} disabled={!quickPatientId} onClick={() => {
+                const c = myCasesActive.find((x) => x.id === quickPatientId);
+                if (!c) return;
+                if (!window.confirm(`Confirm therapy stopped for ${c.patientName}? This frees up the machine.`)) return;
+                saveCase({ ...c, status: "stopped", endDate: todayISO() }, c.id);
+                setQuickAction(null); setQuickPatientId("");
+              }}>Confirm Stop</button>
+            </div>
+          </div>
+        )}
 
         {myTodaysVisits.length > 0 && (
           <CollapsibleSection id="dresser-due-visits" title={t("todaysVisits")} right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{myTodaysVisits.length}</span>}>
