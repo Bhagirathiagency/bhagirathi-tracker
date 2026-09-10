@@ -334,6 +334,16 @@ function Icon({ name, size = 20 }) {
       return <svg {...common}><path d="M3.5 12a8.5 8.5 0 0 1 14.4-6.1M20.5 12a8.5 8.5 0 0 1-14.4 6.1" /><path d="M18 3v4h-4" /><path d="M6 21v-4h4" /></svg>;
     case "print":
       return <svg {...common}><path d="M6 9V3h12v6" /><rect x="4" y="9" width="16" height="8" rx="1.5" /><path d="M6 17v4h12v-4" /></svg>;
+    case "bell":
+      return <svg {...common}><path d="M18 16v-5a6 6 0 0 0-4.5-5.8V4a1.5 1.5 0 0 0-3 0v1.2A6 6 0 0 0 6 11v5l-2 2.5h16Z" /><path d="M9.5 19.5a2.5 2.5 0 0 0 5 0" /></svg>;
+    case "expense":
+      return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 7v10M9.5 9.3c0-1.3 1.1-2.1 2.5-2.1s2.5.9 2.5 2c0 3-5 1.7-5 4.6 0 1.2 1.1 2.1 2.5 2.1s2.5-.9 2.5-2.1" /></svg>;
+    case "doctor":
+      return <svg {...common}><path d="M8 3v5a4 4 0 0 0 8 0V3" /><path d="M8 3H6M18 3h-2" /><circle cx="18" cy="16" r="3" /><path d="M12 12v2a5 5 0 0 0 3.5 4.8" /></svg>;
+    case "settings":
+      return <svg {...common}><circle cx="12" cy="12" r="3.2" /><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H4a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H20a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>;
+    case "challan":
+      return <svg {...common}><path d="M6.5 2.5h11v19l-2.3-1.6-2.2 1.6-2.2-1.6L8.7 21l-2.2-1.6Z" /><path d="M9 8h6M9 11.5h6M9 15h3.5" /></svg>;
     default:
       return null;
   }
@@ -1500,10 +1510,13 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         </div>
       )}
 
-      <nav style={styles.nav}>
-        {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["notifications", "Notifications", "reports"], ["cases", "Cases", "cases"], ["challans", "Challans", "stock"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["expenses", "Expenses", "reports"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "dressers"], ["combined", "All Business", "overview"], ["settings", "Master Settings", "reports"]].map(([key, label, icon]) => (
-          <button key={key} onClick={() => setTab(key)} style={{ ...styles.navBtn, ...(tab === key ? styles.navBtnActive : {}) }}>
-            <Icon name={icon} size={16} />{label}
+      <nav style={styles.navGrid}>
+        {[["reports", "Reports", "reports"], ["dashboard", "Command Center", "overview"], ["notifications", "Notifications", "bell"], ["cases", "Cases", "cases"], ["challans", "Challans", "challan"], ["quotations", "Quotes", "quotes"], ["machines", "Machines", "machines"], ["stock", "Stock", "stock"], ["expenses", "Expenses", "expense"], ["dressers", "Dressers", "dressers"], ["doctors", "Doctors", "doctor"], ["combined", "All Business", "overview"], ["settings", "Master Settings", "settings"]].map(([key, label, icon]) => (
+          <button key={key} onClick={() => setTab(key)} style={{ ...styles.navTile, ...(tab === key ? styles.navTileActive : {}) }}>
+            <div style={{ ...styles.navTileIconWrap, ...(tab === key ? styles.navTileIconWrapActive : {}) }}>
+              <Icon name={icon} size={20} />
+            </div>
+            <span style={styles.navTileLabel}>{label}</span>
           </button>
         ))}
       </nav>
@@ -6696,6 +6709,11 @@ const styles = {
   nav: { display: "flex", gap: 6, padding: "10px 16px", maxWidth: 640, margin: "0 auto", overflowX: "auto" },
   navBtn: { display: "inline-flex", alignItems: "center", gap: 6, border: "1px solid #E3E7E2", background: "linear-gradient(160deg, #FFFFFF 0%, #F3F8F6 100%)", color: "#5B6864", padding: "8px 14px", borderRadius: 20, fontSize: 13, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
   navBtnActive: { background: "#D9720A", color: "#fff", borderColor: "#D9720A", boxShadow: "0 4px 10px rgba(18,133,119,0.3)" },
+  navGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, padding: "14px 16px", maxWidth: 640, margin: "0 auto" },
+  navTile: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, border: "none", background: "transparent", cursor: "pointer", padding: "4px 2px" },
+  navTileIconWrap: { width: 50, height: 50, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(160deg, #FFFFFF 0%, #F3F8F6 100%)", border: "1px solid #E3E7E2", color: "#5B6864", boxShadow: "0 2px 6px rgba(24,35,34,0.06)" },
+  navTileIconWrapActive: { background: "#D9720A", borderColor: "#D9720A", color: "#fff", boxShadow: "0 4px 12px rgba(217,114,10,0.35)" },
+  navTileLabel: { fontSize: 10.5, fontWeight: 600, color: "#5B6864", textAlign: "center", lineHeight: 1.2, fontFamily: "'Space Grotesk', sans-serif" },
   main: { maxWidth: 640, margin: "0 auto", padding: "8px 16px" },
   cardGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, margin: "10px 0 22px" },
   statCard: { textAlign: "left", border: "1px solid", background: "#fff", borderRadius: 16, padding: "16px 14px", cursor: "pointer", boxShadow: "0 1px 2px rgba(14,36,34,0.04), 0 8px 20px rgba(14,36,34,0.05)" },
