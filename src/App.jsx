@@ -2064,15 +2064,30 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                 {myCasesActive.map((c) => <option key={c.id} value={c.id}>{c.patientName} (Dr. {c.doctorName})</option>)}
               </select>
             </Field>
-            {quickPatientId && (
-              <>
-                <Field label="Protocol">
-                  <select style={styles.input} value={quickProtocol} onChange={(e) => setQuickProtocol(Number(e.target.value))}>
-                    <option value={5}>5-day protocol</option>
-                    <option value={7}>7-day protocol</option>
-                  </select>
-                </Field>
-                <div style={{ ...styles.detailLabel, marginTop: 8 }}>Products used for reapplication</div>
+            {quickPatientId && (() => {
+              const selectedCase = myCasesActive.find((x) => x.id === quickPatientId);
+              const confirmedPaid = selectedCase ? confirmedPaidTotal(selectedCase) : 0;
+              const outstanding = selectedCase ? Math.max(0, Number(selectedCase.totalAmount || 0) - confirmedPaid) : 0;
+              const pendingConfirm = selectedCase ? (selectedCase.payments || []).filter((p) => p.confirmed === false).reduce((s, p) => s + Number(p.amount || 0), 0) : 0;
+              return (
+                <>
+                  <div style={{ ...styles.card, padding: 12, marginBottom: 10, background: outstanding > 0 ? "#FFF7F5" : "#F0F8F6" }}>
+                    <div style={{ fontSize: 13 }}>
+                      <strong>Outstanding carried forward:</strong> <span style={{ color: outstanding > 0 ? "#E1483C" : "#128577", fontWeight: 700 }}>{fmtMoney(outstanding)}</span>
+                    </div>
+                    {pendingConfirm > 0 && (
+                      <div style={{ fontSize: 12, color: "#D9720A", marginTop: 4 }}>
+                        + {fmtMoney(pendingConfirm)} reported but still awaiting Owner confirmation
+                      </div>
+                    )}
+                  </div>
+                  <Field label="Protocol">
+                    <select style={styles.input} value={quickProtocol} onChange={(e) => setQuickProtocol(Number(e.target.value))}>
+                      <option value={5}>5-day protocol</option>
+                      <option value={7}>7-day protocol</option>
+                    </select>
+                  </Field>
+                  <div style={{ ...styles.detailLabel, marginTop: 8 }}>Products used for reapplication</div>
                 <div style={{ ...styles.mutedSmall, marginBottom: 4 }}>Leave "Charge ₹" blank if it's already included free — only fill it in if this product should be added to the patient's bill.</div>
                 <ProductsUsedPicker products={products} selected={quickProducts} onChange={setQuickProducts} allowCharge />
                 <Field label="Note (optional)"><input style={styles.input} value={quickNote} onChange={(e) => setQuickNote(e.target.value)} placeholder="e.g. wound reassessed, reapplied" /></Field>
@@ -2084,8 +2099,9 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                     {PAY_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
-              </>
-            )}
+                </>
+              );
+            })()}
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button style={styles.secondaryBtn} onClick={() => setQuickAction(null)}>Cancel</button>
               <button style={{ ...styles.smallBtn, background: "#D9720A", flex: 1 }} disabled={!quickPatientId} onClick={() => {
