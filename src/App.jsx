@@ -2092,7 +2092,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                 <ProductsUsedPicker products={products} selected={quickProducts} onChange={setQuickProducts} allowCharge />
                 <Field label="Note (optional)"><input style={styles.input} value={quickNote} onChange={(e) => setQuickNote(e.target.value)} placeholder="e.g. wound reassessed, reapplied" /></Field>
 
-                <div style={{ ...styles.detailLabel, marginTop: 12 }}>Payment Collected Now (optional)</div>
+                <div style={{ ...styles.detailLabel, marginTop: 12, color: "#128577", fontWeight: 800, fontSize: 13 }}>💰 Payment Collected Now (optional)</div>
                 <div style={styles.addPaymentRow}>
                   <input type="number" placeholder="Amount ₹" style={styles.smallInput} value={quickPayAmount} onChange={(e) => setQuickPayAmount(e.target.value)} />
                   <select style={styles.smallInput} value={quickPayMode} onChange={(e) => setQuickPayMode(e.target.value)}>
@@ -2753,7 +2753,7 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
 
           {onAddPayment && (
             <div style={{ ...styles.paymentsSection, marginTop: 14 }}>
-              <div style={styles.detailLabel}>Payment collection</div>
+              <div style={{ ...styles.detailLabel, color: "#128577", fontWeight: 800, fontSize: 13 }}>💰 Payment Collection</div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
                 <span style={styles.mutedSmall}>Outstanding</span>
                 <span style={{ fontWeight: 700, color: outstanding > 0 ? "#E1483C" : "#128577" }}>{fmtMoney(outstanding)}</span>
@@ -2771,7 +2771,7 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
                   <button style={styles.smallBtn} onClick={() => {
                     const amt = Number(payAmount);
                     if (!amt || amt <= 0) return;
-                    onAddPayment({ amount: amt, mode: payMode, note: payNote.trim(), date: todayISO(), handedOver: true, confirmed: true });
+                    onAddPayment({ amount: amt, mode: payMode, note: payNote.trim(), date: todayISO(), collectedBy: dresserName, handedOver: payMode !== "Cash", confirmed: false });
                     setPayAmount(""); setPayNote("");
                   }}>Collect Payment</button>
                 </div>
@@ -3088,7 +3088,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
           )}
 
           <div style={{ ...styles.paymentsSection, marginTop: 14 }}>
-            <div style={styles.detailLabel}>Payment history</div>
+            <div style={{ ...styles.detailLabel, color: "#128577", fontWeight: 800, fontSize: 13 }}>💰 Payment History</div>
             {(c.payments || []).length === 0 ? <div style={styles.mutedSmall}>No payments recorded.</div> : (
               (c.payments || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date)).map((p) => (
                 <div key={p.id} style={styles.paymentLine}><span>{fmtDate(p.date)}</span><span>{fmtMoney(p.amount)}</span><span style={styles.mutedSmall}>{p.mode || "Cash"}{p.note ? ` · ${p.note}` : ""}</span></div>
@@ -3104,7 +3104,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
                 <button style={styles.smallBtn} onClick={() => {
                   const amt = Number(payAmount);
                   if (!amt || amt <= 0) return;
-                  onAddPayment({ amount: amt, mode: payMode, note: payNote, date: todayISO(), collectedBy: dresserName, handedOver: payMode !== "Cash", confirmed: false });
+                  onAddPayment({ amount: amt, mode: payMode, note: payNote, date: todayISO(), confirmed: true });
                   setPayAmount(""); setPayNote("");
                 }}>Add</button>
               </div>
