@@ -2047,20 +2047,27 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
               myCashPending.push({ amount: p.amount, source: c.billTo === "Hospital" ? (c.hospitalName || "Hospital") : c.patientName, date: p.date });
             }
           }));
-          if (myCashPending.length === 0) return null;
           const total = myCashPending.reduce((s, p) => s + Number(p.amount || 0), 0);
           return (
-            <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "2px solid #E1483C", background: "#FFF7F5" }}>
-              <div style={{ fontWeight: 800, color: "#E1483C", fontSize: 14, marginBottom: 8 }}>⚠️ Cash Not Yet Handed Over — {fmtMoney(total)}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {myCashPending.map((p, i) => (
-                  <div key={i} style={{ fontSize: 13, color: "#5B6864" }}>
-                    You collected <strong style={{ color: "#E1483C" }}>{fmtMoney(p.amount)}</strong> from <strong>{p.source}</strong> on {fmtDate(p.date)} — not yet given to your company owner.
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 12, color: "#5B6864", marginTop: 8 }}>Please hand this over to the Owner as soon as possible.</div>
-            </div>
+            <CollapsibleSection id="dresser-cash-with-me" title="Cash With Me" defaultOpen={myCashPending.length > 0}
+              right={myCashPending.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(total)}</span> : null}>
+              {myCashPending.length === 0 ? (
+                <EmptyState text="You're not holding any cash right now — everything's been handed over." />
+              ) : (
+                <div style={styles.card}>
+                  {myCashPending.map((p, i) => (
+                    <div key={i} style={{ padding: "10px 14px", borderBottom: i < myCashPending.length - 1 ? "1px solid #F0EEE3" : "none" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontWeight: 700, fontSize: 13 }}>{p.source}</span>
+                        <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(p.amount)}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#8A9A96", marginTop: 2 }}>Collected {fmtDate(p.date)} — waiting for Owner to confirm received</div>
+                    </div>
+                  ))}
+                  <div style={{ padding: "10px 14px", fontSize: 12, color: "#5B6864", background: "#FFF7F5" }}>Please hand this over to the Owner as soon as possible.</div>
+                </div>
+              )}
+            </CollapsibleSection>
           );
         })()}
 
