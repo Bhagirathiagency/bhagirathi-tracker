@@ -2114,7 +2114,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                   addAdditionalItem(c.id, { name: p.name, qty: Number(p.qty) || 1, extraCharge: Number(p.charge), note: "Reapplication" });
                 });
                 if (Number(quickPayAmount) > 0) {
-                  addPayment(c.id, { amount: Number(quickPayAmount), mode: quickPayMode, note: "Collected at reapplication", date: todayISO(), collectedBy: name, handedOver: quickPayMode !== "Cash", confirmed: false });
+                  addPayment(c.id, { amount: Number(quickPayAmount), mode: quickPayMode, note: "Collected at reapplication", date: todayISO(), collectedBy: name, handedOver: quickPayMode !== "Cash", confirmed: quickPayMode !== "Cash" });
                 }
                 setQuickAction(null); setQuickPatientId(""); setQuickProducts([]); setQuickNote("");
                 setQuickPayAmount(""); setQuickPayMode("Cash");
@@ -2771,7 +2771,7 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
                   <button style={styles.smallBtn} onClick={() => {
                     const amt = Number(payAmount);
                     if (!amt || amt <= 0) return;
-                    onAddPayment({ amount: amt, mode: payMode, note: payNote.trim(), date: todayISO(), collectedBy: dresserName, handedOver: payMode !== "Cash", confirmed: false });
+                    onAddPayment({ amount: amt, mode: payMode, note: payNote.trim(), date: todayISO(), collectedBy: dresserName, handedOver: payMode !== "Cash", confirmed: payMode !== "Cash" });
                     setPayAmount(""); setPayNote("");
                   }}>Collect Payment</button>
                 </div>
@@ -5533,6 +5533,55 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
       {reportSubTab === "team" && (
       <>
+      <CollapsibleSection title="SWOT Analysis — Team (per Dresser)">
+        {dresserSWOT.length === 0 ? <EmptyState text="No dressers added yet." /> : (
+          <div style={styles.list}>
+            {dresserSWOT.map((d) => {
+              const buildMotivation = () => {
+                let msg = `Hi ${d.name}! 👋\n\n`;
+                if (d.s && d.s.length && d.s[0] !== "No activity logged yet.") {
+                  msg += `Great work so far — ${d.s[0]}\n\n`;
+                } else {
+                  msg += `Let's get your numbers moving this week — every case you log builds your track record.\n\n`;
+                }
+                if (d.w && d.w.length && d.w[0] !== "No activity logged yet.") {
+                  msg += `One thing to focus on: ${d.w[0]}\n\n`;
+                }
+                if (d.o && d.o.length && d.o[0] !== "No specific opportunity identified from current data.") {
+                  msg += `Opportunity: ${d.o[0]}\n\n`;
+                }
+                msg += `You're a key part of the team — keep it up! 💪\n– ${businessName}`;
+                return msg;
+              };
+              const phone = (dresserProfiles && dresserProfiles[d.name] && dresserProfiles[d.name].phone) || "";
+              const waNumber = phone ? `91${phone.replace(/\D/g, "").slice(-10)}` : OWNER_WHATSAPP;
+              return (
+                <CollapsibleSubcard key={d.name} title={d.name}>
+                  <SWOTGrid swot={d} />
+                  <button style={{ ...styles.smallBtn, marginTop: 10, background: "#3B5BA5" }} onClick={() => window.open(waLink(waNumber, buildMotivation()), "_blank")}>
+                    💬 Send Motivation via WhatsApp{!phone ? " (to you — forward it on)" : ""}
+                  </button>
+                </CollapsibleSubcard>
+              );
+            })}
+          </div>
+        )}
+      </CollapsibleSection>
+      </>
+      )}
+
+      {reportSubTab === "financial" && (
+      <>
+      <SectionTitle>Revenue</SectionTitle>
+      <div style={styles.cardGrid}>
+        <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(totalBilled)}</div><div style={styles.statLabel}>Total Billed</div></div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#D9720A" }}>{fmtMoney(totalCollected)}</div><div style={styles.statLabel}>Total Collected</div></div>
+        <div style={{ ...styles.reportCard, cursor: "pointer" }} onClick={() => setShowOutstandingDetail(showOutstandingDetail ? null : "all")}>
+          <div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(outstandingTotal)}</div><div style={styles.statLabel}>Outstanding (tap for details)</div>
+        </div>
+        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(totalProfit)}</div><div style={styles.statLabel}>Est. Profit</div></div>
+      </div>
+
       <CollapsibleSection title="Pending Payment Confirmations" right={pendingConfirmTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(pendingConfirmTotal)}</span> : null}>
         <div style={styles.emptyState2}>Payments your dressers have reported collecting — these don't reduce the patient's outstanding balance until you confirm them here.</div>
         {pendingPaymentConfirmations.length === 0 ? <EmptyState text="No payments waiting for confirmation." /> : (
@@ -5588,55 +5637,6 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
           </div>
         )}
       </CollapsibleSection>
-
-      <CollapsibleSection title="SWOT Analysis — Team (per Dresser)">
-        {dresserSWOT.length === 0 ? <EmptyState text="No dressers added yet." /> : (
-          <div style={styles.list}>
-            {dresserSWOT.map((d) => {
-              const buildMotivation = () => {
-                let msg = `Hi ${d.name}! 👋\n\n`;
-                if (d.s && d.s.length && d.s[0] !== "No activity logged yet.") {
-                  msg += `Great work so far — ${d.s[0]}\n\n`;
-                } else {
-                  msg += `Let's get your numbers moving this week — every case you log builds your track record.\n\n`;
-                }
-                if (d.w && d.w.length && d.w[0] !== "No activity logged yet.") {
-                  msg += `One thing to focus on: ${d.w[0]}\n\n`;
-                }
-                if (d.o && d.o.length && d.o[0] !== "No specific opportunity identified from current data.") {
-                  msg += `Opportunity: ${d.o[0]}\n\n`;
-                }
-                msg += `You're a key part of the team — keep it up! 💪\n– ${businessName}`;
-                return msg;
-              };
-              const phone = (dresserProfiles && dresserProfiles[d.name] && dresserProfiles[d.name].phone) || "";
-              const waNumber = phone ? `91${phone.replace(/\D/g, "").slice(-10)}` : OWNER_WHATSAPP;
-              return (
-                <CollapsibleSubcard key={d.name} title={d.name}>
-                  <SWOTGrid swot={d} />
-                  <button style={{ ...styles.smallBtn, marginTop: 10, background: "#3B5BA5" }} onClick={() => window.open(waLink(waNumber, buildMotivation()), "_blank")}>
-                    💬 Send Motivation via WhatsApp{!phone ? " (to you — forward it on)" : ""}
-                  </button>
-                </CollapsibleSubcard>
-              );
-            })}
-          </div>
-        )}
-      </CollapsibleSection>
-      </>
-      )}
-
-      {reportSubTab === "financial" && (
-      <>
-      <SectionTitle>Revenue</SectionTitle>
-      <div style={styles.cardGrid}>
-        <div style={styles.reportCard}><div style={styles.statValue}>{fmtMoney(totalBilled)}</div><div style={styles.statLabel}>Total Billed</div></div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#D9720A" }}>{fmtMoney(totalCollected)}</div><div style={styles.statLabel}>Total Collected</div></div>
-        <div style={{ ...styles.reportCard, cursor: "pointer" }} onClick={() => setShowOutstandingDetail(showOutstandingDetail ? null : "all")}>
-          <div style={{ ...styles.statValue, color: "#E1483C" }}>{fmtMoney(outstandingTotal)}</div><div style={styles.statLabel}>Outstanding (tap for details)</div>
-        </div>
-        <div style={styles.reportCard}><div style={{ ...styles.statValue, color: "#128577" }}>{fmtMoney(totalProfit)}</div><div style={styles.statLabel}>Est. Profit</div></div>
-      </div>
 
       {showOutstandingDetail && (
         <div style={{ ...styles.card, marginBottom: 16 }}>
