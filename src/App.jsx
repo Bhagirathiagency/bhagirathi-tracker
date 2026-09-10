@@ -2040,6 +2040,30 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           </button>
         </div>
 
+        {(() => {
+          const myCashPending = [];
+          cases.forEach((c) => (c.payments || []).forEach((p) => {
+            if (p.mode === "Cash" && p.collectedBy === name && !p.handedOver) {
+              myCashPending.push({ amount: p.amount, source: c.billTo === "Hospital" ? (c.hospitalName || "Hospital") : c.patientName, date: p.date });
+            }
+          }));
+          if (myCashPending.length === 0) return null;
+          const total = myCashPending.reduce((s, p) => s + Number(p.amount || 0), 0);
+          return (
+            <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "2px solid #E1483C", background: "#FFF7F5" }}>
+              <div style={{ fontWeight: 800, color: "#E1483C", fontSize: 14, marginBottom: 8 }}>⚠️ Cash Not Yet Handed Over — {fmtMoney(total)}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {myCashPending.map((p, i) => (
+                  <div key={i} style={{ fontSize: 13, color: "#5B6864" }}>
+                    You collected <strong style={{ color: "#E1483C" }}>{fmtMoney(p.amount)}</strong> from <strong>{p.source}</strong> on {fmtDate(p.date)} — not yet given to your company owner.
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: "#5B6864", marginTop: 8 }}>Please hand this over to the Owner as soon as possible.</div>
+            </div>
+          );
+        })()}
+
         <CollapsibleSection title={t("myProfile")}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <span style={{ ...styles.fieldLabel, marginBottom: 0 }}>{t("language")}:</span>
@@ -2236,18 +2260,6 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         </CollapsibleSection>
 
         <CollapsibleSection id="dresser-your-reporting" title={t("yourReporting")}>
-          {(() => {
-            let cashPending = 0;
-            cases.forEach((c) => (c.payments || []).forEach((p) => {
-              if (p.mode === "Cash" && p.collectedBy === name && !p.handedOver) cashPending += Number(p.amount || 0);
-            }));
-            return cashPending > 0 ? (
-              <div style={{ ...styles.card, padding: 14, marginBottom: 14, border: "1px solid #FCE7E4", background: "#FFF7F5" }}>
-                <div style={{ fontWeight: 700, color: "#E1483C" }}>💵 Cash you're holding: {fmtMoney(cashPending)}</div>
-                <div style={{ fontSize: 12, color: "#5B6864", marginTop: 4 }}>Please hand this over to the Owner as soon as possible.</div>
-              </div>
-            ) : null;
-          })()}
           <div style={styles.cardGrid}>
             <div style={{ ...styles.statCard, borderColor: "#D9720A33" }} onClick={() => setMyReportView(myReportView === "changes" ? null : "changes")}>
               <div style={{ ...styles.statValue, color: "#D9720A" }}>{myChanges.length}</div>
