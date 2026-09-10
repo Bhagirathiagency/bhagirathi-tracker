@@ -3389,8 +3389,11 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
   }, [open]);
 
   return (
-    <div style={styles.card}>
+    <div style={{ ...styles.card, borderLeft: `4px solid ${st.color}` }}>
       <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
+        <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: `linear-gradient(135deg, ${st.color} 0%, ${st.color}CC 100%)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 10px ${st.color}40`, marginRight: 10 }}>
+          <Icon name="cases" size={18} />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.cardTitle}>{c.patientName} <span style={{ fontSize: 11, fontWeight: 600, color: "#3B5BA5" }}>· Visit #{(c.dressingChanges || []).length}</span></div>
           <div style={styles.cardMeta}>Dr. {c.doctorName}{!open ? ` · ${protocolLabel(c.protocolDays)} protocol` : ""}</div>
