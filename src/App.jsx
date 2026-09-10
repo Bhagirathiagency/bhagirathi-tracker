@@ -246,6 +246,9 @@ function getCaseProductLines(c) {
 function getCaseProducts(c) {
   return getCaseProductLines(c).map((l) => l.name);
 }
+function confirmedPaidTotal(c) {
+  return (c.payments || []).reduce((s, p) => s + (p.confirmed === false ? 0 : Number(p.amount || 0)), 0);
+}
 function estimateProfit(c, products) {
   const lines = getCaseProductLines(c);
   const cost = lines.reduce((sum, line) => {
@@ -782,6 +785,12 @@ function AppInner() {
       payments: (c.payments || []).map((p) => p.id === paymentId ? { ...p, handedOver: true, handedOverDate: todayISO() } : p),
     } : c));
   };
+  const confirmPayment = (caseId, paymentId) => {
+    setCases((prev) => prev.map((c) => c.id === caseId ? {
+      ...c,
+      payments: (c.payments || []).map((p) => p.id === paymentId ? { ...p, confirmed: true, confirmedDate: todayISO() } : p),
+    } : c));
+  };
   const addDressingChange = (caseId, entry) => {
     setCases((prev) => prev.map((c) => c.id === caseId ? { ...c, dressingChanges: [...(c.dressingChanges || []), { id: uid(), loggedAt: new Date().toISOString(), ...entry }] } : c));
     // Deduct stock for whatever was actually used at this specific visit.
@@ -1145,7 +1154,7 @@ function AppInner() {
   const setDresserStockAccess = (name, allowed) => setDresserStockAccessState((prev) => ({ ...prev, [name]: !!allowed }));
   const clearAllOutstanding = () => {
     setCases((prev) => prev.map((c) => {
-      const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      const paid = confirmedPaidTotal(c);
       const outstanding = Math.max(0, Number(c.totalAmount || 0) - paid);
       if (outstanding <= 0) return c;
       return {
@@ -1212,7 +1221,7 @@ function AppInner() {
           dresserPins={dresserPins} setDresserPin={setDresserPin}
           dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess}
           dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess}
-          saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
+          saveCase={saveCase} deleteCase={deleteCase} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} confirmPayment={confirmPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
           generateInvoiceNumber={generateInvoiceNumber}
           challans={challans} createChallan={createChallan} settleChallan={settleChallan} deleteChallan={deleteChallan}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
@@ -1387,7 +1396,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, markPaymentHandedOver, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, markPaymentHandedOver, confirmPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("reports");
   const [casesInitialFilter, setCasesInitialFilter] = useState(null);
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
@@ -1422,7 +1431,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
 
   const machineInUse = (serial) => cases.some((c) => c.machineSerial === serial && (c.status === "active" || c.status === "reapplied"));
   const outstandingTotal = useMemo(() => cases.reduce((sum, c) => {
-    const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    const paid = confirmedPaidTotal(c);
     return sum + Math.max(0, Number(c.totalAmount || 0) - paid);
   }, 0), [cases]);
   const activeCount = cases.filter((c) => c.status === "active").length;
@@ -1532,7 +1541,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "settings" && (
           <MasterSettingsTab outstandingTotal={outstandingTotal} clearAllOutstanding={clearAllOutstanding} resetTestData={resetTestData} factoryResetApp={factoryResetApp} businessName={business.name} />
         )}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} dresserProfiles={dresserProfiles} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} confirmPayment={confirmPayment} dresserProfiles={dresserProfiles} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
     </>
@@ -1554,7 +1563,7 @@ function CombinedSummaryTab({ businesses }) {
       ]);
       const prods = normalizeProducts(products);
       const revenue = cases.reduce((s, c) => s + Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0), 0);
-      const collected = cases.reduce((s, c) => s + (c.payments || []).reduce((a, p) => a + Number(p.amount || 0), 0), 0);
+      const collected = cases.reduce((s, c) => s + confirmedPaidTotal(c), 0);
       const outstanding = Math.max(0, revenue - collected);
       const cost = cases.reduce((s, c) => {
         const names = getCaseProducts(c);
@@ -1662,7 +1671,7 @@ function CombinedSummaryTab({ businesses }) {
 
 function AccountantShell({ business, cases, products, dressers, machines, quotations, doctorCalls, expenses, onLogout }) {
   const outstandingTotal = useMemo(() => cases.reduce((sum, c) => {
-    const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+    const paid = confirmedPaidTotal(c);
     return sum + Math.max(0, Number(c.totalAmount || 0) - paid);
   }, 0), [cases]);
   const overdueCount = cases.filter((c) => overdueDays(c) > 0).length;
@@ -1921,7 +1930,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
   const myOutstandingTotal = useMemo(() => cases
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
     .reduce((s, c) => {
-      const paid = (c.payments || []).reduce((a, p) => a + Number(p.amount || 0), 0);
+      const paid = confirmedPaidTotal(c);
       return s + Math.max(0, Number(c.totalAmount || 0) - paid);
     }, 0), [cases, name]);
   const myOverdueCount = useMemo(() => myCasesActive.filter((c) => overdueDays(c) > 0).length, [myCasesActive]);
@@ -1937,7 +1946,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
   const myOutstandingCases = useMemo(() => cases
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
     .map((c) => {
-      const paid = (c.payments || []).reduce((a, p) => a + Number(p.amount || 0), 0);
+      const paid = confirmedPaidTotal(c);
       const due = Math.max(0, Number(c.totalAmount || 0) - paid);
       return { id: c.id, patientName: c.patientName, due };
     })
@@ -2089,7 +2098,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                   addAdditionalItem(c.id, { name: p.name, qty: Number(p.qty) || 1, extraCharge: Number(p.charge), note: "Reapplication" });
                 });
                 if (Number(quickPayAmount) > 0) {
-                  addPayment(c.id, { amount: Number(quickPayAmount), mode: quickPayMode, note: "Collected at reapplication", date: todayISO(), collectedBy: name, handedOver: quickPayMode !== "Cash" });
+                  addPayment(c.id, { amount: Number(quickPayAmount), mode: quickPayMode, note: "Collected at reapplication", date: todayISO(), collectedBy: name, handedOver: quickPayMode !== "Cash", confirmed: false });
                 }
                 setQuickAction(null); setQuickPatientId(""); setQuickProducts([]); setQuickNote("");
                 setQuickPayAmount(""); setQuickPayMode("Cash");
@@ -2610,7 +2619,7 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
   const [payNote, setPayNote] = useState("");
   const [therapyOutcome, setTherapyOutcome] = useState("continue");
   const [outcomeDate, setOutcomeDate] = useState(todayISO());
-  const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+  const paid = confirmedPaidTotal(c);
   const outstanding = Math.max(0, Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - paid);
   const due = nextDueDate(c);
   const overdue = overdueDays(c);
@@ -2746,7 +2755,7 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
                   <button style={styles.smallBtn} onClick={() => {
                     const amt = Number(payAmount);
                     if (!amt || amt <= 0) return;
-                    onAddPayment({ amount: amt, mode: payMode, note: payNote.trim(), date: todayISO(), handedOver: true });
+                    onAddPayment({ amount: amt, mode: payMode, note: payNote.trim(), date: todayISO(), handedOver: true, confirmed: true });
                     setPayAmount(""); setPayNote("");
                   }}>Collect Payment</button>
                 </div>
@@ -2878,7 +2887,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
     if (filter === "all") return true;
     if (filter === "overdue") return c.status === "active" && nextDueDate(c) <= addDays(todayISO(), 1);
     if (filter === "outstanding") {
-      const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      const paid = confirmedPaidTotal(c);
       return Math.max(0, Number(c.totalAmount || 0) - paid) > 0;
     }
     return c.status === filter;
@@ -2935,7 +2944,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
   const [photoData, setPhotoData] = useState({});
 
   const st = STATUS[c.status] || STATUS.active;
-  const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+  const paid = confirmedPaidTotal(c);
   const outstanding = Math.max(0, Number(c.totalAmount || 0) - paid);
   const days = Math.max(0, daysBetween(c.applicationDate, c.status === "active" ? todayISO() : c.endDate || c.applicationDate));
   const due = nextDueDate(c);
@@ -3058,7 +3067,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
                 <button style={styles.smallBtn} onClick={() => {
                   const amt = Number(payAmount);
                   if (!amt || amt <= 0) return;
-                  onAddPayment({ amount: amt, mode: payMode, note: payNote, date: todayISO(), collectedBy: dresserName, handedOver: payMode !== "Cash" });
+                  onAddPayment({ amount: amt, mode: payMode, note: payNote, date: todayISO(), collectedBy: dresserName, handedOver: payMode !== "Cash", confirmed: false });
                   setPayAmount(""); setPayNote("");
                 }}>Add</button>
               </div>
@@ -4793,7 +4802,7 @@ function OutstandingPatientRow({ c, businessName, addPayment, readOnly }) {
   const submit = () => {
     const amt = Number(amount);
     if (!amt || amt <= 0) return;
-    addPayment(c.id, { amount: amt, mode, note: note.trim(), date: todayISO() });
+    addPayment(c.id, { amount: amt, mode, note: note.trim(), date: todayISO(), confirmed: true });
     setAmount(""); setNote(""); setOpen(false);
   };
 
@@ -4938,7 +4947,7 @@ function ExpensesTab({ expenses, addExpense, deleteExpense, fixedExpenses, addFi
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, previousOutstanding = [], addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, dresserProfiles = {}, machines, addPayment, markPaymentHandedOver, readOnly = false }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, previousOutstanding = [], addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, dresserProfiles = {}, machines, addPayment, markPaymentHandedOver, confirmPayment, readOnly = false }) {
   const cashPendingHandover = useMemo(() => {
     const byDresser = {};
     cases.forEach((c) => {
@@ -4954,6 +4963,21 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   }, [cases]);
   const cashPendingTotal = cashPendingHandover.reduce((s, d) => s + d.total, 0);
   const [expandedCashDresser, setExpandedCashDresser] = useState(null);
+  const pendingPaymentConfirmations = useMemo(() => {
+    const byDresser = {};
+    cases.forEach((c) => {
+      (c.payments || []).forEach((p) => {
+        if (p.confirmed === false && p.collectedBy) {
+          if (!byDresser[p.collectedBy]) byDresser[p.collectedBy] = { total: 0, items: [] };
+          byDresser[p.collectedBy].total += Number(p.amount || 0);
+          byDresser[p.collectedBy].items.push({ ...p, caseId: c.id, patientName: c.patientName });
+        }
+      });
+    });
+    return Object.entries(byDresser).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.total - a.total);
+  }, [cases]);
+  const pendingConfirmTotal = pendingPaymentConfirmations.reduce((s, d) => s + d.total, 0);
+  const [expandedConfirmDresser, setExpandedConfirmDresser] = useState(null);
   const [openStockCompany, setOpenStockCompany] = useState(null);
   const [locations, setLocations] = useState({});
   const [expanded, setExpanded] = useState(null);
@@ -4981,7 +5005,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   }, [JSON.stringify(dresserNames), businessId]);
 
   const totalBilled = cases.reduce((s, c) => s + Number(c.totalAmount || 0), 0);
-  const totalCollected = cases.reduce((s, c) => s + (c.payments || []).reduce((a, p) => a + Number(p.amount || 0), 0), 0);
+  const totalCollected = cases.reduce((s, c) => s + confirmedPaidTotal(c), 0);
   const collectedByMode = useMemo(() => {
     const tally = { Cash: 0, Online: 0, Credit: 0 };
     cases.forEach((c) => (c.payments || []).forEach((p) => { tally[p.mode || "Cash"] = (tally[p.mode || "Cash"] || 0) + Number(p.amount || 0); }));
@@ -5082,7 +5106,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   const outstandingBySource = useMemo(() => {
     const groups = { Patient: { total: 0, cases: [] }, Hospital: { total: 0, cases: [] } };
     cases.forEach((c) => {
-      const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      const paid = confirmedPaidTotal(c);
       const due = Math.max(0, Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0) - paid);
       if (due <= 0) return;
       const key = c.billTo === "Hospital" ? "Hospital" : "Patient";
@@ -5204,7 +5228,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     const tally = {};
     cases.forEach((c) => {
       const patient = (c.patientName || "Unknown").trim() || "Unknown";
-      const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      const paid = confirmedPaidTotal(c);
       if (!tally[patient]) tally[patient] = { patient, revenue: 0, paid: 0, cases: 0 };
       tally[patient].revenue += Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0);
       tally[patient].paid += paid;
@@ -5232,7 +5256,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     return cases
       .filter((c) => c.billTo !== "Hospital")
       .map((c) => {
-        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        const paid = confirmedPaidTotal(c);
         const balance = Math.max(0, Number(c.totalAmount || 0) - paid);
         const daysOutstanding = c.applicationDate ? daysBetween(c.applicationDate, todayISO()) : 0;
         return { ...c, balance, daysOutstanding };
@@ -5243,7 +5267,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   const outstandingByPatientForHospitalGrouping = useMemo(() => {
     return cases
       .map((c) => {
-        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        const paid = confirmedPaidTotal(c);
         const balance = Math.max(0, Number(c.totalAmount || 0) - paid);
         const daysOutstanding = c.applicationDate ? daysBetween(c.applicationDate, todayISO()) : 0;
         return { ...c, balance, daysOutstanding };
@@ -5290,7 +5314,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       const month = c.applicationDate ? new Date(c.applicationDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "Unknown";
       if (!tally[month]) tally[month] = { month, billed: 0, collected: 0, sortDate: c.applicationDate || "" };
       tally[month].billed += Number(c.totalAmount || 0);
-      tally[month].collected += (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+      tally[month].collected += confirmedPaidTotal(c);
     });
     return Object.values(tally).sort((a, b) => new Date(b.sortDate) - new Date(a.sortDate));
   }, [cases]);
@@ -5357,7 +5381,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     const outstandingConcentration = outstandingByPatient => outstandingByPatient;
     if (outstandingTotal > 0 && cases.length > 0) {
       const outstandingCasesCount = cases.filter((c) => {
-        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        const paid = confirmedPaidTotal(c);
         return Number(c.totalAmount || 0) - paid > 0;
       }).length;
       if (outstandingCasesCount / cases.length > 0.3) t.push("Over 30% of cases carry an outstanding balance — cash-flow risk if collections slip further.");
@@ -5383,7 +5407,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       const theirActive = theirCases.filter((c) => c.status === "active");
       const theirOverdue = theirActive.filter((c) => overdueDays(c) > 0).length;
       const theirOutstanding = theirCases.reduce((sum, c) => {
-        const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        const paid = confirmedPaidTotal(c);
         return sum + Math.max(0, Number(c.totalAmount || 0) - paid);
       }, 0);
       const theirCalls = (doctorCalls || []).filter((d) => (d.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase()).length;
@@ -5472,6 +5496,34 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
       {reportSubTab === "team" && (
       <>
+      <CollapsibleSection title="Pending Payment Confirmations" right={pendingConfirmTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(pendingConfirmTotal)}</span> : null}>
+        <div style={styles.emptyState2}>Payments your dressers have reported collecting — these don't reduce the patient's outstanding balance until you confirm them here.</div>
+        {pendingPaymentConfirmations.length === 0 ? <EmptyState text="No payments waiting for confirmation." /> : (
+          <div style={styles.card}>
+            {pendingPaymentConfirmations.map((d) => (
+              <div key={d.name}>
+                <div style={styles.dresserLine} onClick={() => setExpandedConfirmDresser(expandedConfirmDresser === d.name ? null : d.name)}>
+                  <span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span>
+                  <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(d.total)}</span>
+                </div>
+                {expandedConfirmDresser === d.name && d.items.map((p) => (
+                  <div key={p.id} style={{ padding: "8px 14px 8px 24px", borderBottom: "1px solid #F0EEE3" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                      <span>{p.patientName} — {fmtMoney(p.amount)} ({p.mode || "Cash"}, {fmtDate(p.date)})</span>
+                    </div>
+                    {!readOnly && confirmPayment && (
+                      <button style={{ ...styles.linkBtn, color: "#128577", marginTop: 4 }} onClick={() => confirmPayment(p.caseId, p.id)}>
+                        ✓ Confirm Payment from {d.name}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
       <CollapsibleSection title="Cash Pending Handover" right={cashPendingTotal > 0 ? <span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(cashPendingTotal)}</span> : null}>
         <div style={styles.emptyState2}>Cash your dressers have collected from patients/doctors/hospitals but haven't physically handed over to you yet.</div>
         {cashPendingHandover.length === 0 ? <EmptyState text="No cash pending handover — all collected cash has been received." /> : (
@@ -6260,7 +6312,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button style={{ ...styles.smallBtn, flex: 1 }} onClick={() => {
             const casesRows = cases.map((c) => {
-              const paid = (c.payments || []).reduce((s, p) => s + Number(p.amount || 0), 0);
+              const paid = confirmedPaidTotal(c);
               const outstanding = Math.max(0, Number(c.totalAmount || 0) - paid);
               return {
                 Patient: c.patientName, "Patient Mobile": c.patientMobile || "", Doctor: c.doctorName, Dresser: c.dresserName,
