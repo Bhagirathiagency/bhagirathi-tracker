@@ -3233,7 +3233,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
       <div style={styles.cardGrid}>
         <StatCard label="Active Cases" value={activeCount} accent="#D9720A" icon="cases" onClick={() => goToCases("active")} />
         <StatCard label="Change Due / Overdue" value={dueSoonCount} accent="#E1483C" icon="reports" onClick={() => goToCases("overdue")} />
-        <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => goToCases("outstanding")} />
+        <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => setTab("reports")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
         <StatCard label="Cash Pending Handover" value={fmtMoney(cashPendingHandoverTotal)} accent={cashPendingHandoverTotal > 0 ? "#E1483C" : "#128577"} icon="reports" onClick={() => setTab("reports")} />
       </div>
