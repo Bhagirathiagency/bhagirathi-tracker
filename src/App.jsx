@@ -1579,10 +1579,12 @@ function CombinedSummaryTab({ businesses }) {
   const load = async () => {
     setLoading(true);
     const results = await Promise.all(businesses.map(async (b) => {
-      const [cases, expenses, products] = await Promise.all([
+      const [cases, expenses, products, dressers, doctorsList] = await Promise.all([
         loadKey(bkey(b.id, "wca-cases"), []),
         loadKey(bkey(b.id, "wca-expenses"), []),
         loadKey(bkey(b.id, "wca-products"), []),
+        loadKey(bkey(b.id, "wca-dressers"), []),
+        loadKey(bkey(b.id, "wca-doctors"), []),
       ]);
       const prods = normalizeProducts(products);
       const revenue = cases.reduce((s, c) => s + Number(c.totalAmount || 0) + Number(c.machineRentalAmount || 0), 0);
@@ -1599,7 +1601,7 @@ function CombinedSummaryTab({ businesses }) {
       const opex = (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
       const profit = revenue - cost - commission - opex;
       const activeCount = cases.filter((c) => c.status === "active").length;
-      return { id: b.id, name: b.name, revenue, collected, outstanding, cost, commission, opex, profit, activeCount, caseCount: cases.length, cases };
+      return { id: b.id, name: b.name, revenue, collected, outstanding, cost, commission, opex, profit, activeCount, caseCount: cases.length, cases, products: prods, dressers: dressers || [], doctorsList: doctorsList || [] };
     }));
     setPerBusiness(results);
     setAllCasesByBusiness(results.map((r) => ({ businessName: r.name, cases: r.cases })));
@@ -1625,6 +1627,20 @@ function CombinedSummaryTab({ businesses }) {
     });
   }, [allCasesByBusiness, businesses]);
   const BUSINESS_BAR_COLORS = ["#3B5BA5", "#D9720A", "#128577", "#E1483C"];
+  const [casesBizFilter, setCasesBizFilter] = useState("all");
+  const allCasesFlat = useMemo(() =>
+    perBusiness.flatMap((b) => (b.cases || []).map((c) => ({ ...c, businessName: b.name })))
+      .sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)),
+    [perBusiness]);
+  const allProductsFlat = useMemo(() =>
+    perBusiness.flatMap((b) => (b.products || []).map((p) => ({ ...p, businessName: b.name }))),
+    [perBusiness]);
+  const allDoctorsFlat = useMemo(() =>
+    perBusiness.flatMap((b) => (b.doctorsList || []).map((d) => ({ ...d, businessName: b.name }))),
+    [perBusiness]);
+  const allDressersFlat = useMemo(() =>
+    perBusiness.flatMap((b) => (b.dressers || []).map((name) => ({ name, businessName: b.name }))),
+    [perBusiness]);
 
   useEffect(() => { load(); }, []); // eslint-disable-line
 
@@ -1717,6 +1733,86 @@ function CombinedSummaryTab({ businesses }) {
             </ResponsiveContainer>
           </div>
         </>
+      )}
+
+      <SectionTitle>Combined Cases — All Businesses</SectionTitle>
+      <div style={styles.filterRow}>
+        {["all", ...businesses.map((b) => b.name)].map((f) => (
+          <button key={f} onClick={() => setCasesBizFilter(f)} style={{ ...styles.filterChip, ...(casesBizFilter === f ? styles.filterChipActive : {}) }}>{f === "all" ? "All" : f}</button>
+        ))}
+      </div>
+      {allCasesFlat.length === 0 ? <EmptyState text="No cases yet." /> : (
+        <div style={{ ...styles.list, marginBottom: 20 }}>
+          {allCasesFlat.filter((c) => casesBizFilter === "all" || c.businessName === casesBizFilter).slice(0, 30).map((c) => {
+            const bizColor = BUSINESS_BAR_COLORS[businesses.findIndex((b) => b.name === c.businessName) % BUSINESS_BAR_COLORS.length];
+            return (
+              <div key={`${c.businessName}-${c.id}`} style={{ ...styles.card, borderLeft: `4px solid ${bizColor}` }}>
+                <div style={{ padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{c.patientName}</div>
+                    <div style={{ fontSize: 12, color: "#8A9A96" }}>Dr. {c.doctorName} · {fmtDate(c.applicationDate)}</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: bizColor, background: `${bizColor}1A`, padding: "3px 9px", borderRadius: 12 }}>{c.businessName}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <SectionTitle>Combined Stock — All Businesses</SectionTitle>
+      {allProductsFlat.length === 0 ? <EmptyState text="No products yet." /> : (
+        <div style={{ ...styles.list, marginBottom: 20 }}>
+          {allProductsFlat.map((p) => {
+            const bizColor = BUSINESS_BAR_COLORS[businesses.findIndex((b) => b.name === p.businessName) % BUSINESS_BAR_COLORS.length];
+            return (
+              <div key={`${p.businessName}-${p.id}`} style={{ ...styles.card, borderLeft: `4px solid ${bizColor}` }}>
+                <div style={{ padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
+                    <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.company || "Unspecified"} · {p.available || 0} available</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: bizColor, background: `${bizColor}1A`, padding: "3px 9px", borderRadius: 12 }}>{p.businessName}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <SectionTitle>Combined Doctors — All Businesses</SectionTitle>
+      {allDoctorsFlat.length === 0 ? <EmptyState text="No doctors yet." /> : (
+        <div style={{ ...styles.list, marginBottom: 20 }}>
+          {allDoctorsFlat.map((d) => {
+            const bizColor = BUSINESS_BAR_COLORS[businesses.findIndex((b) => b.name === d.businessName) % BUSINESS_BAR_COLORS.length];
+            return (
+              <div key={`${d.businessName}-${d.id}`} style={{ ...styles.card, borderLeft: `4px solid ${bizColor}` }}>
+                <div style={{ padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{d.name}</div>
+                    <div style={{ fontSize: 12, color: "#8A9A96" }}>{d.speciality || "—"} · {d.doctorClass || "A"} Class</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: bizColor, background: `${bizColor}1A`, padding: "3px 9px", borderRadius: 12 }}>{d.businessName}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <SectionTitle>Combined Dressers — All Businesses</SectionTitle>
+      {allDressersFlat.length === 0 ? <EmptyState text="No dressers yet." /> : (
+        <div style={{ ...styles.card, marginBottom: 20 }}>
+          {allDressersFlat.map((d, i) => {
+            const bizColor = BUSINESS_BAR_COLORS[businesses.findIndex((b) => b.name === d.businessName) % BUSINESS_BAR_COLORS.length];
+            return (
+              <div key={`${d.businessName}-${d.name}-${i}`} style={styles.dresserLine}>
+                <span style={{ flex: 1, fontWeight: 600 }}>{d.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: bizColor, background: `${bizColor}1A`, padding: "3px 9px", borderRadius: 12 }}>{d.businessName}</span>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {expandedMetric && (
