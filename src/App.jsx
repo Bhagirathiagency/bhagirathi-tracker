@@ -911,6 +911,8 @@ function AppInner() {
   };
   const updateDoctorMaster = (id, patch) => setDoctorsList((prev) => prev.map((d) => d.id === id ? { ...d, ...patch } : d));
   const removeDoctorMaster = (id) => setDoctorsList((prev) => prev.filter((d) => d.id !== id));
+  const updateHospitalMaster = (id, patch) => setHospitalsList((prev) => prev.map((h) => h.id === id ? { ...h, ...patch } : h));
+  const removeHospitalMaster = (id) => setHospitalsList((prev) => prev.filter((h) => h.id !== id));
   const addDiscussionTopic = (topic) => {
     const t = topic.trim();
     if (!t) return;
@@ -1271,7 +1273,7 @@ function AppInner() {
           ownerLogins={ownerLogins}
           doctorCalls={doctorCalls}
           doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster}
-          hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster}
+          hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster} updateHospitalMaster={updateHospitalMaster} removeHospitalMaster={removeHospitalMaster}
           expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
           supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry}
           fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment}
@@ -1440,7 +1442,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, markPaymentHandedOver, confirmPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, hospitalsList, addHospitalMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, markPaymentHandedOver, confirmPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, hospitalsList, addHospitalMaster, updateHospitalMaster, removeHospitalMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("reports");
   const [casesInitialFilter, setCasesInitialFilter] = useState(null);
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
@@ -1545,7 +1547,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.navGrid}>
-        {[["reports", "Reports", "reports", "#6E0F1A"], ["dashboard", "Command Center", "overview", "#3B5BA5"], ["notifications", "Notifications", "bell", "#D9720A"], ["cases", "Cases", "cases", "#128577"], ["challans", "Challans", "challan", "#8B5CF6"], ["quotations", "Quotes", "quotes", "#2A9D8F"], ["machines", "Machines", "machines", "#457B9D"], ["stock", "Stock", "stock", "#D98D2B"], ["expenses", "Expenses", "expense", "#E1483C"], ["dressers", "Dressers", "dressers", "#118AB2"], ["doctors", "Doctors", "doctor", "#06A77D"], ["combined", "All Business", "overview", "#C1121F"], ["settings", "Master Settings", "settings", "#5B6864"]].map(([key, label, icon, color]) => (
+        {[["reports", "Reports", "reports", "#6E0F1A"], ["dashboard", "Command Center", "overview", "#3B5BA5"], ["notifications", "Notifications", "bell", "#D9720A"], ["cases", "Cases", "cases", "#128577"], ["challans", "Challans", "challan", "#8B5CF6"], ["quotations", "Quotes", "quotes", "#2A9D8F"], ["machines", "Machines", "machines", "#457B9D"], ["stock", "Stock", "stock", "#D98D2B"], ["expenses", "Expenses", "expense", "#E1483C"], ["dressers", "Dressers", "dressers", "#118AB2"], ["doctors", "Doctors", "doctor", "#06A77D"], ["hospitals", "Hospitals", "challan", "#8B5CF6"], ["combined", "All Business", "overview", "#C1121F"], ["settings", "Master Settings", "settings", "#5B6864"]].map(([key, label, icon, color]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navTile, ...(tab === key ? styles.navTileActive : {}) }}>
             <div style={{
               ...styles.navTileIconWrap,
@@ -1588,6 +1590,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} dressers={dressers} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} cases={cases} />}
         {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
+        {tab === "hospitals" && <HospitalsMasterTab hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster} updateHospitalMaster={updateHospitalMaster} removeHospitalMaster={removeHospitalMaster} cases={cases} />}
         {tab === "expenses" && (
           <ExpensesTab
             expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
@@ -5069,6 +5072,95 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
                         <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
                           <button style={styles.linkBtn} onClick={() => startEdit(d)}>Edit</button>
                           <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => { if (window.confirm(`Remove Dr. ${d.name} from the master list?`)) removeDoctorMaster(d.id); }}>Remove</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HospitalsMasterTab({ hospitalsList, addHospitalMaster, updateHospitalMaster, removeHospitalMaster, cases }) {
+  const [name, setName] = useState("");
+  const [openId, setOpenId] = useState(null);
+  const [edits, setEdits] = useState({});
+
+  const outstandingFor = (hospName) => cases
+    .filter((c) => c.billTo === "Hospital" && (c.hospitalName || "").trim().toLowerCase() === hospName.trim().toLowerCase())
+    .reduce((s, c) => s + Math.max(0, Number(c.totalAmount || 0) - confirmedPaidTotal(c)), 0);
+  const caseCountFor = (hospName) => cases.filter((c) => c.billTo === "Hospital" && (c.hospitalName || "").trim().toLowerCase() === hospName.trim().toLowerCase()).length;
+
+  const submit = () => {
+    if (!name.trim()) return;
+    if (hospitalsList.some((h) => h.name.trim().toLowerCase() === name.trim().toLowerCase())) { alert("This hospital is already in the list."); return; }
+    if (!window.confirm(`Add "${name.trim()}" as a new hospital?`)) return;
+    addHospitalMaster(name.trim());
+    setName("");
+  };
+
+  const startEdit = (h) => setEdits((prev) => ({ ...prev, [h.id]: { name: h.name } }));
+  const saveEdit = (id) => {
+    const e = edits[id];
+    if (!e || !e.name.trim()) return;
+    updateHospitalMaster(id, { name: e.name.trim() });
+    setEdits((prev) => { const next = { ...prev }; delete next[id]; return next; });
+  };
+
+  const sorted = [...hospitalsList].sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <div>
+      <SectionTitle>Add Hospital</SectionTitle>
+      <div style={styles.formGrid}>
+        <Field label="Hospital Name"><input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <button style={styles.primaryBtn} onClick={submit}>Add Hospital</button>
+      </div>
+      <div style={styles.emptyState2}>This is the master list of hospitals used for billing — used across case reporting so dressers can only select from these, keeping names consistent and outstanding balances properly grouped.</div>
+
+      <SectionTitle>Hospitals ({sorted.length})</SectionTitle>
+      {sorted.length === 0 ? <EmptyState text="No hospitals added yet." /> : (
+        <div style={styles.list}>
+          {sorted.map((h) => {
+            const open = openId === h.id;
+            const editing = edits[h.id];
+            const outstanding = outstandingFor(h.name);
+            return (
+              <div key={h.id} style={{ ...styles.card, borderLeft: "4px solid #8B5CF6" }}>
+                <div style={styles.cardTop} onClick={() => setOpenId(open ? null : h.id)}>
+                  <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: "linear-gradient(135deg, #8B5CF6 0%, #8B5CF6CC 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 10px rgba(139,92,246,0.4)", marginRight: 10 }}>
+                    <Icon name="challan" size={18} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.cardTitle}>{h.name}</div>
+                    <div style={styles.cardMeta}>{caseCountFor(h.name)} case{caseCountFor(h.name) === 1 ? "" : "s"}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                    {outstanding > 0 && <span style={{ ...styles.badge, color: "#E1483C", background: "#FCE7E4" }}>{fmtMoney(outstanding)}</span>}
+                    <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
+                  </div>
+                </div>
+                {open && (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    {editing ? (
+                      <div style={styles.formGrid}>
+                        <input style={styles.smallInput} value={editing.name} onChange={(e) => setEdits((prev) => ({ ...prev, [h.id]: { name: e.target.value } }))} placeholder="Name" />
+                        <div style={styles.formActions}>
+                          <button style={styles.secondaryBtn} onClick={() => setEdits((prev) => { const next = { ...prev }; delete next[h.id]; return next; })}>Cancel</button>
+                          <button style={{ ...styles.primaryBtn, flex: 1 }} onClick={() => saveEdit(h.id)}>Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={styles.mutedSmall}>Outstanding: {fmtMoney(outstanding)}</div>
+                        <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+                          <button style={styles.linkBtn} onClick={() => startEdit(h)}>Edit</button>
+                          <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => { if (window.confirm(`Remove "${h.name}" from the master list?`)) removeHospitalMaster(h.id); }}>Remove</button>
                         </div>
                       </>
                     )}
