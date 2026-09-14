@@ -3322,22 +3322,45 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, outst
   const dresserWorkloadTop = useMemo(() => dresserStats.slice(0, 8), [dresserStats]);
 
   const renderPie = (data, colors = PIE_COLORS) => (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={230}>
       <PieChart>
-        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={80}
-          label={(d) => d.name}>
+        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={48} outerRadius={82} paddingAngle={2} stroke="#fff" strokeWidth={2}>
           {data.map((d, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
         </Pie>
-        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
-        <Legend wrapperStyle={{ fontSize: 10 }} />
+        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "none", boxShadow: "0 8px 24px rgba(24,35,34,0.14)" }} />
+        <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 11, paddingTop: 6 }} iconType="circle" iconSize={8} />
       </PieChart>
     </ResponsiveContainer>
   );
 
+  const Widget = ({ title, icon, color, headline, subtext, children, empty }) => (
+    <div style={{
+      background: "#fff", borderRadius: 16, padding: 16, marginBottom: 14,
+      border: "1px solid #EEF1EC", boxShadow: "0 2px 4px rgba(14,36,34,0.04), 0 12px 28px rgba(14,36,34,0.06)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: `linear-gradient(135deg, ${color} 0%, ${color}CC 100%)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 10px ${color}40` }}>
+          <Icon name={icon} size={16} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 14 }}>{title}</div>
+          {subtext && <div style={{ fontSize: 11, color: "#8A9A96" }}>{subtext}</div>}
+        </div>
+        {headline && <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 18, color }}>{headline}</div>}
+      </div>
+      {empty ? <EmptyState text={empty} /> : children}
+    </div>
+  );
+
   return (
     <div>
-      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>{businessName}</div>
-      <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 16 }}>Business overview at a glance</div>
+      <div style={{
+        background: "linear-gradient(135deg, #128577 0%, #16302E 100%)", borderRadius: 18, padding: "20px 18px",
+        marginBottom: 18, color: "#fff", boxShadow: "0 10px 28px rgba(18,133,119,0.28)",
+      }}>
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 20 }}>{businessName}</div>
+        <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>Business overview at a glance</div>
+      </div>
 
       <div style={styles.cardGrid}>
         <StatCard label="Active Cases" value={activeCount} accent="#D9720A" icon="cases" onClick={() => goToCases("active")} />
@@ -3346,62 +3369,59 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, outst
         <StatCard label="Products" value={products.length} accent="#128577" icon="stock" onClick={() => setTab("stock")} />
       </div>
 
-      <SectionTitle>14-Day Activity Trend</SectionTitle>
-      <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 20 }}>
+      <Widget title="14-Day Activity Trend" icon="overview" color="#3B5BA5" subtext="Dressing changes & new cases">
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={activityTrend} margin={{ left: -10, right: 15, top: 5, bottom: 5 }}>
+            <defs>
+              <linearGradient id="gChanges" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3B5BA5" stopOpacity={0.25} />
+                <stop offset="100%" stopColor="#3B5BA5" stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid stroke="#EEF1EC" vertical={false} />
             <XAxis dataKey="label" tick={{ fontSize: 9, fill: "#8A9A96" }} interval={1} />
             <YAxis tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
-            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Line type="monotone" dataKey="changes" name="Dressing Changes" stroke="#3B5BA5" strokeWidth={2.5} dot={{ r: 2 }} />
-            <Line type="monotone" dataKey="newCases" name="New Cases" stroke="#D9720A" strokeWidth={2.5} dot={{ r: 2 }} />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "none", boxShadow: "0 8px 24px rgba(24,35,34,0.14)" }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+            <Line type="monotone" dataKey="changes" name="Dressing Changes" stroke="#3B5BA5" strokeWidth={2.5} dot={{ r: 2.5 }} fill="url(#gChanges)" />
+            <Line type="monotone" dataKey="newCases" name="New Cases" stroke="#D9720A" strokeWidth={2.5} dot={{ r: 2.5 }} />
           </LineChart>
         </ResponsiveContainer>
+      </Widget>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <Widget title="Case Status" icon="cases" color="#128577" headline={cases.length} empty={caseStatusPie.length === 0 ? "No cases yet." : null}>
+          {renderPie(caseStatusPie)}
+        </Widget>
+        <Widget title="Machines" icon="machines" color="#D9720A" headline={`${machinesInUseCount}/${machines.length}`} empty={machines.length === 0 ? "No machines yet." : null}>
+          {renderPie(machineUtilPie, ["#D9720A", "#128577"])}
+        </Widget>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
-        <div>
-          <SectionTitle>Case Status</SectionTitle>
-          <div style={{ ...styles.card, padding: 8 }}>{caseStatusPie.length === 0 ? <EmptyState text="No cases yet." /> : renderPie(caseStatusPie)}</div>
-        </div>
-        <div>
-          <SectionTitle>Machine Utilization</SectionTitle>
-          <div style={{ ...styles.card, padding: 8 }}>{machines.length === 0 ? <EmptyState text="No machines yet." /> : renderPie(machineUtilPie, ["#D9720A", "#128577"])}</div>
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <Widget title="Stock by Company" icon="stock" color="#D98D2B" headline={products.length} empty={stockByCompanyPie.length === 0 ? "No stock yet." : null}>
+          {renderPie(stockByCompanyPie)}
+        </Widget>
+        <Widget title="Payments by Mode" icon="quotes" color="#8B5CF6" empty={paymentModePie.length === 0 ? "No payments yet." : null}>
+          {renderPie(paymentModePie)}
+        </Widget>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
-        <div>
-          <SectionTitle>Stock by Company</SectionTitle>
-          <div style={{ ...styles.card, padding: 8 }}>{stockByCompanyPie.length === 0 ? <EmptyState text="No stock yet." /> : renderPie(stockByCompanyPie)}</div>
-        </div>
-        <div>
-          <SectionTitle>Payments by Mode</SectionTitle>
-          <div style={{ ...styles.card, padding: 8 }}>{paymentModePie.length === 0 ? <EmptyState text="No payments yet." /> : renderPie(paymentModePie)}</div>
-        </div>
-      </div>
+      <Widget title="Expenses by Category" icon="expense" color="#E1483C" headline={fmtMoney(expensesByCategoryPie.reduce((s, d) => s + d.value, 0))} empty={expensesByCategoryPie.length === 0 ? "No expenses logged yet." : null}>
+        {renderPie(expensesByCategoryPie)}
+      </Widget>
 
-      <SectionTitle>Expenses by Category</SectionTitle>
-      <div style={{ ...styles.card, padding: 8, marginBottom: 20 }}>
-        {expensesByCategoryPie.length === 0 ? <EmptyState text="No expenses logged yet." /> : renderPie(expensesByCategoryPie)}
-      </div>
-
-      <SectionTitle>Dresser Workload</SectionTitle>
-      <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 20 }}>
-        {dresserWorkloadTop.length === 0 ? <EmptyState text="No dressing changes logged yet." /> : (
-          <ResponsiveContainer width="100%" height={Math.max(120, dresserWorkloadTop.length * 34)}>
-            <BarChart data={dresserWorkloadTop} layout="vertical" margin={{ left: 10, right: 20 }}>
-              <CartesianGrid stroke="#EEF1EC" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
-              <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
-              <Bar dataKey="count" name="Dressings" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </div>
+      <Widget title="Dresser Workload" icon="dressers" color="#118AB2" subtext="Top 8 by dressings logged" empty={dresserWorkloadTop.length === 0 ? "No dressing changes logged yet." : null}>
+        <ResponsiveContainer width="100%" height={Math.max(120, dresserWorkloadTop.length * 34)}>
+          <BarChart data={dresserWorkloadTop} layout="vertical" margin={{ left: 10, right: 20 }}>
+            <CartesianGrid stroke="#EEF1EC" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
+            <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "none", boxShadow: "0 8px 24px rgba(24,35,34,0.14)" }} />
+            <Bar dataKey="count" name="Dressings" fill="#118AB2" radius={[0, 8, 8, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Widget>
     </div>
   );
 }
