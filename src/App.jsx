@@ -4809,6 +4809,10 @@ function ChallanPdfView({ ch, onBack, businessName }) {
 }
 
 function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner", businessId, cases = [], dressers = [] }) {
+  const [stockCompanyFilter, setStockCompanyFilter] = useState("all");
+  const allStockCompanies = useMemo(() =>
+    Array.from(new Set(products.map((p) => productCompany(p)))).sort(),
+    [products]);
   const dresserNamesLower = useMemo(() => new Set(dressers.map((d) => d.trim().toLowerCase())), [dressers]);
   const productsWithDresserAsCompany = useMemo(() =>
     products.filter((p) => p.company && dresserNamesLower.has(p.company.trim().toLowerCase())),
@@ -4902,9 +4906,19 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
       </div>
 
       <SectionTitle>Inventory ({products.length})</SectionTitle>
+      {allStockCompanies.length > 1 && (
+        <select style={{ ...styles.input, marginBottom: 12 }} value={stockCompanyFilter} onChange={(e) => setStockCompanyFilter(e.target.value)}>
+          <option value="all">All Companies ({products.length})</option>
+          {allStockCompanies.map((c) => (
+            <option key={c} value={c}>{c} ({products.filter((p) => productCompany(p) === c).length})</option>
+          ))}
+        </select>
+      )}
       {products.length === 0 ? <EmptyState text="No products added yet." /> : (
         <div style={styles.list}>
-          {[...products].sort((a, b) => {
+          {products
+            .filter((p) => stockCompanyFilter === "all" || productCompany(p) === stockCompanyFilter)
+            .sort((a, b) => {
             const aZero = (a.available || 0) <= 0;
             const bZero = (b.available || 0) <= 0;
             if (aZero !== bZero) return aZero ? 1 : -1;
