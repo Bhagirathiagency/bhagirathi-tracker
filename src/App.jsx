@@ -1576,7 +1576,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.navGrid}>
-        {[["home", "Home", "overview", "#128577"], ["reports", "Reports", "reports", "#6E0F1A"], ["dashboard", "Command Center", "overview", "#3B5BA5"], ["notifications", "Notifications", "bell", "#D9720A"], ["cases", "Cases", "cases", "#128577"], ["challans", "Challans", "challan", "#8B5CF6"], ["quotations", "Quotes", "quotes", "#2A9D8F"], ["machines", "Machines", "machines", "#457B9D"], ["stock", "Stock", "stock", "#D98D2B"], ["expenses", "Expenses", "expense", "#E1483C"], ["dressers", "Dressers", "dressers", "#118AB2"], ["doctors", "Doctors", "doctor", "#06A77D"], ["hospitals", "Hospitals", "challan", "#8B5CF6"], ["combined", "All Business", "overview", "#C1121F"], ["settings", "Master Settings", "settings", "#5B6864"]].map(([key, label, icon, color]) => (
+        {[["home", "Home", "overview", "#128577"], ["reports", "Reports", "reports", "#6E0F1A"], ["dashboard", "Command Center", "overview", "#3B5BA5"], ["notifications", "Notifications", "bell", "#D9720A"], ["cases", "Cases", "cases", "#128577"], ["patients", "Patients", "dressers", "#457B9D"], ["challans", "Challans", "challan", "#8B5CF6"], ["quotations", "Quotes", "quotes", "#2A9D8F"], ["machines", "Machines", "machines", "#457B9D"], ["stock", "Stock", "stock", "#D98D2B"], ["expenses", "Expenses", "expense", "#E1483C"], ["dressers", "Dressers", "dressers", "#118AB2"], ["doctors", "Doctors", "doctor", "#06A77D"], ["hospitals", "Hospitals", "challan", "#8B5CF6"], ["combined", "All Business", "overview", "#C1121F"], ["settings", "Master Settings", "settings", "#5B6864"]].map(([key, label, icon, color]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navTile, ...(tab === key ? styles.navTileActive : {}) }}>
             <div style={{
               ...styles.navTileIconWrap,
@@ -1606,6 +1606,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "notifications" && (
           <NotificationsTab cases={cases} doctorCalls={doctorCalls} confirmPayment={confirmPayment} markPaymentHandedOver={markPaymentHandedOver} />
         )}
+        {tab === "patients" && <PatientsTab cases={cases} />}
         {tab === "cases" && (
           <CasesTab cases={cases} machines={machines} products={products} saveCase={saveCase} deleteCase={deleteCase}
             addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
@@ -5288,6 +5289,93 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
                         </div>
                       </>
                     )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PatientsTab({ cases }) {
+  const [search, setSearch] = useState("");
+
+  const patients = useMemo(() => {
+    const byKey = {};
+    cases.forEach((c) => {
+      const mobile = (c.patientMobile || "").trim();
+      const key = mobile || `name:${(c.patientName || "").trim().toLowerCase()}`;
+      if (!key || key === "name:") return;
+      if (!byKey[key]) {
+        byKey[key] = { name: c.patientName, mobile, doctors: new Set(), caseCount: 0, totalBilled: 0, outstanding: 0, lastVisit: c.applicationDate, cases: [] };
+      }
+      const p = byKey[key];
+      if (c.doctorName) p.doctors.add(c.doctorName);
+      p.caseCount += 1;
+      p.totalBilled += Number(c.totalAmount || 0);
+      p.outstanding += Math.max(0, Number(c.totalAmount || 0) - confirmedPaidTotal(c));
+      if (new Date(c.applicationDate) > new Date(p.lastVisit)) p.lastVisit = c.applicationDate;
+      p.cases.push({ id: c.id, date: c.applicationDate, status: c.status, doctorName: c.doctorName });
+    });
+    return Object.values(byKey)
+      .map((p) => ({ ...p, doctors: Array.from(p.doctors) }))
+      .sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+  }, [cases]);
+
+  const filtered = search.trim()
+    ? patients.filter((p) =>
+        (p.name || "").toLowerCase().includes(search.trim().toLowerCase()) ||
+        (p.mobile || "").includes(search.trim()))
+    : patients;
+
+  const [openId, setOpenId] = useState(null);
+
+  return (
+    <div>
+      <SectionTitle>Patients ({patients.length})</SectionTitle>
+      <input style={{ ...styles.input, marginBottom: 12 }} placeholder="Search by name or mobile number"
+        value={search} onChange={(e) => setSearch(e.target.value)} />
+      {filtered.length === 0 ? <EmptyState text="No patients found." /> : (
+        <div style={styles.list}>
+          {filtered.map((p, i) => {
+            const key = p.mobile || `name:${(p.name || "").toLowerCase()}`;
+            const open = openId === key;
+            return (
+              <div key={key} style={{ ...styles.card, borderLeft: `4px solid ${p.outstanding > 0 ? "#E1483C" : "#128577"}` }}>
+                <div style={styles.cardTop} onClick={() => setOpenId(open ? null : key)}>
+                  <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: `linear-gradient(135deg, ${p.outstanding > 0 ? "#E1483C" : "#128577"} 0%, ${p.outstanding > 0 ? "#E1483C" : "#128577"}CC 100%)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 10px ${p.outstanding > 0 ? "#E1483C40" : "#12857740"}`, marginRight: 10, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {(p.name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={styles.cardTitle}>{p.name || "Unnamed"}</div>
+                    <div style={styles.cardMeta}>{p.mobile || "No mobile on file"} · {p.caseCount} case{p.caseCount === 1 ? "" : "s"}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                    {p.outstanding > 0 ? <span style={styles.dueTag}>{fmtMoney(p.outstanding)} due</span> : <span style={styles.paidTag}>Paid up</span>}
+                    {p.mobile && (
+                      <a href={`tel:${p.mobile}`} onClick={(e) => e.stopPropagation()} style={{ ...styles.smallBtn, textDecoration: "none", padding: "4px 10px", fontSize: 11 }}>📞 Call</a>
+                    )}
+                  </div>
+                </div>
+                {open && (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    <div style={styles.detailGrid}>
+                      <Detail label="Doctor(s)" value={p.doctors.join(", ") || "—"} />
+                      <Detail label="Total Billed" value={fmtMoney(p.totalBilled)} />
+                      <Detail label="Outstanding" value={fmtMoney(p.outstanding)} highlight={p.outstanding > 0} />
+                      <Detail label="Last Visit" value={fmtDate(p.lastVisit)} />
+                    </div>
+                    <div style={{ ...styles.detailLabel, marginTop: 10 }}>Case History</div>
+                    {p.cases.sort((a, b) => new Date(b.date) - new Date(a.date)).map((cs) => (
+                      <div key={cs.id} style={styles.paymentLine}>
+                        <span>{fmtDate(cs.date)}</span>
+                        <span>Dr. {cs.doctorName}</span>
+                        <span style={styles.mutedSmall}>{(STATUS[cs.status] || {}).label || cs.status}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
