@@ -1606,7 +1606,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "notifications" && (
           <NotificationsTab cases={cases} doctorCalls={doctorCalls} confirmPayment={confirmPayment} markPaymentHandedOver={markPaymentHandedOver} />
         )}
-        {tab === "patients" && <PatientsTab cases={cases} />}
+        {tab === "patients" && <PatientsTab cases={cases} businessName={business.name} />}
         {tab === "cases" && (
           <CasesTab cases={cases} machines={machines} products={products} saveCase={saveCase} deleteCase={deleteCase}
             addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
@@ -5300,7 +5300,7 @@ function DoctorsMasterTab({ doctorsList, addDoctorMaster, updateDoctorMaster, re
   );
 }
 
-function PatientsTab({ cases }) {
+function PatientsTab({ cases, businessName = "Bhagirathi Agency" }) {
   const [search, setSearch] = useState("");
 
   const patients = useMemo(() => {
@@ -5356,7 +5356,12 @@ function PatientsTab({ cases }) {
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                     {p.outstanding > 0 ? <span style={styles.dueTag}>{fmtMoney(p.outstanding)} due</span> : <span style={styles.paidTag}>Paid up</span>}
                     {p.mobile && (
-                      <a href={`tel:${p.mobile}`} onClick={(e) => e.stopPropagation()} style={{ ...styles.smallBtn, textDecoration: "none", padding: "4px 10px", fontSize: 11 }}>📞 Call</a>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <a href={`tel:${p.mobile}`} onClick={(e) => e.stopPropagation()} style={{ ...styles.smallBtn, textDecoration: "none", padding: "4px 10px", fontSize: 11 }}>📞 Call</a>
+                        <a href={waLink(`91${p.mobile.replace(/\D/g, "").slice(-10)}`, `Hi ${p.name || ""}, this is ${businessName} regarding your wound care therapy.`)}
+                          target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                          style={{ ...styles.smallBtn, background: "#25D366", textDecoration: "none", padding: "4px 10px", fontSize: 11 }}>💬 WhatsApp</a>
+                      </div>
                     )}
                   </div>
                 </div>
