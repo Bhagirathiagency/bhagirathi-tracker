@@ -4901,7 +4901,12 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
       <SectionTitle>Inventory ({products.length})</SectionTitle>
       {products.length === 0 ? <EmptyState text="No products added yet." /> : (
         <div style={styles.list}>
-          {products.map((p) => {
+          {[...products].sort((a, b) => {
+            const aZero = (a.available || 0) <= 0;
+            const bZero = (b.available || 0) <= 0;
+            if (aZero !== bZero) return aZero ? 1 : -1;
+            return 0;
+          }).map((p) => {
             const isLow = (p.available || 0) <= LOW_STOCK_THRESHOLD;
             const stockColor = isLow ? "#E1483C" : "#128577";
             const stockPct = Math.min(100, Math.round(((p.available || 0) / Math.max(1, LOW_STOCK_THRESHOLD * 4)) * 100));
