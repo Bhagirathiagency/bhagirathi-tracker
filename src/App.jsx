@@ -1594,7 +1594,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
 
       <main style={styles.main} key={tab} className="fade-in">
         {tab === "home" && (
-          <HomeTab cases={cases} machines={machines} products={products} expenses={expenses} dresserStats={dresserStats}
+          <HomeTab cases={cases} machines={machines} products={products} expenses={expenses} dresserStats={dresserStats} dressers={dressers}
             outstandingTotal={outstandingTotal} activeCount={activeCount} machinesInUseCount={machinesInUseCount}
             setTab={setTab} goToCases={goToCases} businessName={business.name} />
         )}
@@ -2388,7 +2388,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
                 if (!c) return;
                 const usedLines = quickProducts.filter((p) => Number(p.qty) > 0);
                 addDressingChange(c.id, { date: todayISO(), dresserName: name, protocolDays: quickProtocol, note: quickNote || "Reapplied", products: usedLines });
-                saveCase({ ...c, status: "reapplied", endDate: todayISO() }, c.id);
+                saveCase({ ...c, status: "reapplied", endDate: todayISO(), reapplyCount: (c.reapplyCount || 0) + 1 }, c.id);
                 usedLines.filter((p) => Number(p.charge) > 0).forEach((p) => {
                   addAdditionalItem(c.id, { name: p.name, qty: Number(p.qty) || 1, extraCharge: Number(p.charge), note: "Reapplication" });
                 });
@@ -3290,7 +3290,7 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
 // ---------------- Dashboard ----------------
 const PIE_COLORS = ["#3B5BA5", "#D9720A", "#128577", "#E1483C", "#D98D2B", "#8B5CF6", "#06A77D", "#6E0F1A"];
 
-function HomeTab({ cases, machines, products, expenses = [], dresserStats, outstandingTotal, activeCount, machinesInUseCount, setTab, goToCases, businessName = "Bhagirathi Agency" }) {
+function HomeTab({ cases, machines, products, expenses = [], dresserStats, dressers = [], outstandingTotal, activeCount, machinesInUseCount, setTab, goToCases, businessName = "Bhagirathi Agency" }) {
   const activityTrend = useMemo(() => {
     const days = [];
     for (let i = 13; i >= 0; i--) {
@@ -3347,6 +3347,18 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, outst
   ]), [machines, machinesInUseCount]);
 
   const dresserWorkloadTop = useMemo(() => dresserStats.slice(0, 8), [dresserStats]);
+  const totalSettings = useMemo(() => cases.reduce((s, c) => s + 1 + (c.reapplyCount || 0), 0), [cases]);
+  const SETTINGS_TARGET = 50;
+  const dresserSettingsProgress = useMemo(() => {
+    const tally = {};
+    dressers.forEach((d) => { tally[d] = 0; });
+    cases.forEach((c) => {
+      const dName = (c.dresserName || "").trim();
+      if (!dName) return;
+      tally[dName] = (tally[dName] || 0) + 1 + (c.reapplyCount || 0);
+    });
+    return Object.entries(tally).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+  }, [cases, dressers]);
 
   const renderPie = (data, colors = PIE_COLORS, height = 260) => (
     <ResponsiveContainer width="100%" height={height}>
@@ -3396,6 +3408,7 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, outst
         <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => setTab("reports")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
         <StatCard label="Products" value={products.length} accent="#128577" icon="stock" onClick={() => setTab("stock")} />
+        <StatCard label="Total Settings" value={totalSettings} accent="#8B5CF6" icon="cases" onClick={() => goToCases("all")} />
       </div>
 
       <Widget title="14-Day Activity Trend" icon="overview" color="#3B5BA5" subtext="Dressing changes & new cases">
@@ -3436,6 +3449,26 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, outst
 
       <Widget title="Expenses by Category" icon="expense" color="#E1483C" headline={fmtMoney(expensesByCategoryPie.reduce((s, d) => s + d.value, 0))} empty={expensesByCategoryPie.length === 0 ? "No expenses logged yet." : null}>
         {renderPie(expensesByCategoryPie)}
+      </Widget>
+
+      <Widget title="Dresser Settings Target" icon="dressers" color="#8B5CF6" subtext={`Minimum ${SETTINGS_TARGET} settings per dresser`} empty={dresserSettingsProgress.length === 0 ? "No dressers added yet." : null}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {dresserSettingsProgress.map((d) => {
+            const pct = Math.min(100, Math.round((d.count / SETTINGS_TARGET) * 100));
+            const met = d.count >= SETTINGS_TARGET;
+            return (
+              <div key={d.name}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 600 }}>{d.name}</span>
+                  <span style={{ fontWeight: 700, color: met ? "#128577" : "#E1483C" }}>{d.count} / {SETTINGS_TARGET}{met ? " ✓" : ""}</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 4, background: "#EEF1EC", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${pct}%`, background: met ? "#128577" : "#D9720A", borderRadius: 4, transition: "width 0.3s" }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </Widget>
 
       <Widget title="Dresser Workload" icon="dressers" color="#118AB2" subtext="Top 8 by dressings logged" empty={dresserWorkloadTop.length === 0 ? "No dressing changes logged yet." : null}>
