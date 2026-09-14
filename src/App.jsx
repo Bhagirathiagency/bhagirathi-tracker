@@ -3348,14 +3348,16 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, outst
 
   const dresserWorkloadTop = useMemo(() => dresserStats.slice(0, 8), [dresserStats]);
 
-  const renderPie = (data, colors = PIE_COLORS) => (
-    <ResponsiveContainer width="100%" height={230}>
-      <PieChart>
-        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="42%" innerRadius={48} outerRadius={82} paddingAngle={2} stroke="#fff" strokeWidth={2}>
+  const renderPie = (data, colors = PIE_COLORS, height = 260) => (
+    <ResponsiveContainer width="100%" height={height}>
+      <PieChart margin={{ top: 4, right: 10, bottom: 4, left: 10 }}>
+        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="40%" innerRadius={50} outerRadius={85} paddingAngle={2} stroke="#fff" strokeWidth={2}>
           {data.map((d, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
         </Pie>
         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "none", boxShadow: "0 8px 24px rgba(24,35,34,0.14)" }} />
-        <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 11, paddingTop: 6 }} iconType="circle" iconSize={8} />
+        <Legend verticalAlign="bottom" align="center" layout="horizontal"
+          wrapperStyle={{ fontSize: 11, paddingTop: 10, width: "100%", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 4 }}
+          iconType="circle" iconSize={8} />
       </PieChart>
     </ResponsiveContainer>
   );
@@ -3416,23 +3418,21 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, outst
         </ResponsiveContainer>
       </Widget>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Widget title="Case Status" icon="cases" color="#128577" headline={cases.length} empty={caseStatusPie.length === 0 ? "No cases yet." : null}>
-          {renderPie(caseStatusPie)}
-        </Widget>
-        <Widget title="Machines" icon="machines" color="#D9720A" headline={`${machinesInUseCount}/${machines.length}`} empty={machines.length === 0 ? "No machines yet." : null}>
-          {renderPie(machineUtilPie, ["#D9720A", "#128577"])}
-        </Widget>
-      </div>
+      <Widget title="Case Status" icon="cases" color="#128577" headline={cases.length} empty={caseStatusPie.length === 0 ? "No cases yet." : null}>
+        {renderPie(caseStatusPie, PIE_COLORS, 280)}
+      </Widget>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Widget title="Stock by Company" icon="stock" color="#D98D2B" headline={products.length} empty={stockByCompanyPie.length === 0 ? "No stock yet." : null}>
-          {renderPie(stockByCompanyPie)}
-        </Widget>
-        <Widget title="Payments by Mode" icon="quotes" color="#8B5CF6" empty={paymentModePie.length === 0 ? "No payments yet." : null}>
-          {renderPie(paymentModePie)}
-        </Widget>
-      </div>
+      <Widget title="Machine Utilization" icon="machines" color="#D9720A" headline={`${machinesInUseCount}/${machines.length}`} empty={machines.length === 0 ? "No machines yet." : null}>
+        {renderPie(machineUtilPie, ["#D9720A", "#128577"], 240)}
+      </Widget>
+
+      <Widget title="Stock by Company" icon="stock" color="#D98D2B" headline={products.length} empty={stockByCompanyPie.length === 0 ? "No stock yet." : null}>
+        {renderPie(stockByCompanyPie, PIE_COLORS, 300)}
+      </Widget>
+
+      <Widget title="Payments by Mode" icon="quotes" color="#8B5CF6" empty={paymentModePie.length === 0 ? "No payments yet." : null}>
+        {renderPie(paymentModePie, PIE_COLORS, 260)}
+      </Widget>
 
       <Widget title="Expenses by Category" icon="expense" color="#E1483C" headline={fmtMoney(expensesByCategoryPie.reduce((s, d) => s + d.value, 0))} empty={expensesByCategoryPie.length === 0 ? "No expenses logged yet." : null}>
         {renderPie(expensesByCategoryPie)}
