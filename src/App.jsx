@@ -566,6 +566,7 @@ function AppInner() {
   const [previousOutstanding, setPreviousOutstanding] = useState([]);
   const [challans, setChallans] = useState([]);
   const [doctorsList, setDoctorsList] = useState([]);
+  const [hospitalsList, setHospitalsList] = useState([]);
   const [discussionTopics, setDiscussionTopics] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [dresserBusinessAccess, setDresserBusinessAccessState] = useState({});
@@ -643,7 +644,7 @@ function AppInner() {
   const loadBusinessData = async (silent) => {
     if (silent) setRefreshing(true); else setLoaded(false);
     try {
-      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, splLedger, fixedExps, prevOut, acctPin, chals, docsList, topics] = await Promise.all([
+      const [c, m, p, ownerPin, drs, qts, drPins, dcalls, olog, dprofiles, dstock, exps, splLedger, fixedExps, prevOut, acctPin, chals, docsList, hospList, topics] = await Promise.all([
         loadKey(bkey(businessId, "wca-cases"), []),
         loadKey(bkey(businessId, "wca-machines"), []),
         loadKey(bkey(businessId, "wca-products"), DEFAULT_PRODUCTS),
@@ -662,6 +663,7 @@ function AppInner() {
         loadKey(bkey(businessId, "wca-accountant-pin"), null),
         loadKey(bkey(businessId, "wca-challans"), []),
         loadKey(bkey(businessId, "wca-doctors"), []),
+        loadKey(bkey(businessId, "wca-hospitals"), null),
         loadKey(bkey(businessId, "wca-discussion-topics"), null),
       ]);
       setCases(c);
@@ -681,6 +683,7 @@ function AppInner() {
       setPreviousOutstanding(Array.isArray(prevOut) ? prevOut : []);
       setChallans(Array.isArray(chals) ? chals : []);
       setDoctorsList(Array.isArray(docsList) ? docsList : []);
+      setHospitalsList(Array.isArray(hospList) && hospList.length > 0 ? hospList : HOSPITAL_MASTER_LIST.map((h) => ({ id: uid(), name: h })));
       setDiscussionTopics(Array.isArray(topics) ? topics : ["VAC Therapy", "Oxygen Therapy", "Matriderm", "Wound Dressing", "General Consultation"]);
       {
         const stockAccess = dstock && typeof dstock === "object" ? { ...dstock } : {};
@@ -711,6 +714,7 @@ function AppInner() {
 
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-challans"), challans); }, [challans, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-doctors"), doctorsList); }, [doctorsList, loaded, businessId]);
+  useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-hospitals"), hospitalsList); }, [hospitalsList, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-discussion-topics"), discussionTopics); }, [discussionTopics, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-cases"), cases); }, [cases, loaded, businessId]);
   useEffect(() => { if (loaded) saveKey(bkey(businessId, "wca-machines"), machines); }, [machines, loaded, businessId]);
@@ -900,6 +904,11 @@ function AppInner() {
   };
   const deleteChallan = (id) => setChallans((prev) => prev.filter((c) => c.id !== id));
   const addDoctorMaster = (entry) => setDoctorsList((prev) => [...prev, { id: uid(), ...entry }]);
+  const addHospitalMaster = (hospName) => {
+    const trimmed = hospName.trim();
+    if (!trimmed) return;
+    setHospitalsList((prev) => prev.some((h) => h.name.toLowerCase() === trimmed.toLowerCase()) ? prev : [...prev, { id: uid(), name: trimmed }]);
+  };
   const updateDoctorMaster = (id, patch) => setDoctorsList((prev) => prev.map((d) => d.id === id ? { ...d, ...patch } : d));
   const removeDoctorMaster = (id) => setDoctorsList((prev) => prev.filter((d) => d.id !== id));
   const addDiscussionTopic = (topic) => {
@@ -1262,6 +1271,7 @@ function AppInner() {
           ownerLogins={ownerLogins}
           doctorCalls={doctorCalls}
           doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster}
+          hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster}
           expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense}
           supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry}
           fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment}
@@ -1280,6 +1290,7 @@ function AppInner() {
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
           doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} addPreviousOutstanding={addPreviousOutstanding}
+          hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster}
           discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           canManageStock={!!dresserStockAccess[role.name]}
@@ -1429,7 +1440,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 }
 
 // ================= OWNER SHELL =================
-function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, markPaymentHandedOver, confirmPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
+function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, markPaymentHandedOver, confirmPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, hospitalsList, addHospitalMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
   const [tab, setTab] = useState("reports");
   const [casesInitialFilter, setCasesInitialFilter] = useState(null);
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
@@ -1562,7 +1573,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "cases" && (
           <CasesTab cases={cases} machines={machines} products={products} saveCase={saveCase} deleteCase={deleteCase}
             addPayment={addPayment} addDressingChange={addDressingChange} addAdditionalItem={addAdditionalItem}
-            generateInvoiceNumber={generateInvoiceNumber} businessName={business.name} doctorsList={doctorsList} initialFilter={casesInitialFilter} />
+            generateInvoiceNumber={generateInvoiceNumber} businessName={business.name} doctorsList={doctorsList} hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster} initialFilter={casesInitialFilter} />
         )}
         {tab === "challans" && (
           <ChallansTab challans={challans} products={products} cases={cases}
@@ -2089,7 +2100,7 @@ function DresserProfileForm({ name, profile, setDresserProfile, businessName = "
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, deleteDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, deleteDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, hospitalsList, addHospitalMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [quickAction, setQuickAction] = useState(null); // "reapply" | "stop" | null
   const [quickPatientId, setQuickPatientId] = useState("");
   const [quickProtocol, setQuickProtocol] = useState(5);
@@ -2210,7 +2221,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
 
   if (showForm) {
     return (
-      <CaseForm machines={machines} products={products} initial={editingCase} presetDresserName={name} doctorsList={doctorsList} cases={cases}
+      <CaseForm machines={machines} products={products} initial={editingCase} presetDresserName={name} doctorsList={doctorsList} hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster} cases={cases}
         onCancel={() => { setShowForm(false); setEditingCase(null); }}
         onSave={(data) => {
           saveCase(data, editingCase ? editingCase.id : null);
@@ -3446,7 +3457,7 @@ function NotificationsTab({ cases, doctorCalls = [], confirmPayment, markPayment
   );
 }
 
-function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, businessName, doctorsList, initialFilter }) {
+function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, businessName, doctorsList, hospitalsList, addHospitalMaster, initialFilter }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [filter, setFilter] = useState(initialFilter || "all"); const [search, setSearch] = useState("");
@@ -3464,7 +3475,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
 
   if (showForm) {
     return (
-      <CaseForm machines={machines} products={products} initial={editing} doctorsList={doctorsList} cases={cases}
+      <CaseForm machines={machines} products={products} initial={editing} doctorsList={doctorsList} hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster} cases={cases}
         onCancel={() => { setShowForm(false); setEditing(null); }}
         onSave={(data) => {
           saveCase(data, editing ? editing.id : null);
@@ -3686,7 +3697,9 @@ function Detail({ label, value, highlight, color, big }) {
   );
 }
 
-function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName, doctorsList, cases = [] }) {
+function CaseForm({ machines, products, initial, onCancel, onSave, presetDresserName, doctorsList, hospitalsList = [], addHospitalMaster, cases = [] }) {
+  const [addingNewHospital, setAddingNewHospital] = useState(false);
+  const [newHospitalName, setNewHospitalName] = useState("");
   const knownHospitals = Array.from(new Set(
     cases.map((c) => (c.hospitalName || "").trim()).filter(Boolean)
   )).sort((a, b) => a.localeCompare(b));
@@ -3802,10 +3815,28 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         </Field>
         {form.billTo === "Hospital" && (
           <Field label="Hospital Name">
-            <select style={styles.input} value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)}>
-              <option value="">— Select hospital —</option>
-              {HOSPITAL_MASTER_LIST.map((h) => <option key={h} value={h}>{h}</option>)}
-            </select>
+            {!addingNewHospital ? (
+              <select style={styles.input} value={form.hospitalName} onChange={(e) => {
+                if (e.target.value === "__add_new__") { setAddingNewHospital(true); return; }
+                set("hospitalName", e.target.value);
+              }}>
+                <option value="">— Select hospital —</option>
+                {[...hospitalsList].sort((a, b) => a.name.localeCompare(b.name)).map((h) => <option key={h.id} value={h.name}>{h.name}</option>)}
+                <option value="__add_new__">+ Add New Hospital…</option>
+              </select>
+            ) : (
+              <div style={{ display: "flex", gap: 8 }}>
+                <input style={{ ...styles.input, flex: 1 }} placeholder="New hospital name" value={newHospitalName} onChange={(e) => setNewHospitalName(e.target.value)} autoFocus />
+                <button type="button" style={styles.smallBtn} onClick={() => {
+                  const trimmed = newHospitalName.trim();
+                  if (!trimmed) return;
+                  if (addHospitalMaster) addHospitalMaster(trimmed);
+                  set("hospitalName", trimmed);
+                  setAddingNewHospital(false); setNewHospitalName("");
+                }}>Add</button>
+                <button type="button" style={styles.secondaryBtn} onClick={() => { setAddingNewHospital(false); setNewHospitalName(""); }}>Cancel</button>
+              </div>
+            )}
           </Field>
         )}
         <Field label="Patient Name & Mobile Number *">
