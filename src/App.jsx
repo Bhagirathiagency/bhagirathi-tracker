@@ -4059,8 +4059,14 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
                 <button type="button" style={styles.smallBtn} onClick={() => {
                   const trimmed = newHospitalName.trim();
                   if (!trimmed) return;
-                  if (addHospitalMaster) addHospitalMaster(trimmed);
-                  set("hospitalName", trimmed);
+                  const existing = hospitalsList.find((h) => h.name.trim().toLowerCase() === trimmed.toLowerCase());
+                  if (existing) {
+                    alert(`"${existing.name}" is already in the hospital list — using the existing entry.`);
+                    set("hospitalName", existing.name);
+                  } else {
+                    if (addHospitalMaster) addHospitalMaster(trimmed);
+                    set("hospitalName", trimmed);
+                  }
                   setAddingNewHospital(false); setNewHospitalName("");
                 }}>Add</button>
                 <button type="button" style={styles.secondaryBtn} onClick={() => { setAddingNewHospital(false); setNewHospitalName(""); }}>Cancel</button>
