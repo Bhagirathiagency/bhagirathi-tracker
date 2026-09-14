@@ -5163,6 +5163,165 @@ function SWOTGrid({ swot }) {
   );
 }
 
+function MonthlySummaryView({ cases, expenses = [], dresserStats = [], onBack, businessName = "Bhagirathi Agency" }) {
+  const monthOptions = useMemo(() => {
+    const keys = new Set();
+    cases.forEach((c) => { if (c.applicationDate) keys.add(c.applicationDate.slice(0, 7)); });
+    expenses.forEach((e) => { if (e.date) keys.add(e.date.slice(0, 7)); });
+    keys.add(todayISO().slice(0, 7));
+    return Array.from(keys).sort().reverse();
+  }, [cases, expenses]);
+  const [month, setMonth] = useState(monthOptions[0]);
+  const monthLabel = pnlPeriodLabel(month, "monthly");
+  const sheetRef = useRef(null);
+  const [busy, setBusy] = useState("");
+
+  const monthCases = cases.filter((c) => (c.applicationDate || "").slice(0, 7) === month);
+  const revenue = monthCases.reduce((s, c) => s + Number(c.totalAmount || 0), 0);
+  const collected = useMemo(() => {
+    let total = 0;
+    cases.forEach((c) => (c.payments || []).forEach((p) => {
+      if (p.confirmed !== false && (p.date || "").slice(0, 7) === month) total += Number(p.amount || 0);
+    }));
+    return total;
+  }, [cases, month]);
+  const outstanding = cases.reduce((s, c) => s + Math.max(0, Number(c.totalAmount || 0) - confirmedPaidTotal(c)), 0);
+  const monthExpenses = expenses.filter((e) => (e.date || "").slice(0, 7) === month);
+  const expensesTotal = monthExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const expensesByCategory = useMemo(() => {
+    const tally = {};
+    monthExpenses.forEach((e) => { tally[e.category || "Other"] = (tally[e.category || "Other"] || 0) + Number(e.amount || 0); });
+    return Object.entries(tally).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
+  }, [monthExpenses]);
+  const dresserActivityThisMonth = useMemo(() => {
+    const tally = {};
+    cases.forEach((c) => (c.dressingChanges || []).forEach((e) => {
+      const d = (e.loggedAt || "").slice(0, 7);
+      if (d !== month) return;
+      const dName = (e.dresserName || "").trim();
+      if (!dName) return;
+      tally[dName] = (tally[dName] || 0) + 1;
+    }));
+    return Object.entries(tally).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+  }, [cases, month]);
+
+  const fileName = `${businessName.replace(/\s+/g, "-")}-Summary-${month}.pdf`;
+  const makeFile = async () => {
+    const canvas = await html2canvas(sheetRef.current, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let heightLeft = imgH, y = 0;
+    pdf.addImage(imgData, "PNG", 0, y, imgW, imgH);
+    heightLeft -= pageH;
+    while (heightLeft > 0) {
+      y = heightLeft - imgH;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, y, imgW, imgH);
+      heightLeft -= pageH;
+    }
+    return new File([pdf.output("blob")], fileName, { type: "application/pdf" });
+  };
+  const downloadPdf = async () => {
+    setBusy("download");
+    try {
+      const file = await makeFile();
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url; a.download = fileName; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { alert("Couldn't generate PDF. Try again."); }
+    finally { setBusy(""); }
+  };
+  const sharePdf = async () => {
+    setBusy("share");
+    try {
+      const file = await makeFile();
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: `${businessName} — ${monthLabel} Summary` });
+      } else {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) { if (e?.name !== "AbortError") alert("Couldn't share. Try Download instead."); }
+    finally { setBusy(""); }
+  };
+
+  return (
+    <div>
+      <div className="no-print" style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+        <button style={styles.linkBtn} onClick={onBack}>&larr; Back</button>
+        <select style={{ ...styles.smallInput, marginLeft: "auto" }} value={month} onChange={(e) => setMonth(e.target.value)}>
+          {monthOptions.map((m) => <option key={m} value={m}>{pnlPeriodLabel(m, "monthly")}</option>)}
+        </select>
+        <button style={{ ...styles.smallBtn, background: "#3B5BA5" }} disabled={!!busy} onClick={downloadPdf}>{busy === "download" ? "Preparing…" : "Download PDF"}</button>
+        <button style={{ ...styles.smallBtn, background: "#128577" }} disabled={!!busy} onClick={sharePdf}>{busy === "share" ? "Preparing…" : "Share"}</button>
+      </div>
+
+      <div ref={sheetRef} style={{ background: "#fff", padding: 24, fontFamily: PDF_FONT, color: "#182322" }}>
+        <Letterhead businessName={businessName} docType="Monthly Summary" meta={<div style={{ fontSize: 12, color: "#5B6864", marginTop: 4 }}>{monthLabel}</div>} />
+
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, marginTop: 10 }}>Revenue Overview</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 18 }}>
+          <div style={{ border: "1px solid #E3E7E2", borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 11, color: "#8A9A96" }}>Billed This Month</div>
+            <div style={{ fontSize: 17, fontWeight: 700 }}>{fmtMoney(revenue)}</div>
+          </div>
+          <div style={{ border: "1px solid #E3E7E2", borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 11, color: "#8A9A96" }}>Collected This Month</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#128577" }}>{fmtMoney(collected)}</div>
+          </div>
+          <div style={{ border: "1px solid #E3E7E2", borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 11, color: "#8A9A96" }}>Total Outstanding (all-time)</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#E1483C" }}>{fmtMoney(outstanding)}</div>
+          </div>
+        </div>
+
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Expenses This Month — {fmtMoney(expensesTotal)}</div>
+        {expensesByCategory.length === 0 ? (
+          <div style={{ fontSize: 12, color: "#8A9A96", marginBottom: 18 }}>No expenses logged this month.</div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 18, fontSize: 12 }}>
+            <thead><tr style={{ borderBottom: "1px solid #DCE4DF" }}><th style={{ textAlign: "left", padding: "6px 4px" }}>Category</th><th style={{ textAlign: "right", padding: "6px 4px" }}>Amount</th></tr></thead>
+            <tbody>
+              {expensesByCategory.map((c) => (
+                <tr key={c.category} style={{ borderBottom: "1px solid #F0EEE3" }}>
+                  <td style={{ padding: "6px 4px" }}>{c.category}</td>
+                  <td style={{ padding: "6px 4px", textAlign: "right" }}>{fmtMoney(c.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Dresser Activity This Month</div>
+        {dresserActivityThisMonth.length === 0 ? (
+          <div style={{ fontSize: 12, color: "#8A9A96" }}>No dressing changes logged this month.</div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead><tr style={{ borderBottom: "1px solid #DCE4DF" }}><th style={{ textAlign: "left", padding: "6px 4px" }}>Dresser</th><th style={{ textAlign: "right", padding: "6px 4px" }}>Dressings Logged</th></tr></thead>
+            <tbody>
+              {dresserActivityThisMonth.map((d) => (
+                <tr key={d.name} style={{ borderBottom: "1px solid #F0EEE3" }}>
+                  <td style={{ padding: "6px 4px" }}>{d.name}</td>
+                  <td style={{ padding: "6px 4px", textAlign: "right" }}>{d.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <div style={{ fontSize: 10, color: "#8A9A96", marginTop: 20, textAlign: "center" }}>Generated {new Date().toLocaleString("en-IN")}</div>
+      </div>
+    </div>
+  );
+}
+
 function Letterhead({ businessName = "Bhagirathi Agency", docType, meta }) {
   const b = BUSINESSES.find((x) => x.name === businessName) || {};
   return (
@@ -5948,9 +6107,15 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     window.open(waLink(waNumberFor(businessName), msg), "_blank");
   };
 
+  const [showMonthlySummary, setShowMonthlySummary] = useState(false);
+  if (showMonthlySummary) {
+    return <MonthlySummaryView cases={cases} expenses={expenses} dresserStats={dresserStats} businessName={businessName} onBack={() => setShowMonthlySummary(false)} />;
+  }
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 8 }}>
+        <button style={{ ...styles.smallBtn, background: "#D9720A" }} onClick={() => setShowMonthlySummary(true)}>📄 Monthly Summary</button>
         <button style={{ ...styles.smallBtn, background: "#3B5BA5" }} onClick={() => window.print()}>Download as PDF</button>
       </div>
 
