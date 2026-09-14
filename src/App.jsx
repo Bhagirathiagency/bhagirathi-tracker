@@ -2644,6 +2644,12 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList
   const [newDocSpeciality, setNewDocSpeciality] = useState("");
   const [newDocClass, setNewDocClass] = useState("A");
   const [addDocMsg, setAddDocMsg] = useState(null);
+  const [showDoctorSuggestions, setShowDoctorSuggestions] = useState(false);
+  const doctorSuggestions = useMemo(() => {
+    const t = doctorName.trim().toLowerCase();
+    if (!t) return [];
+    return (doctorsList || []).filter((d) => d.name.toLowerCase().includes(t)).slice(0, 6);
+  }, [doctorName, doctorsList]);
 
   const myCalls = useMemo(
     () => doctorCalls.filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
@@ -2679,15 +2685,34 @@ function DoctorCallTab({ name, products, doctorCalls, addDoctorCall, doctorsList
     <div>
       <div style={styles.formGrid}>
         <Field label="Doctor Name">
-          <input style={styles.input} list="doctor-master-list-calls" value={doctorName} onChange={(e) => {
-            const val = e.target.value;
-            setDoctorName(val);
-            const match = (doctorsList || []).find((d) => d.name.toLowerCase() === val.toLowerCase());
-            if (match) { setDoctorMobile(match.mobile || ""); setSpeciality(match.speciality || ""); }
-          }} />
-          <datalist id="doctor-master-list-calls">
-            {(doctorsList || []).map((d) => <option key={d.id} value={d.name} />)}
-          </datalist>
+          <div style={{ position: "relative" }}>
+            <input style={styles.input} value={doctorName} autoComplete="off"
+              onFocus={() => setShowDoctorSuggestions(true)}
+              onChange={(e) => {
+                setDoctorName(e.target.value);
+                setShowDoctorSuggestions(true);
+              }}
+              onBlur={() => setTimeout(() => setShowDoctorSuggestions(false), 150)}
+            />
+            {showDoctorSuggestions && doctorSuggestions.length > 0 && (
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20, background: "#fff", border: "1px solid #DCE4DF", borderRadius: 10, marginTop: 4, boxShadow: "0 6px 16px rgba(24,35,34,0.12)", overflow: "hidden" }}>
+                {doctorSuggestions.map((d) => (
+                  <div key={d.id}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setDoctorName(d.name);
+                      setDoctorMobile(d.mobile || "");
+                      setSpeciality(d.speciality || "");
+                      setShowDoctorSuggestions(false);
+                    }}
+                    style={{ padding: "10px 14px", cursor: "pointer", borderBottom: "1px solid #F0EEE3", fontSize: 14 }}>
+                    <div style={{ fontWeight: 600 }}>{d.name}</div>
+                    {d.speciality && <div style={{ fontSize: 12, color: "#8A9A96" }}>{d.speciality}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </Field>
         <Field label="Doctor Mobile Number"><input type="tel" style={styles.input} value={doctorMobile} onChange={(e) => setDoctorMobile(e.target.value)} placeholder="10-digit number" /></Field>
         <Field label="Speciality"><input style={styles.input} value={speciality} onChange={(e) => setSpeciality(e.target.value)} placeholder="e.g. General Surgeon, Orthopedician" /></Field>
@@ -3672,12 +3697,17 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         </Field>
         <Field label="Doctor Name & Commission (₹)">
           <div style={{ display: "flex", gap: 8 }}>
-            <input style={{ ...styles.input, flex: 2 }} list="doctor-master-list" value={form.doctorName} onChange={(e) => set("doctorName", e.target.value)} placeholder="Doctor name" />
+            <select style={{ ...styles.input, flex: 2 }} value={form.doctorName} onChange={(e) => set("doctorName", e.target.value)}>
+              <option value="">— Select doctor —</option>
+              {[...(doctorsList || [])].sort((a, b) => a.name.localeCompare(b.name)).map((d) => (
+                <option key={d.id} value={d.name}>{d.name}{d.speciality ? ` (${d.speciality})` : ""}</option>
+              ))}
+            </select>
             <input type="number" style={{ ...styles.input, flex: 1 }} value={form.doctorCommission} onChange={(e) => set("doctorCommission", e.target.value)} placeholder="Commission" />
           </div>
-          <datalist id="doctor-master-list">
-            {(doctorsList || []).map((d) => <option key={d.id} value={d.name} />)}
-          </datalist>
+          {(doctorsList || []).length === 0 && (
+            <div style={{ fontSize: 11, color: "#E1483C", marginTop: 4 }}>No doctors in your Doctor Master List yet — add one first from the Doctors tab.</div>
+          )}
         </Field>
         {!presetDresserName && (
           <Field label="Dresser Name (applied by)"><input style={styles.input} value={form.dresserName} onChange={(e) => set("dresserName", e.target.value)} /></Field>
