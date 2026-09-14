@@ -152,6 +152,35 @@ const STATUS = {
   reapplied: { label: "VAC Therapy Continue", color: "#3B5BA5", bg: "#E7ECF7" },
   na: { label: "Material Supplied", color: "#5B6864", bg: "#EEF0EE" },
 };
+function normalizeDoctorName(raw) {
+  return (raw || "")
+    .toLowerCase()
+    .replace(/\bdr\.?\b/g, "")
+    .replace(/\bsir\b/g, "")
+    .replace(/\bmadam\b/g, "")
+    .replace(/[.]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+function doctorNamesSimilar(a, b) {
+  const na = normalizeDoctorName(a), nb = normalizeDoctorName(b);
+  if (na === nb) return true;
+  if (!na || !nb) return false;
+  const dist = levenshtein(na, nb);
+  const maxLen = Math.max(na.length, nb.length);
+  return dist <= Math.max(3, Math.floor(maxLen * 0.2));
+}
 const HOSPITAL_MASTER_LIST = [
   "KIM'S MANVATA PVT LTD",
   "HCG MANAVATA ONCOLOGY HOSPITAL",
@@ -1600,7 +1629,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "settings" && (
           <MasterSettingsTab outstandingTotal={outstandingTotal} clearAllOutstanding={clearAllOutstanding} resetTestData={resetTestData} factoryResetApp={factoryResetApp} businessName={business.name} />
         )}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} confirmPayment={confirmPayment} dresserProfiles={dresserProfiles} saveCase={saveCase} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} confirmPayment={confirmPayment} dresserProfiles={dresserProfiles} saveCase={saveCase} doctorsList={doctorsList} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
     </>
@@ -5919,7 +5948,7 @@ function ExpensesTab({ expenses, addExpense, deleteExpense, fixedExpenses, addFi
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, previousOutstanding = [], addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, dresserProfiles = {}, machines, addPayment, markPaymentHandedOver, confirmPayment, readOnly = false, saveCase }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, previousOutstanding = [], addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, dresserProfiles = {}, machines, addPayment, markPaymentHandedOver, confirmPayment, readOnly = false, saveCase, doctorsList = [], updateDoctorMaster, removeDoctorMaster }) {
   const cashPendingHandover = useMemo(() => {
     const byDresser = {};
     cases.forEach((c) => {
@@ -6134,6 +6163,47 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       }))
       .sort((a, b) => b.totalReceived - a.totalReceived);
   }, [products]);
+
+  const [doctorManualOverrides, setDoctorManualOverrides] = useState({});
+  const doctorMergeGroups = useMemo(() => {
+    const allNamesUsed = Array.from(new Set(cases.map((c) => (c.doctorName || "").trim()).filter(Boolean)));
+    const groups = [];
+    allNamesUsed.forEach((name) => {
+      let placed = false;
+      for (const g of groups) {
+        if (doctorNamesSimilar(name, g.variants[0])) { g.variants.push(name); placed = true; break; }
+      }
+      if (!placed) groups.push({ variants: [name] });
+    });
+    return groups
+      .filter((g) => g.variants.length > 1)
+      .map((g) => {
+        // Default suggestion: the longest / most complete-looking variant (has "Dr." and most characters, minus honorifics)
+        const cleaned = g.variants.map((v) => v.replace(/\s*\bsir\b\s*/gi, "").replace(/\s*\bmadam\b\s*/gi, "").trim());
+        const defaultCanonical = doctorManualOverrides[g.variants.join("|")] !== undefined
+          ? doctorManualOverrides[g.variants.join("|")]
+          : cleaned.reduce((a, b) => b.length > a.length ? b : a, cleaned[0]);
+        return { variants: g.variants, canonical: defaultCanonical, key: g.variants.join("|") };
+      });
+  }, [cases, doctorManualOverrides]);
+  const applyDoctorMerge = (group) => {
+    if (!saveCase || !group.canonical.trim()) return;
+    if (!window.confirm(`Merge ${group.variants.length} name(s) into "${group.canonical.trim()}"?`)) return;
+    const canonical = group.canonical.trim();
+    const variantsLower = group.variants.map((v) => v.toLowerCase());
+    cases.forEach((c) => {
+      if (variantsLower.includes((c.doctorName || "").trim().toLowerCase())) {
+        saveCase({ ...c, doctorName: canonical }, c.id);
+      }
+    });
+    if (updateDoctorMaster && removeDoctorMaster && doctorsList) {
+      const matches = doctorsList.filter((d) => variantsLower.includes((d.name || "").trim().toLowerCase()));
+      if (matches.length > 0) {
+        updateDoctorMaster(matches[0].id, { name: canonical });
+        matches.slice(1).forEach((d) => removeDoctorMaster(d.id));
+      }
+    }
+  };
 
   const doctorMonthlyStats = useMemo(() => {
     const tally = {};
@@ -6988,6 +7058,24 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
           </div>
         )}
       </CollapsibleSection>
+      )}
+
+      {reportSubTab === "doctors" && saveCase && doctorMergeGroups.length > 0 && (
+        <CollapsibleSection title="Merge Duplicate Doctor Names" right={<span style={{ fontSize: 12, fontWeight: 700, color: "#E1483C" }}>{doctorMergeGroups.length}</span>}>
+          <div style={styles.emptyState2}>Same doctor showing multiple times due to spelling differences or "sir"/"madam" being added? Review each group below, adjust the correct name if needed, then merge.</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {doctorMergeGroups.map((g) => (
+              <div key={g.key} style={{ ...styles.card, padding: 14 }}>
+                <div style={{ fontSize: 12, color: "#8A9A96", marginBottom: 6 }}>{g.variants.join(" · ")}</div>
+                <div style={styles.addPaymentRow}>
+                  <input type="text" style={{ ...styles.smallInput, flex: 1 }} value={g.canonical}
+                    onChange={(e) => setDoctorManualOverrides((prev) => ({ ...prev, [g.key]: e.target.value }))} />
+                  <button style={styles.smallBtn} onClick={() => applyDoctorMerge(g)}>Merge</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
 
       {reportSubTab === "doctors" && (
