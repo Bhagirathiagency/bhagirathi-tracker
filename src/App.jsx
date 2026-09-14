@@ -1472,7 +1472,7 @@ function RoleGate({ pin, accountantPin, dressers, dresserPins, onSetPin, onOwner
 
 // ================= OWNER SHELL =================
 function OwnerShell({ cases, machines, setMachines, products, setProducts, receiveStock, dressers, addDresser, removeDresser, dresserPins, setDresserPin, dresserProfiles, dresserStockAccess, setDresserStockAccess, dresserBusinessAccess, setDresserBusinessAccess, saveCase, deleteCase, addPayment, markPaymentHandedOver, confirmPayment, addDressingChange, addAdditionalItem, generateInvoiceNumber, challans, createChallan, settleChallan, deleteChallan, quotations, saveQuotation, deleteQuotation, setQuotationStatus, resetTestData, clearAllOutstanding, factoryResetApp, doctorCalls, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, hospitalsList, addHospitalMaster, updateHospitalMaster, removeHospitalMaster, expenses, addExpense, deleteExpense, supplierLedger, addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses, addFixedExpense, deleteFixedExpense, previousOutstanding, addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, ownerLogins, businessId, business, businesses, onSwitchBusiness, pin, onChangePin, accountantPin, onChangeAccountantPin, refreshData, refreshing, onLogout }) {
-  const [tab, setTab] = useState("reports");
+  const [tab, setTab] = useState("home");
   const [casesInitialFilter, setCasesInitialFilter] = useState(null);
   const goToCases = (filterValue) => { setCasesInitialFilter(filterValue); setTab("cases"); };
   const [showPinForm, setShowPinForm] = useState(false);
@@ -1576,7 +1576,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       )}
 
       <nav style={styles.navGrid}>
-        {[["reports", "Reports", "reports", "#6E0F1A"], ["dashboard", "Command Center", "overview", "#3B5BA5"], ["notifications", "Notifications", "bell", "#D9720A"], ["cases", "Cases", "cases", "#128577"], ["challans", "Challans", "challan", "#8B5CF6"], ["quotations", "Quotes", "quotes", "#2A9D8F"], ["machines", "Machines", "machines", "#457B9D"], ["stock", "Stock", "stock", "#D98D2B"], ["expenses", "Expenses", "expense", "#E1483C"], ["dressers", "Dressers", "dressers", "#118AB2"], ["doctors", "Doctors", "doctor", "#06A77D"], ["hospitals", "Hospitals", "challan", "#8B5CF6"], ["combined", "All Business", "overview", "#C1121F"], ["settings", "Master Settings", "settings", "#5B6864"]].map(([key, label, icon, color]) => (
+        {[["home", "Home", "overview", "#128577"], ["reports", "Reports", "reports", "#6E0F1A"], ["dashboard", "Command Center", "overview", "#3B5BA5"], ["notifications", "Notifications", "bell", "#D9720A"], ["cases", "Cases", "cases", "#128577"], ["challans", "Challans", "challan", "#8B5CF6"], ["quotations", "Quotes", "quotes", "#2A9D8F"], ["machines", "Machines", "machines", "#457B9D"], ["stock", "Stock", "stock", "#D98D2B"], ["expenses", "Expenses", "expense", "#E1483C"], ["dressers", "Dressers", "dressers", "#118AB2"], ["doctors", "Doctors", "doctor", "#06A77D"], ["hospitals", "Hospitals", "challan", "#8B5CF6"], ["combined", "All Business", "overview", "#C1121F"], ["settings", "Master Settings", "settings", "#5B6864"]].map(([key, label, icon, color]) => (
           <button key={key} onClick={() => setTab(key)} style={{ ...styles.navTile, ...(tab === key ? styles.navTileActive : {}) }}>
             <div style={{
               ...styles.navTileIconWrap,
@@ -1593,6 +1593,11 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
       </nav>
 
       <main style={styles.main} key={tab} className="fade-in">
+        {tab === "home" && (
+          <HomeTab cases={cases} machines={machines} products={products} expenses={expenses} dresserStats={dresserStats}
+            outstandingTotal={outstandingTotal} activeCount={activeCount} machinesInUseCount={machinesInUseCount}
+            setTab={setTab} goToCases={goToCases} businessName={business.name} />
+        )}
         {tab === "dashboard" && (
           <Dashboard cases={cases} machines={machines} outstandingTotal={outstandingTotal} activeCount={activeCount}
             machinesInUseCount={machinesInUseCount} overdueCount={overdueCount} dueSoonCount={dueSoonCount} dresserStats={dresserStats} lowStock={lowStock}
@@ -3256,6 +3261,151 @@ function DresserCaseRow({ c, dresserName, products, doctorsList, t = (k) => TRAN
 }
 
 // ---------------- Dashboard ----------------
+const PIE_COLORS = ["#3B5BA5", "#D9720A", "#128577", "#E1483C", "#D98D2B", "#8B5CF6", "#06A77D", "#6E0F1A"];
+
+function HomeTab({ cases, machines, products, expenses = [], dresserStats, outstandingTotal, activeCount, machinesInUseCount, setTab, goToCases, businessName = "Bhagirathi Agency" }) {
+  const activityTrend = useMemo(() => {
+    const days = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = addDays(todayISO(), -i);
+      days.push({ date: d, label: new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }), changes: 0, newCases: 0 });
+    }
+    const byDate = Object.fromEntries(days.map((d) => [d.date, d]));
+    cases.forEach((c) => {
+      if (byDate[c.applicationDate]) byDate[c.applicationDate].newCases += 1;
+      (c.dressingChanges || []).forEach((e) => {
+        if (e.loggedAt) { const d = e.loggedAt.slice(0, 10); if (byDate[d]) byDate[d].changes += 1; }
+      });
+    });
+    return days;
+  }, [cases]);
+
+  const caseStatusPie = useMemo(() => {
+    const tally = {};
+    cases.forEach((c) => {
+      const label = (STATUS[c.status] || {}).label || c.status || "Unknown";
+      tally[label] = (tally[label] || 0) + 1;
+    });
+    return Object.entries(tally).map(([name, value]) => ({ name, value }));
+  }, [cases]);
+
+  const stockByCompanyPie = useMemo(() => {
+    const tally = {};
+    products.forEach((p) => {
+      const c = productCompany(p);
+      tally[c] = (tally[c] || 0) + (p.available || 0);
+    });
+    return Object.entries(tally).map(([name, value]) => ({ name, value })).filter((d) => d.value > 0);
+  }, [products]);
+
+  const paymentModePie = useMemo(() => {
+    const tally = {};
+    cases.forEach((c) => (c.payments || []).forEach((p) => {
+      if (p.confirmed === false) return;
+      const mode = p.mode || "Cash";
+      tally[mode] = (tally[mode] || 0) + Number(p.amount || 0);
+    }));
+    return Object.entries(tally).map(([name, value]) => ({ name, value })).filter((d) => d.value > 0);
+  }, [cases]);
+
+  const expensesByCategoryPie = useMemo(() => {
+    const tally = {};
+    expenses.forEach((e) => { tally[e.category || "Other"] = (tally[e.category || "Other"] || 0) + Number(e.amount || 0); });
+    return Object.entries(tally).map(([name, value]) => ({ name, value })).filter((d) => d.value > 0);
+  }, [expenses]);
+
+  const machineUtilPie = useMemo(() => ([
+    { name: "In Use", value: machinesInUseCount },
+    { name: "Available", value: Math.max(0, machines.length - machinesInUseCount) },
+  ]), [machines, machinesInUseCount]);
+
+  const dresserWorkloadTop = useMemo(() => dresserStats.slice(0, 8), [dresserStats]);
+
+  const renderPie = (data, colors = PIE_COLORS) => (
+    <ResponsiveContainer width="100%" height={220}>
+      <PieChart>
+        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={80}
+          label={(d) => d.name}>
+          {data.map((d, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
+        </Pie>
+        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+        <Legend wrapperStyle={{ fontSize: 10 }} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+
+  return (
+    <div>
+      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 4 }}>{businessName}</div>
+      <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 16 }}>Business overview at a glance</div>
+
+      <div style={styles.cardGrid}>
+        <StatCard label="Active Cases" value={activeCount} accent="#D9720A" icon="cases" onClick={() => goToCases("active")} />
+        <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => setTab("reports")} />
+        <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
+        <StatCard label="Products" value={products.length} accent="#128577" icon="stock" onClick={() => setTab("stock")} />
+      </div>
+
+      <SectionTitle>14-Day Activity Trend</SectionTitle>
+      <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 20 }}>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={activityTrend} margin={{ left: -10, right: 15, top: 5, bottom: 5 }}>
+            <CartesianGrid stroke="#EEF1EC" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 9, fill: "#8A9A96" }} interval={1} />
+            <YAxis tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
+            <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="changes" name="Dressing Changes" stroke="#3B5BA5" strokeWidth={2.5} dot={{ r: 2 }} />
+            <Line type="monotone" dataKey="newCases" name="New Cases" stroke="#D9720A" strokeWidth={2.5} dot={{ r: 2 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
+        <div>
+          <SectionTitle>Case Status</SectionTitle>
+          <div style={{ ...styles.card, padding: 8 }}>{caseStatusPie.length === 0 ? <EmptyState text="No cases yet." /> : renderPie(caseStatusPie)}</div>
+        </div>
+        <div>
+          <SectionTitle>Machine Utilization</SectionTitle>
+          <div style={{ ...styles.card, padding: 8 }}>{machines.length === 0 ? <EmptyState text="No machines yet." /> : renderPie(machineUtilPie, ["#D9720A", "#128577"])}</div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
+        <div>
+          <SectionTitle>Stock by Company</SectionTitle>
+          <div style={{ ...styles.card, padding: 8 }}>{stockByCompanyPie.length === 0 ? <EmptyState text="No stock yet." /> : renderPie(stockByCompanyPie)}</div>
+        </div>
+        <div>
+          <SectionTitle>Payments by Mode</SectionTitle>
+          <div style={{ ...styles.card, padding: 8 }}>{paymentModePie.length === 0 ? <EmptyState text="No payments yet." /> : renderPie(paymentModePie)}</div>
+        </div>
+      </div>
+
+      <SectionTitle>Expenses by Category</SectionTitle>
+      <div style={{ ...styles.card, padding: 8, marginBottom: 20 }}>
+        {expensesByCategoryPie.length === 0 ? <EmptyState text="No expenses logged yet." /> : renderPie(expensesByCategoryPie)}
+      </div>
+
+      <SectionTitle>Dresser Workload</SectionTitle>
+      <div style={{ ...styles.card, padding: "16px 8px 8px", marginBottom: 20 }}>
+        {dresserWorkloadTop.length === 0 ? <EmptyState text="No dressing changes logged yet." /> : (
+          <ResponsiveContainer width="100%" height={Math.max(120, dresserWorkloadTop.length * 34)}>
+            <BarChart data={dresserWorkloadTop} layout="vertical" margin={{ left: 10, right: 20 }}>
+              <CartesianGrid stroke="#EEF1EC" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
+              <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
+              <Bar dataKey="count" name="Dressings" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInUseCount, overdueCount, dueSoonCount, dresserStats, lowStock, products, setTab, goToCases, doctorsList = [], businessName = "Bhagirathi Agency" }) {
   const recentCases = [...cases].sort((a, b) => new Date(b.applicationDate) - new Date(a.applicationDate)).slice(0, 5);
   const cashPendingHandoverTotal = useMemo(() => {
