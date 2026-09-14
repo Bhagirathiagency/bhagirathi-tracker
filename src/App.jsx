@@ -6865,6 +6865,51 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
         </div>
       )}
 
+      {reportSubTab === "financial" && (
+      <CollapsibleSection title="Outstanding Payments by Patient">
+        {outstandingByPatient.length === 0 ? <EmptyState text="No outstanding balances. All caught up!" /> : (
+          <div style={styles.list}>
+            {outstandingByPatient.map((c) => (
+              <OutstandingPatientRow key={c.id} c={c} businessName={businessName} addPayment={addPayment} readOnly={readOnly} />
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+      )}
+
+      {reportSubTab === "financial" && saveCase && hospitalMergePlan.length > 0 && (
+        <CollapsibleSection title="Standardize Hospital Names">
+          <div style={styles.emptyState2}>These hospital names don't match your standard list. Review the suggested match for each, adjust if needed, then apply.</div>
+          <div style={{ ...styles.card, padding: 14, marginBottom: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
+              {hospitalMergePlan.map((p) => (
+                <div key={p.variant} style={{ borderBottom: "1px solid #F0EEE3", paddingBottom: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{p.variant}</div>
+                  <select style={{ ...styles.smallInput, width: "100%" }} value={p.suggested || ""}
+                    onChange={(e) => setManualMergeOverrides((prev) => ({ ...prev, [p.variant]: e.target.value || null }))}>
+                    <option value="">— Leave as-is (not a duplicate) —</option>
+                    {HOSPITAL_MASTER_LIST.map((h) => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <button style={styles.primaryBtn} onClick={applyAllSuggestedMerges}>Apply All Mapped Names</button>
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {reportSubTab === "financial" && (
+      <CollapsibleSection title="Outstanding by Hospital">
+        {outstandingByHospital.length === 0 ? <EmptyState text="No hospital-billed outstanding balances." /> : (
+          <div style={styles.list}>
+            {outstandingByHospital.map((h) => (
+              <OutstandingHospitalRow key={h.hospital} h={h} businessName={businessName} addPayment={addPayment} readOnly={readOnly} />
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+      )}
+
       <CollapsibleSection title="Mode of Payment Received">
         <div style={styles.card}>
           {PAY_MODES.map((m) => (
@@ -7458,50 +7503,6 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       </CollapsibleSection>
       )}
 
-      {reportSubTab === "financial" && (
-      <CollapsibleSection title="Outstanding Payments by Patient">
-        {outstandingByPatient.length === 0 ? <EmptyState text="No outstanding balances. All caught up!" /> : (
-          <div style={styles.list}>
-            {outstandingByPatient.map((c) => (
-              <OutstandingPatientRow key={c.id} c={c} businessName={businessName} addPayment={addPayment} readOnly={readOnly} />
-            ))}
-          </div>
-        )}
-      </CollapsibleSection>
-      )}
-
-      {reportSubTab === "financial" && saveCase && hospitalMergePlan.length > 0 && (
-        <CollapsibleSection title="Standardize Hospital Names">
-          <div style={styles.emptyState2}>These hospital names don't match your standard list. Review the suggested match for each, adjust if needed, then apply.</div>
-          <div style={{ ...styles.card, padding: 14, marginBottom: 12 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
-              {hospitalMergePlan.map((p) => (
-                <div key={p.variant} style={{ borderBottom: "1px solid #F0EEE3", paddingBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{p.variant}</div>
-                  <select style={{ ...styles.smallInput, width: "100%" }} value={p.suggested || ""}
-                    onChange={(e) => setManualMergeOverrides((prev) => ({ ...prev, [p.variant]: e.target.value || null }))}>
-                    <option value="">— Leave as-is (not a duplicate) —</option>
-                    {HOSPITAL_MASTER_LIST.map((h) => <option key={h} value={h}>{h}</option>)}
-                  </select>
-                </div>
-              ))}
-            </div>
-            <button style={styles.primaryBtn} onClick={applyAllSuggestedMerges}>Apply All Mapped Names</button>
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {reportSubTab === "financial" && (
-      <CollapsibleSection title="Outstanding by Hospital">
-        {outstandingByHospital.length === 0 ? <EmptyState text="No hospital-billed outstanding balances." /> : (
-          <div style={styles.list}>
-            {outstandingByHospital.map((h) => (
-              <OutstandingHospitalRow key={h.hospital} h={h} businessName={businessName} addPayment={addPayment} readOnly={readOnly} />
-            ))}
-          </div>
-        )}
-      </CollapsibleSection>
-      )}
 
       {reportSubTab === "financial" && (
       <CollapsibleSection title="Monthly Revenue Trend">
