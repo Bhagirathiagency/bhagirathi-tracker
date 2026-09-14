@@ -152,6 +152,29 @@ const STATUS = {
   reapplied: { label: "VAC Therapy Continue", color: "#3B5BA5", bg: "#E7ECF7" },
   na: { label: "Material Supplied", color: "#5B6864", bg: "#EEF0EE" },
 };
+const HOSPITAL_MASTER_LIST = [
+  "KIM'S MANVATA PVT LTD",
+  "HCG MANAVATA ONCOLOGY HOSPITAL",
+  "NINE PEARLS HOSPITAL",
+  "ASHOKA MEDICOVER HOSPITAL",
+  "SIX SIGMA HOSPITAL",
+  "APOLLO HOSPITAL",
+];
+function suggestHospitalMatch(variantName) {
+  const v = variantName.toLowerCase();
+  const keywordMap = [
+    { keywords: ["kim", "manvata", "manavata"], canonical: "KIM'S MANVATA PVT LTD" },
+    { keywords: ["hcg", "oncology"], canonical: "HCG MANAVATA ONCOLOGY HOSPITAL" },
+    { keywords: ["nine pearl", "ninepearl"], canonical: "NINE PEARLS HOSPITAL" },
+    { keywords: ["ashoka"], canonical: "ASHOKA MEDICOVER HOSPITAL" },
+    { keywords: ["six sigma", "sixsigma"], canonical: "SIX SIGMA HOSPITAL" },
+    { keywords: ["apollo"], canonical: "APOLLO HOSPITAL" },
+  ];
+  for (const { keywords, canonical } of keywordMap) {
+    if (keywords.some((k) => v.includes(k))) return canonical;
+  }
+  return null;
+}
 const PROTOCOLS = [5, 7];
 const PAY_MODES = ["Cash", "Online", "Cheque", "RTGS", "Credit"];
 const DEFAULT_PRODUCTS = [{ id: uid(), name: "Material", available: 0, used: 0, costPrice: 0, receipts: [] }];
@@ -1563,7 +1586,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         {tab === "settings" && (
           <MasterSettingsTab outstandingTotal={outstandingTotal} clearAllOutstanding={clearAllOutstanding} resetTestData={resetTestData} factoryResetApp={factoryResetApp} businessName={business.name} />
         )}
-        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} confirmPayment={confirmPayment} dresserProfiles={dresserProfiles} />}
+        {tab === "reports" && <ReportsTab cases={cases} products={products} dresserStats={dresserStats} dressers={dressers} outstandingTotal={outstandingTotal} overdueCount={overdueCount} lowStock={lowStock} resetTestData={resetTestData} clearAllOutstanding={clearAllOutstanding} doctorCalls={doctorCalls} quotations={quotations} ownerLogins={ownerLogins} businessId={businessId} businessName={business.name} expenses={expenses} addExpense={addExpense} deleteExpense={deleteExpense} supplierLedger={supplierLedger} addSupplierLedgerEntry={addSupplierLedgerEntry} deleteSupplierLedgerEntry={deleteSupplierLedgerEntry} fixedExpenses={fixedExpenses} addFixedExpense={addFixedExpense} deleteFixedExpense={deleteFixedExpense} previousOutstanding={previousOutstanding} addPreviousOutstanding={addPreviousOutstanding} deletePreviousOutstanding={deletePreviousOutstanding} addPreviousOutstandingPayment={addPreviousOutstandingPayment} machines={machines} addPayment={addPayment} markPaymentHandedOver={markPaymentHandedOver} confirmPayment={confirmPayment} dresserProfiles={dresserProfiles} saveCase={saveCase} />}
         {tab === "combined" && <CombinedSummaryTab businesses={BUSINESSES} />}
       </main>
     </>
@@ -3779,10 +3802,10 @@ function CaseForm({ machines, products, initial, onCancel, onSave, presetDresser
         </Field>
         {form.billTo === "Hospital" && (
           <Field label="Hospital Name">
-            <input style={styles.input} list="hospital-name-list" value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)} placeholder="Select existing or type new" />
-            <datalist id="hospital-name-list">
-              {knownHospitals.map((h) => <option key={h} value={h} />)}
-            </datalist>
+            <select style={styles.input} value={form.hospitalName} onChange={(e) => set("hospitalName", e.target.value)}>
+              <option value="">— Select hospital —</option>
+              {HOSPITAL_MASTER_LIST.map((h) => <option key={h} value={h}>{h}</option>)}
+            </select>
           </Field>
         )}
         <Field label="Patient Name & Mobile Number *">
@@ -5754,7 +5777,7 @@ function ExpensesTab({ expenses, addExpense, deleteExpense, fixedExpenses, addFi
   );
 }
 
-function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, previousOutstanding = [], addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, dresserProfiles = {}, machines, addPayment, markPaymentHandedOver, confirmPayment, readOnly = false }) {
+function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal, overdueCount, lowStock, resetTestData, clearAllOutstanding, doctorCalls, quotations, ownerLogins, businessId, businessName = "Bhagirathi Agency", expenses, addExpense, deleteExpense, supplierLedger = [], addSupplierLedgerEntry, deleteSupplierLedgerEntry, fixedExpenses = [], addFixedExpense, deleteFixedExpense, previousOutstanding = [], addPreviousOutstanding, deletePreviousOutstanding, addPreviousOutstandingPayment, dresserProfiles = {}, machines, addPayment, markPaymentHandedOver, confirmPayment, readOnly = false, saveCase }) {
   const cashPendingHandover = useMemo(() => {
     const byDresser = {};
     cases.forEach((c) => {
@@ -6082,6 +6105,33 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       .filter((c) => c.balance > 0)
       .sort((a, b) => b.daysOutstanding - a.daysOutstanding || b.balance - a.balance);
   }, [cases]);
+
+  const [manualMergeOverrides, setManualMergeOverrides] = useState({});
+  const allHospitalNamesUsed = useMemo(() => {
+    const names = new Set();
+    cases.forEach((c) => { if (c.billTo === "Hospital" && (c.hospitalName || "").trim()) names.add(c.hospitalName.trim()); });
+    return Array.from(names).sort();
+  }, [cases]);
+  const hospitalMergePlan = useMemo(() => {
+    return allHospitalNamesUsed
+      .filter((h) => !HOSPITAL_MASTER_LIST.includes(h))
+      .map((h) => ({
+        variant: h,
+        suggested: manualMergeOverrides[h] !== undefined ? manualMergeOverrides[h] : suggestHospitalMatch(h),
+      }));
+  }, [allHospitalNamesUsed, manualMergeOverrides]);
+  const applyAllSuggestedMerges = () => {
+    const toApply = hospitalMergePlan.filter((p) => p.suggested);
+    if (toApply.length === 0 || !saveCase) return;
+    if (!window.confirm(`Merge ${toApply.length} hospital name(s) into their suggested standard names?`)) return;
+    const byVariant = Object.fromEntries(toApply.map((p) => [p.variant, p.suggested]));
+    cases.forEach((c) => {
+      const v = (c.hospitalName || "").trim();
+      if (c.billTo === "Hospital" && byVariant[v]) {
+        saveCase({ ...c, hospitalName: byVariant[v] }, c.id);
+      }
+    });
+  };
 
   const outstandingByHospital = useMemo(() => {
     const tally = {};
@@ -7018,6 +7068,27 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
           </div>
         )}
       </CollapsibleSection>
+      )}
+
+      {reportSubTab === "financial" && saveCase && hospitalMergePlan.length > 0 && (
+        <CollapsibleSection title="Standardize Hospital Names">
+          <div style={styles.emptyState2}>These hospital names don't match your standard list. Review the suggested match for each, adjust if needed, then apply.</div>
+          <div style={{ ...styles.card, padding: 14, marginBottom: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
+              {hospitalMergePlan.map((p) => (
+                <div key={p.variant} style={{ borderBottom: "1px solid #F0EEE3", paddingBottom: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{p.variant}</div>
+                  <select style={{ ...styles.smallInput, width: "100%" }} value={p.suggested || ""}
+                    onChange={(e) => setManualMergeOverrides((prev) => ({ ...prev, [p.variant]: e.target.value || null }))}>
+                    <option value="">— Leave as-is (not a duplicate) —</option>
+                    {HOSPITAL_MASTER_LIST.map((h) => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <button style={styles.primaryBtn} onClick={applyAllSuggestedMerges}>Apply All Mapped Names</button>
+          </div>
+        </CollapsibleSection>
       )}
 
       {reportSubTab === "financial" && (
