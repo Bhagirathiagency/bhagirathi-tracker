@@ -1551,7 +1551,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
             deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus} businessName={business.name} />
         )}
         {tab === "machines" && <MachinesTab machines={machines} setMachines={setMachines} machineInUse={machineInUse} cases={cases} businessId={businessId} />}
-        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} />}
+        {tab === "stock" && <StockTab products={products} setProducts={setProducts} receiveStock={receiveStock} businessId={businessId} cases={cases} dressers={dressers} />}
         {tab === "dressers" && <DressersTab dressers={dressers} addDresser={addDresser} removeDresser={removeDresser} dresserPins={dresserPins} setDresserPin={setDresserPin} dresserStats={dresserStats} dresserProfiles={dresserProfiles} dresserStockAccess={dresserStockAccess} setDresserStockAccess={setDresserStockAccess} dresserBusinessAccess={dresserBusinessAccess} setDresserBusinessAccess={setDresserBusinessAccess} businesses={businesses} businessId={businessId} cases={cases} />}
         {tab === "doctors" && <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />}
         {tab === "expenses" && (
@@ -4655,7 +4655,14 @@ function ChallanPdfView({ ch, onBack, businessName }) {
   );
 }
 
-function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner", businessId, cases = [] }) {
+function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner", businessId, cases = [], dressers = [] }) {
+  const dresserNamesLower = useMemo(() => new Set(dressers.map((d) => d.trim().toLowerCase())), [dressers]);
+  const productsWithDresserAsCompany = useMemo(() =>
+    products.filter((p) => p.company && dresserNamesLower.has(p.company.trim().toLowerCase())),
+    [products, dresserNamesLower]);
+  const clearDresserAsCompany = (id) => {
+    setProducts((prev) => prev.map((p) => p.id === id ? { ...p, company: "" } : p));
+  };
   const [name, setName] = useState("");
   const [initCompany, setInitCompany] = useState("");
   const [initQty, setInitQty] = useState("");
@@ -4707,6 +4714,22 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
 
   return (
     <div>
+      {productsWithDresserAsCompany.length > 0 && (
+        <div style={{ ...styles.card, padding: 14, marginBottom: 16, border: "1px solid #FCE7E4", background: "#FFF7F5" }}>
+          <div style={{ fontWeight: 700, color: "#E1483C", marginBottom: 6 }}>⚠️ Product Company Set to a Dresser's Name</div>
+          <div style={{ fontSize: 13, color: "#5B6864", marginBottom: 10 }}>
+            These products have a dresser's name saved as the "Company" instead of the actual brand — likely entered by mistake when adding the product. Tap "Fix" to clear it, then set the correct company on that product below.
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {productsWithDresserAsCompany.map((p) => (
+              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+                <span><strong>{p.name}</strong> — Company: "{p.company}"</span>
+                <button style={{ ...styles.linkBtn, color: "#128577" }} onClick={() => clearDresserAsCompany(p.id)}>Fix</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <SectionTitle>Add Product</SectionTitle>
       <div style={{ ...styles.card, padding: 14, marginBottom: 16 }}>
         <div style={styles.addPaymentRow}>
@@ -4764,6 +4787,10 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
                     </div>
                   );
                 })()}
+                <div style={styles.addPaymentRow}>
+                  <span style={{ fontSize: 12, color: "#8A9A96" }}>Company</span>
+                  <input type="text" style={{ ...styles.smallInput, flex: 1 }} defaultValue={p.company || ""} placeholder="Brand / company" onBlur={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, company: e.target.value.trim() } : x))} />
+                </div>
                 <div style={styles.addPaymentRow}>
                   <span style={{ fontSize: 12, color: "#8A9A96" }}>Cost ₹</span>
                   <input type="number" style={styles.smallInput} defaultValue={p.costPrice || 0} onBlur={(e) => updateCost(p.id, "costPrice", e.target.value)} />
