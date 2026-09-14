@@ -1563,7 +1563,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
         ))}
       </nav>
 
-      <main style={styles.main}>
+      <main style={styles.main} key={tab} className="fade-in">
         {tab === "dashboard" && (
           <Dashboard cases={cases} machines={machines} outstandingTotal={outstandingTotal} activeCount={activeCount}
             machinesInUseCount={machinesInUseCount} overdueCount={overdueCount} dueSoonCount={dueSoonCount} dresserStats={dresserStats} lowStock={lowStock}
@@ -2267,7 +2267,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
         </div>
       )}
 
-      <main style={styles.main}>
+      <main style={styles.main} key={activeDresserSection || "menu"} className="fade-in">
         <div style={styles.cardGrid}>
           <button onClick={() => goToDresserSection("dresser-active-cases")} style={{ ...styles.statCard, borderColor: "#1B6B6333" }}>
             <div style={{ ...styles.statValue, color: "#1B6B63" }}>{myCasesActive.length}</div>
@@ -7452,6 +7452,20 @@ const printStyles = `
 
 const fontImport = `
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeSlideIn 0.28s ease-out; }
+
+button, .tappable {
+  transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease;
+}
+button:active, .tappable:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
 `;
 
 const styles = {
