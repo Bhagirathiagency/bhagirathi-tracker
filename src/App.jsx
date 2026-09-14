@@ -3885,8 +3885,11 @@ function QuotationsTab({ quotations, products, saveQuotation, deleteQuotation, s
               const st = QUOTE_STATUS[q.status] || QUOTE_STATUS.draft;
               const open = openId === q.id;
               return (
-                <div key={q.id} style={styles.card}>
+                <div key={q.id} style={{ ...styles.card, borderLeft: `4px solid ${st.color}` }}>
                   <div style={styles.cardTop} onClick={() => setOpenId(open ? null : q.id)}>
+                    <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: `linear-gradient(135deg, ${st.color} 0%, ${st.color}CC 100%)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 10px ${st.color}40`, marginRight: 10 }}>
+                      <Icon name="quotes" size={18} />
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={styles.cardTitle}>{q.customerName || "Untitled"}</div>
                       <div style={styles.cardMeta}>{q.quoteNo} · {fmtDate(q.date)}{!restrictToCreator ? ` · by ${q.createdBy || "Owner"}` : ""}</div>
@@ -4519,8 +4522,11 @@ function ChallansTab({ challans, products, cases, createChallan, settleChallan, 
           {openChallans.map((ch) => {
             const open = openId === ch.id;
             return (
-              <div key={ch.id} style={styles.card}>
+              <div key={ch.id} style={{ ...styles.card, borderLeft: "4px solid #D98D2B" }}>
                 <div style={styles.cardTop} onClick={() => setOpenId(open ? null : ch.id)}>
+                  <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: "linear-gradient(135deg, #D98D2B 0%, #D98D2BCC 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 10px rgba(217,141,43,0.4)", marginRight: 10 }}>
+                    <Icon name="challan" size={18} />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={styles.cardTitle}>{ch.patientName}</div>
                     <div style={styles.cardMeta}>{ch.challanNo} · {fmtDate(ch.date)} · {ch.items.length} item{ch.items.length > 1 ? "s" : ""}</div>
@@ -4554,11 +4560,16 @@ function ChallansTab({ challans, products, cases, createChallan, settleChallan, 
           {settledChallans.map((ch) => {
             const totalUsed = ch.items.reduce((s, it) => s + it.qtyUsed * (it.rate || 0), 0);
             return (
-              <div key={ch.id} style={styles.card}>
+              <div key={ch.id} style={{ ...styles.card, borderLeft: "4px solid #128577" }}>
                 <div style={{ padding: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <div style={styles.cardTitle}>{ch.patientName}</div>
-                    <span style={{ fontWeight: 700, color: totalUsed > 0 ? "#D9720A" : "#8A9A96" }}>{totalUsed > 0 ? fmtMoney(totalUsed) : "No charge"}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, background: "linear-gradient(135deg, #128577 0%, #128577CC 100%)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 3px 8px rgba(18,133,119,0.35)" }}>
+                      <Icon name="challan" size={15} />
+                    </div>
+                    <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={styles.cardTitle}>{ch.patientName}</div>
+                      <span style={{ fontWeight: 700, color: totalUsed > 0 ? "#D9720A" : "#8A9A96" }}>{totalUsed > 0 ? fmtMoney(totalUsed) : "No charge"}</span>
+                    </div>
                   </div>
                   <div style={styles.cardMeta}>{ch.challanNo} · settled {fmtDate(ch.settledDate)}</div>
                   {ch.items.map((it) => (
@@ -5590,19 +5601,28 @@ function ExpensesTab({ expenses, addExpense, deleteExpense, fixedExpenses, addFi
         {expensesByCategory.length === 0 ? <EmptyState text="No expenses logged yet. Salaries, rent, fuel, maintenance — anything beyond product cost." /> : (
           <>
             <div style={{ ...styles.card, marginBottom: 12 }}>
-              {expensesByCategory.map((c) => (
-                <div key={c.category} style={styles.dresserLine}><span style={{ flex: 1, fontWeight: 600 }}>{c.category}</span><span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(c.amount)}</span></div>
+              {expensesByCategory.map((c, i) => (
+                <div key={c.category} style={styles.dresserLine}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: ["#3B5BA5", "#D9720A", "#128577", "#E1483C", "#D98D2B", "#6E0F1A", "#8A9A96"][i % 7], flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontWeight: 600 }}>{c.category}</span>
+                  <span style={{ fontWeight: 700, color: "#E1483C" }}>{fmtMoney(c.amount)}</span>
+                </div>
               ))}
             </div>
             <div style={styles.card}>
-              {expensesSorted.slice(0, 40).map((e) => (
+              {expensesSorted.slice(0, 40).map((e) => {
+                const catIdx = expensesByCategory.findIndex((c) => c.category === e.category);
+                const dotColor = ["#3B5BA5", "#D9720A", "#128577", "#E1483C", "#D98D2B", "#6E0F1A", "#8A9A96"][catIdx >= 0 ? catIdx % 7 : 6];
+                return (
                 <div key={e.id} style={styles.dresserLine}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
                   <span style={{ flex: 1, fontWeight: 600 }}>{e.category}{e.note ? ` · ${e.note}` : ""}</span>
                   <span style={styles.mutedSmall}>{fmtDate(e.date)}</span>
                   <span style={{ fontWeight: 700 }}>{fmtMoney(e.amount)}</span>
                   <button style={{ ...styles.linkBtn, color: "#E1483C" }} onClick={() => { if (window.confirm("Delete this expense entry?")) deleteExpense(e.id); }}>✕</button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
