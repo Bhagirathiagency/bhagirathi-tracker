@@ -1320,8 +1320,8 @@ function AppInner() {
           updateDresserLocation={updateDresserLocation}
           quotations={quotations} saveQuotation={saveQuotation} deleteQuotation={deleteQuotation} setQuotationStatus={setQuotationStatus}
           doctorCalls={doctorCalls} addDoctorCall={addDoctorCall}
-          doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} addPreviousOutstanding={addPreviousOutstanding}
-          hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster}
+          doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} addPreviousOutstanding={addPreviousOutstanding}
+          hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster} updateHospitalMaster={updateHospitalMaster} removeHospitalMaster={removeHospitalMaster}
           discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic}
           profile={dresserProfiles[role.name]} setDresserProfile={setDresserProfile}
           canManageStock={!!dresserStockAccess[role.name]}
@@ -2138,7 +2138,7 @@ function DresserProfileForm({ name, profile, setDresserProfile, businessName = "
   );
 }
 
-function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, deleteDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, hospitalsList, addHospitalMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
+function DresserShell({ name, cases, machines, products, setProducts, receiveStock, saveCase, addDressingChange, deleteDressingChange, addAdditionalItem, addPayment, capturePhoto, updateDresserLocation, quotations, saveQuotation, deleteQuotation, setQuotationStatus, doctorCalls, addDoctorCall, doctorsList, addDoctorMaster, updateDoctorMaster, removeDoctorMaster, hospitalsList, addHospitalMaster, updateHospitalMaster, removeHospitalMaster, addPreviousOutstanding, discussionTopics, addDiscussionTopic, removeDiscussionTopic, profile, setDresserProfile, canManageStock, challans, createChallan, settleChallan, deleteChallan, business, businessId, businesses, myBusinesses, onSwitchBusiness, refreshData, refreshing, onLogout }) {
   const [quickAction, setQuickAction] = useState(null); // "reapply" | "stop" | null
   const [quickPatientId, setQuickPatientId] = useState("");
   const [quickProtocol, setQuickProtocol] = useState(5);
@@ -2489,6 +2489,18 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             </div>
             <span style={styles.navTileLabel}>Doctor Calls</span>
           </button>
+          <button onClick={() => setActiveDresserSection("doctorMasterList")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#06A77D1A", borderColor: "#06A77D40", color: "#06A77D" }}>
+              <Icon name="doctor" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Doctor Master List</span>
+          </button>
+          <button onClick={() => setActiveDresserSection("hospitalMasterList")} style={{ ...styles.navTile }}>
+            <div style={{ ...styles.navTileIconWrap, background: "#8B5CF61A", borderColor: "#8B5CF640", color: "#8B5CF6" }}>
+              <Icon name="challan" size={20} />
+            </div>
+            <span style={styles.navTileLabel}>Hospital Master List</span>
+          </button>
           {name.trim().toLowerCase() === "devashish" && (
           <button onClick={() => setActiveDresserSection("previousOutstanding")} style={{ ...styles.navTile }}>
             <div style={{ ...styles.navTileIconWrap, background: "#C1121F1A", borderColor: "#C1121F40", color: "#C1121F" }}>
@@ -2724,6 +2736,20 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           <DoctorCallTab name={name} products={products} doctorCalls={doctorCalls} addDoctorCall={addDoctorCall} doctorsList={doctorsList} addDoctorMaster={addDoctorMaster}
             discussionTopics={discussionTopics} addDiscussionTopic={addDiscussionTopic} removeDiscussionTopic={removeDiscussionTopic} />
         </CollapsibleSection>
+          </div>
+        )}
+
+        {activeDresserSection === "doctorMasterList" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
+            <DoctorsMasterTab doctorsList={doctorsList} addDoctorMaster={addDoctorMaster} updateDoctorMaster={updateDoctorMaster} removeDoctorMaster={removeDoctorMaster} cases={cases} />
+          </div>
+        )}
+
+        {activeDresserSection === "hospitalMasterList" && (
+          <div>
+            <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
+            <HospitalsMasterTab hospitalsList={hospitalsList} addHospitalMaster={addHospitalMaster} updateHospitalMaster={updateHospitalMaster} removeHospitalMaster={removeHospitalMaster} cases={cases} />
           </div>
         )}
 
