@@ -84,19 +84,19 @@ const PDF_FONT = "Arial, Helvetica, sans-serif";
 const TRANSLATIONS = {
   en: {
     myProfile: "My Profile", todaysVisits: "Today's & Tomorrow's Visits", casesOnTherapy: "Patients on Therapy",
-    patientHistory: "Patient History (Stopped / Reapplied)", yourReporting: "Your Reporting", myQuotations: "My Quotations",
+    patientHistory: "Patient History (Stopped)", yourReporting: "Your Reporting", myQuotations: "My Quotations",
     doctorCalls: "Doctor Calls", newCase: "+ New Case", callPatient: "Call Patient", callDoctor: "Call Dr.",
     logChange: "Log Today's Change", language: "Language",
   },
   hi: {
     myProfile: "मेरी प्रोफ़ाइल", todaysVisits: "आज और कल के विज़िट", casesOnTherapy: "थेरेपी पर मरीज़",
-    patientHistory: "मरीज़ इतिहास (बंद / पुनः लागू)", yourReporting: "आपकी रिपोर्टिंग", myQuotations: "मेरे कोटेशन",
+    patientHistory: "मरीज़ इतिहास (बंद)", yourReporting: "आपकी रिपोर्टिंग", myQuotations: "मेरे कोटेशन",
     doctorCalls: "डॉक्टर कॉल्स", newCase: "+ नया केस", callPatient: "मरीज़ को कॉल करें", callDoctor: "डॉ. को कॉल करें",
     logChange: "आज का बदलाव दर्ज करें", language: "भाषा",
   },
   mr: {
     myProfile: "माझी प्रोफाइल", todaysVisits: "आज आणि उद्याच्या भेटी", casesOnTherapy: "थेरपीवरील रुग्ण",
-    patientHistory: "रुग्ण इतिहास (बंद / पुन्हा सुरू)", yourReporting: "तुमचा अहवाल", myQuotations: "माझी कोटेशन्स",
+    patientHistory: "रुग्ण इतिहास (बंद)", yourReporting: "तुमचा अहवाल", myQuotations: "माझी कोटेशन्स",
     doctorCalls: "डॉक्टर कॉल्स", newCase: "+ नवीन केस", callPatient: "रुग्णाला कॉल करा", callDoctor: "डॉ.ना कॉल करा",
     logChange: "आजचा बदल नोंदवा", language: "भाषा",
   },
@@ -1509,10 +1509,10 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
     const paid = confirmedPaidTotal(c);
     return sum + Math.max(0, Number(c.totalAmount || 0) - paid);
   }, 0), [cases]);
-  const activeCount = cases.filter((c) => c.status === "active").length;
+  const activeCount = cases.filter((c) => (c.status === "active" || c.status === "reapplied")).length;
   const machinesInUseCount = machines.filter((m) => machineInUse(m.serial)).length;
   const overdueCount = cases.filter((c) => overdueDays(c) > 0).length;
-  const dueSoonCount = cases.filter((c) => c.status === "active" && nextDueDate(c) <= addDays(todayISO(), 1)).length;
+  const dueSoonCount = cases.filter((c) => (c.status === "active" || c.status === "reapplied") && nextDueDate(c) <= addDays(todayISO(), 1)).length;
 
   const dresserStats = useMemo(() => {
     const tally = {};
@@ -1672,7 +1672,7 @@ function CombinedSummaryTab({ businesses }) {
       const commission = cases.reduce((s, c) => s + Number(c.doctorCommission || 0), 0);
       const opex = (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
       const profit = revenue - cost - commission - opex;
-      const activeCount = cases.filter((c) => c.status === "active").length;
+      const activeCount = cases.filter((c) => (c.status === "active" || c.status === "reapplied")).length;
       return { id: b.id, name: b.name, revenue, collected, outstanding, cost, commission, opex, profit, activeCount, caseCount: cases.length, cases, products: prods, dressers: dressers || [], doctorsList: doctorsList || [] };
     }));
     setPerBusiness(results);
@@ -2162,8 +2162,8 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
     const t = setTimeout(() => setSavedConfirm(false), 3000);
     return () => clearTimeout(t);
   }, [savedConfirm]);
-  const myCasesActive = cases.filter((c) => c.status === "active" && (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase());
-  const myCasesHistory = cases.filter((c) => c.status !== "active" && (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
+  const myCasesActive = cases.filter((c) => (c.status === "active" || c.status === "reapplied") && (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase());
+  const myCasesHistory = cases.filter((c) => c.status !== "active" && c.status !== "reapplied" && (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
     .sort((a, b) => new Date(b.endDate || b.applicationDate) - new Date(a.endDate || a.applicationDate));
   const [showPatientHistory, setShowPatientHistory] = useState(false);
   const myTodaysVisits = useMemo(() => myCasesActive
@@ -3499,7 +3499,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
   const todaysVisits = useMemo(() => {
     const tomorrow = addDays(todayISO(), 1);
     return cases
-      .filter((c) => c.status === "active")
+      .filter((c) => (c.status === "active" || c.status === "reapplied"))
       .map((c) => ({ ...c, due: nextDueDate(c), overdue: overdueDays(c) }))
       .filter((c) => c.due <= tomorrow)
       .sort((a, b) => b.overdue - a.overdue || new Date(a.due) - new Date(b.due));
@@ -3726,7 +3726,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
 
   const filtered = cases.filter((c) => {
     if (filter === "all") return true;
-    if (filter === "overdue") return c.status === "active" && nextDueDate(c) <= addDays(todayISO(), 1);
+    if (filter === "overdue") return (c.status === "active" || c.status === "reapplied") && nextDueDate(c) <= addDays(todayISO(), 1);
     if (filter === "outstanding") {
       const paid = confirmedPaidTotal(c);
       return Math.max(0, Number(c.totalAmount || 0) - paid) > 0;
@@ -3788,7 +3788,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
   const st = STATUS[c.status] || STATUS.active;
   const paid = confirmedPaidTotal(c);
   const outstanding = Math.max(0, Number(c.totalAmount || 0) - paid);
-  const days = Math.max(0, daysBetween(c.applicationDate, c.status === "active" ? todayISO() : c.endDate || c.applicationDate));
+  const days = Math.max(0, daysBetween(c.applicationDate, (c.status === "active" || c.status === "reapplied") ? todayISO() : c.endDate || c.applicationDate));
   const due = nextDueDate(c);
   const overdue = overdueDays(c);
   const changes = (c.dressingChanges || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -3824,8 +3824,8 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <span style={{ ...styles.badge, color: st.color, background: st.bg }}>{st.label}</span>
-          {c.status === "active" && overdue > 0 && <span style={styles.overdueTag}>{overdue}d change overdue</span>}
-          {c.status === "active" && overdue === 0 && <span style={styles.mutedSmall}>Due {fmtDate(due)}</span>}
+          {(c.status === "active" || c.status === "reapplied") && overdue > 0 && <span style={styles.overdueTag}>{overdue}d change overdue</span>}
+          {(c.status === "active" || c.status === "reapplied") && overdue === 0 && <span style={styles.mutedSmall}>Due {fmtDate(due)}</span>}
           {outstanding > 0 ? <span style={styles.dueTag}>{fmtMoney(outstanding)} due</span> : <span style={styles.paidTag}>Paid up</span>}
           {!compact && outstanding > 0 && onAddPayment && (
             <button style={{ ...styles.linkBtn, fontSize: 11 }} onClick={(e) => { e.stopPropagation(); setQuickPayOpen((o) => !o); }}>💰 Payment</button>
@@ -3854,7 +3854,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
         <div style={styles.cardExpanded}>
           <div style={styles.detailGrid}>
             <Detail label="Application" value={`${fmtDate(c.applicationDate)}${c.applicationTime ? ` · ${fmtTime(c.applicationTime)}` : ""}`} />
-            <Detail label={c.status === "active" ? "Next Change Due" : "Stop / Reapply Date"} value={c.status === "active" ? fmtDate(due) : fmtDate(c.endDate)} highlight={c.status === "active" && overdue > 0} />
+            <Detail label={(c.status === "active" || c.status === "reapplied") ? "Next Change Due" : "Stop / Reapply Date"} value={(c.status === "active" || c.status === "reapplied") ? fmtDate(due) : fmtDate(c.endDate)} highlight={(c.status === "active" || c.status === "reapplied") && overdue > 0} />
             <Detail label="Patient Mobile" value={c.patientMobile || "—"} />
             <Detail label="Bill To" value={c.billTo === "Hospital" ? (c.hospitalName || "Hospital") : "Patient"} />
             <Detail label="Total Amount" value={fmtMoney(c.totalAmount)} />
@@ -3891,7 +3891,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
                 </div>
               ))
             )}
-            {c.status === "active" && (
+            {(c.status === "active" || c.status === "reapplied") && (
               <div>
                 <div style={styles.addPaymentRow}>
                   <input type="text" placeholder="Dresser name" value={changeDresser} onChange={(e) => setChangeDresser(e.target.value)} style={{ ...styles.smallInput, flex: 1 }} />
@@ -3911,7 +3911,7 @@ function CaseRow({ c, products = [], compact, onEdit, onDelete, onAddPayment, on
             )}
           </div>
 
-          {c.status === "active" && onAddAdditionalItem && (
+          {(c.status === "active" || c.status === "reapplied") && onAddAdditionalItem && (
             <AdditionalItemsBlock c={c} products={products} onAddAdditionalItem={onAddAdditionalItem} />
           )}
 
@@ -4690,7 +4690,7 @@ function MachinesTab({ machines, setMachines, machineInUse, cases, businessId })
         <div style={styles.list}>
           {machines.map((m) => {
             const inUse = machineInUse(m.serial);
-            const activeCase = cases.find((c) => c.machineSerial === m.serial && c.status === "active");
+            const activeCase = cases.find((c) => c.machineSerial === m.serial && (c.status === "active" || c.status === "reapplied"));
             const open = openId === m.id;
             return (
               <div key={m.id} style={{ ...styles.card, background: inUse ? "#FBEAD3" : "#E3F3EF", border: `1px solid ${inUse ? "#D9720A" : "#128577"}` }}>
@@ -4861,7 +4861,7 @@ function ChallansTab({ challans, products, cases, createChallan, settleChallan, 
   const [settleQtys, setSettleQtys] = useState({});
   const [viewingPdf, setViewingPdf] = useState(null);
   const productsByCompany = useMemo(() => groupProductsByCompany(products), [products]);
-  const activeCases = cases.filter((c) => c.status === "active");
+  const activeCases = cases.filter((c) => (c.status === "active" || c.status === "reapplied"));
 
   const setItem = (i, field, val) => setItems((prev) => prev.map((it, idx) => idx === i ? { ...it, [field]: val } : it));
   const addRow = () => setItems((prev) => [...prev, { productName: "", qty: 1, rate: 0 }]);
@@ -6718,7 +6718,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
   const overdueCasesList = useMemo(() => {
     return cases
-      .filter((c) => c.status === "active" && overdueDays(c) > 0)
+      .filter((c) => (c.status === "active" || c.status === "reapplied") && overdueDays(c) > 0)
       .map((c) => ({ ...c, daysOverdue: overdueDays(c) }))
       .sort((a, b) => b.daysOverdue - a.daysOverdue);
   }, [cases]);
@@ -6731,7 +6731,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     const collectedToday = paymentsToday.reduce((s, p) => s + Number(p.amount || 0), 0);
     let changesToday = 0;
     cases.forEach((c) => (c.dressingChanges || []).forEach((e) => { if (e.date === today) changesToday++; }));
-    const dueTodayOrOverdue = cases.filter((c) => c.status === "active" && nextDueDate(c) <= today);
+    const dueTodayOrOverdue = cases.filter((c) => (c.status === "active" || c.status === "reapplied") && nextDueDate(c) <= today);
     const overdueToday = dueTodayOrOverdue.filter((c) => overdueDays(c) > 0);
     const doctorOwed = (doctorCommissionStats || []).reduce((s, d) => s + Math.max(0, d.owed - d.paid), 0);
     return {
@@ -6743,7 +6743,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
 
   const businessSWOT = useMemo(() => {
     const s = [], w = [], o = [], t = [];
-    const activeCount = cases.filter((c) => c.status === "active").length;
+    const activeCount = cases.filter((c) => (c.status === "active" || c.status === "reapplied")).length;
     const totalCases = cases.length;
     const profit = pnlTotals.profit;
 
@@ -6801,7 +6801,7 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
     return (dressers || []).map((name) => {
       const theirCases = cases.filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase());
       const theirChanges = cases.reduce((sum, c) => sum + (c.dressingChanges || []).filter((e) => (e.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase()).length, 0);
-      const theirActive = theirCases.filter((c) => c.status === "active");
+      const theirActive = theirCases.filter((c) => (c.status === "active" || c.status === "reapplied"));
       const theirOverdue = theirActive.filter((c) => overdueDays(c) > 0).length;
       const theirOutstanding = theirCases.reduce((sum, c) => {
         const paid = confirmedPaidTotal(c);
