@@ -2333,7 +2333,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
 
 
         <div style={{ display: "flex", gap: 8, margin: "6px 0 16px" }}>
-          <button style={{ ...styles.primaryBtn, margin: 0, flex: 1 }} onClick={() => setShowForm(true)}>{t("newCase")}</button>
+          <button style={{ ...styles.primaryBtn, margin: 0, flex: 1, background: "#128577" }} onClick={() => setShowForm(true)}>{t("newCase")}</button>
           <button style={{ ...styles.primaryBtn, margin: 0, flex: 1, background: "#D9720A" }} onClick={() => { setQuickAction("reapply"); setQuickPatientId(""); setQuickProducts([]); setQuickNote(""); }} disabled={myCasesActive.length === 0}>🔄 Reapply</button>
           <button style={{ ...styles.primaryBtn, margin: 0, flex: 1, background: "#E1483C" }} onClick={() => { setQuickAction("stop"); setQuickPatientId(""); }} disabled={myCasesActive.length === 0}>⏹ Stop</button>
         </div>
@@ -3768,7 +3768,7 @@ function CasesTab({ cases, machines, products, saveCase, deleteCase, addPayment,
           </button>
         ))}
       </div>
-      <button style={styles.primaryBtn} onClick={() => setShowForm(true)}>+ New Case</button>
+      <button style={{ ...styles.primaryBtn, background: "#128577" }} onClick={() => setShowForm(true)}>+ New Case</button>
       {sorted.length === 0 ? <EmptyState text="No cases match this filter." /> : (
         <div style={styles.list}>
           {sorted.map((c) => (
