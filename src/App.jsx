@@ -124,13 +124,33 @@ const shiftMonth = (ym, n) => {
   const d = new Date(y, m - 1 + n, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
-// Counts dressings per dresser: new VAC application = 1, every reapply / dressing change = +1.
+// ---- Business counting rules ----
+// Case = one patient (same mobile, or same name if no mobile, counts once).
+// Setting = new VAC application (1) + every reapply (+1). A canister-only change is NOT a setting.
+const isCanisterOnly = (e) => {
+  const lines = (e && e.products) || [];
+  return lines.length > 0 && lines.every((l) => /canister/i.test(typeof l === "string" ? l : (l.name || "")));
+};
+const isSetting = (e) => !isCanisterOnly(e);
+const settingEntries = (c) => {
+  const list = (c.dressingChanges || []).filter(isSetting);
+  const hasInitial = (c.dressingChanges || []).some((e) => e.note === "Initial application");
+  // Older cases without an initial entry: count the first application once.
+  return hasInitial ? list : [{ date: c.applicationDate, dresserName: c.dresserName, note: "Initial application" }, ...list];
+};
+const patientKey = (c) => {
+  const mobile = String(c.patientMobile || "").replace(/\D/g, "").slice(-10);
+  return mobile || `name:${(c.patientName || "").trim().toLowerCase()}`;
+};
+const countPatients = (list) => new Set(list.map(patientKey).filter((k) => k && k !== "name:")).size;
+const countSettings = (list, ym) => list.reduce((s, c) => s + settingEntries(c).filter((e) => !ym || String(e.date || "").slice(0, 7) === ym).length, 0);
+
+// Counts dressings per dresser: new VAC application = 1, every reapply = +1 (canister-only not counted).
 const buildDresserStats = (cases) => {
   const tally = {};
   const cur = thisMonth();
   cases.forEach((c) => {
-    const entries = (c.dressingChanges || []).length ? c.dressingChanges : [{ dresserName: c.dresserName, date: c.applicationDate }];
-    entries.forEach((e) => {
+    settingEntries(c).forEach((e) => {
       const name = (e.dresserName || "").trim();
       if (!name) return;
       if (!tally[name]) tally[name] = { count: 0, monthCount: 0 };
@@ -1685,7 +1705,7 @@ function CombinedSummaryTab({ businesses }) {
       const opex = (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
       const profit = revenue - cost - commission - opex;
       const activeCount = cases.filter((c) => (c.status === "active" || c.status === "reapplied")).length;
-      return { id: b.id, name: b.name, revenue, collected, outstanding, cost, commission, opex, profit, activeCount, caseCount: cases.length, cases, products: prods, dressers: dressers || [], doctorsList: doctorsList || [] };
+      return { id: b.id, name: b.name, revenue, collected, outstanding, cost, commission, opex, profit, activeCount, caseCount: countPatients(cases), settingCount: countSettings(cases), cases, products: prods, dressers: dressers || [], doctorsList: doctorsList || [] };
     }));
     setPerBusiness(results);
     setAllCasesByBusiness(results.map((r) => ({ businessName: r.name, cases: r.cases })));
@@ -1730,8 +1750,8 @@ function CombinedSummaryTab({ businesses }) {
 
   const combined = useMemo(() => perBusiness.reduce((acc, b) => ({
     revenue: acc.revenue + b.revenue, collected: acc.collected + b.collected, outstanding: acc.outstanding + b.outstanding,
-    profit: acc.profit + b.profit, activeCount: acc.activeCount + b.activeCount, caseCount: acc.caseCount + b.caseCount,
-  }), { revenue: 0, collected: 0, outstanding: 0, profit: 0, activeCount: 0, caseCount: 0 }), [perBusiness]);
+    profit: acc.profit + b.profit, activeCount: acc.activeCount + b.activeCount, caseCount: acc.caseCount + b.caseCount, settingCount: acc.settingCount + b.settingCount,
+  }), { revenue: 0, collected: 0, outstanding: 0, profit: 0, activeCount: 0, caseCount: 0, settingCount: 0 }), [perBusiness]);
 
   const comparisonChartData = useMemo(() => [
     { metric: "Revenue", ...Object.fromEntries(perBusiness.map((b) => [b.name, b.revenue])) },
@@ -1795,7 +1815,8 @@ function CombinedSummaryTab({ businesses }) {
           <div style={{ ...styles.statValue, color: combined.profit >= 0 ? "#128577" : "#E1483C" }}>{fmtMoney(combined.profit)}</div><div style={styles.statLabel}>Combined Net Profit (tap for source)</div>
         </div>
         <div style={styles.reportCard}><div style={styles.statValue}>{combined.activeCount}</div><div style={styles.statLabel}>Active Cases (all businesses)</div></div>
-        <div style={styles.reportCard}><div style={styles.statValue}>{combined.caseCount}</div><div style={styles.statLabel}>Total Cases (all-time)</div></div>
+        <div style={styles.reportCard}><div style={styles.statValue}>{combined.caseCount}</div><div style={styles.statLabel}>Total Cases (patients)</div></div>
+        <div style={styles.reportCard}><div style={styles.statValue}>{combined.settingCount}</div><div style={styles.statLabel}>Total Settings</div></div>
       </div>
 
       {dresserWorkloadCombined.length > 0 && (
@@ -1940,7 +1961,7 @@ function CombinedSummaryTab({ businesses }) {
             <div style={{ padding: 14 }}>
               <div style={styles.cardTitle}>{b.name}</div>
               <div style={{ display: "flex", gap: 14, fontSize: 12, color: "#5B6864", flexWrap: "wrap", marginTop: 6 }}>
-                <span>{b.activeCount} active / {b.caseCount} total cases</span>
+                <span>{b.activeCount} active / {b.caseCount} cases / {b.settingCount} settings</span>
                 <span>Revenue {fmtMoney(b.revenue)}</span>
                 <span>Collected {fmtMoney(b.collected)}</span>
                 {b.outstanding > 0 && <span style={{ color: "#E1483C", fontWeight: 600 }}>Outstanding {fmtMoney(b.outstanding)}</span>}
@@ -2194,7 +2215,7 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
   const myChanges = useMemo(() => {
     const list = [];
     cases.forEach((c) => {
-      (c.dressingChanges || []).forEach((e) => {
+      (c.dressingChanges || []).filter(isSetting).forEach((e) => {
         if ((e.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase()) list.push({ ...e, patientName: c.patientName });
       });
     });
@@ -3310,7 +3331,7 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, dress
     const byDate = Object.fromEntries(days.map((d) => [d.date, d]));
     cases.forEach((c) => {
       if (byDate[c.applicationDate]) byDate[c.applicationDate].newCases += 1;
-      (c.dressingChanges || []).forEach((e) => {
+      (c.dressingChanges || []).filter(isSetting).forEach((e) => {
         if (e.loggedAt) { const d = e.loggedAt.slice(0, 10); if (byDate[d]) byDate[d].changes += 1; }
       });
     });
@@ -3357,7 +3378,10 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, dress
   ]), [machines, machinesInUseCount]);
 
   const dresserWorkloadTop = useMemo(() => dresserStats.slice(0, 8), [dresserStats]);
-  const totalSettings = useMemo(() => cases.reduce((s, c) => s + 1 + (c.reapplyCount || 0), 0), [cases]);
+  const totalSettings = useMemo(() => countSettings(cases), [cases]);
+  const totalPatients = useMemo(() => countPatients(cases), [cases]);
+  const monthPatients = useMemo(() => countPatients(cases.filter((c) => String(c.applicationDate || "").slice(0, 7) === thisMonth())), [cases]);
+  const monthSettings = useMemo(() => countSettings(cases, thisMonth()), [cases]);
   const SETTINGS_TARGET = 50;
   const dresserSettingsProgress = useMemo(() => {
     const tally = {};
@@ -3418,7 +3442,10 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, dress
         <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => setTab("reports")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
         <StatCard label="Products" value={products.length} accent="#128577" icon="stock" onClick={() => setTab("stock")} />
+        <StatCard label="Total Cases (patients)" value={totalPatients} accent="#128577" icon="cases" onClick={() => setTab("patients")} />
         <StatCard label="Total Settings" value={totalSettings} accent="#8B5CF6" icon="cases" onClick={() => goToCases("all")} />
+        <StatCard label={`Cases in ${fmtMonth(thisMonth())}`} value={monthPatients} accent="#128577" icon="cases" onClick={() => setTab("patients")} />
+        <StatCard label={`Settings in ${fmtMonth(thisMonth())}`} value={monthSettings} accent="#8B5CF6" icon="cases" onClick={() => goToCases("all")} />
       </div>
 
       <Widget title="14-Day Activity Trend" icon="overview" color="#3B5BA5" subtext="Dressing changes & new cases">
@@ -3525,7 +3552,7 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
     const byDate = Object.fromEntries(days.map((d) => [d.date, d]));
     cases.forEach((c) => {
       if (byDate[c.applicationDate]) byDate[c.applicationDate].newCases += 1;
-      (c.dressingChanges || []).forEach((e) => {
+      (c.dressingChanges || []).filter(isSetting).forEach((e) => {
         if (e.loggedAt) {
           const d = e.loggedAt.slice(0, 10);
           if (byDate[d]) byDate[d].changes += 1;
@@ -3539,6 +3566,8 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
     <div>
       <div style={styles.cardGrid}>
         <StatCard label="Active Cases" value={activeCount} accent="#D9720A" icon="cases" onClick={() => goToCases("active")} />
+        <StatCard label="Total Cases (patients)" value={countPatients(cases)} accent="#128577" icon="cases" onClick={() => setTab("patients")} />
+        <StatCard label="Total Settings" value={countSettings(cases)} accent="#8B5CF6" icon="cases" onClick={() => goToCases("all")} />
         <StatCard label="Change Due / Overdue" value={dueSoonCount} accent="#E1483C" icon="reports" onClick={() => goToCases("overdue")} />
         <StatCard label="Outstanding" value={fmtMoney(outstandingTotal)} accent="#E1483C" icon="quotes" onClick={() => setTab("reports")} />
         <StatCard label="Machines In Use" value={`${machinesInUseCount} / ${machines.length}`} accent="#3B5BA5" icon="machines" onClick={() => setTab("machines")} />
@@ -5924,8 +5953,8 @@ function MonthlySummaryView({ cases, expenses = [], dresserStats = [], onBack, b
   }, [monthExpenses]);
   const dresserActivityThisMonth = useMemo(() => {
     const tally = {};
-    cases.forEach((c) => (c.dressingChanges || []).forEach((e) => {
-      const d = (e.loggedAt || "").slice(0, 7);
+    cases.forEach((c) => settingEntries(c).forEach((e) => {
+      const d = String(e.date || e.loggedAt || "").slice(0, 7);
       if (d !== month) return;
       const dName = (e.dresserName || "").trim();
       if (!dName) return;
@@ -5995,6 +6024,17 @@ function MonthlySummaryView({ cases, expenses = [], dresserStats = [], onBack, b
       <div ref={sheetRef} style={{ background: "#fff", padding: 24, fontFamily: PDF_FONT, color: "#182322" }}>
         <Letterhead businessName={businessName} docType="Monthly Summary" meta={<div style={{ fontSize: 12, color: "#5B6864", marginTop: 4 }}>{monthLabel}</div>} />
 
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, marginTop: 10 }}>Business Volume</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+          <div style={{ border: "1px solid #E3E7E2", borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 11, color: "#5B6864" }}>Cases (new patients)</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>{countPatients(monthCases)}</div>
+          </div>
+          <div style={{ border: "1px solid #E3E7E2", borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 11, color: "#5B6864" }}>Settings (new VAC + reapply)</div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>{countSettings(cases, month)}</div>
+          </div>
+        </div>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, marginTop: 10 }}>Revenue Overview</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 18 }}>
           <div style={{ border: "1px solid #E3E7E2", borderRadius: 8, padding: 10 }}>
