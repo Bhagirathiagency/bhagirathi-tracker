@@ -5146,6 +5146,48 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
     return [...dated].sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate))[0];
   };
 
+  // ---- Available / Required / Non-moving ----
+  const [stockView, setStockView] = useState("available");
+  const usage = useMemo(() => {
+    // name -> { last: "YYYY-MM-DD", last30: qty used in last 30 days }
+    const map = {};
+    const d30 = addDays(todayISO(), -30);
+    const add = (name, qty, date) => {
+      if (!name || !date) return;
+      const d = String(date).slice(0, 10);
+      if (!map[name]) map[name] = { last: "", last30: 0 };
+      if (d > map[name].last) map[name].last = d;
+      if (d >= d30) map[name].last30 += Number(qty) || 1;
+    };
+    cases.forEach((c) => {
+      getCaseProductLines(c).forEach((l) => add(l.name, l.qty, c.applicationDate));
+      (c.dressingChanges || []).forEach((e) => (e.products || []).forEach((l) => add(l.name, l.qty, e.date)));
+      (c.additionalItems || []).forEach((it) => add(it.name, it.qty, it.date));
+    });
+    return map;
+  }, [cases]);
+  const NON_MOVING_DAYS = 90;
+  const nonMovingCutoff = addDays(todayISO(), -NON_MOVING_DAYS);
+  const lastUsedOf = (p) => (usage[p.name] || {}).last || "";
+  const firstReceiptOf = (p) => (p.receipts || []).map((r) => r.date).filter(Boolean).sort()[0] || "";
+  const isNonMoving = (p) => {
+    if ((p.available || 0) <= 0) return false;
+    const ref = lastUsedOf(p) || firstReceiptOf(p);
+    return !ref || ref < nonMovingCutoff;
+  };
+  const isRequired = (p) => (p.available || 0) <= LOW_STOCK_THRESHOLD;
+  const suggestedOrder = (p) => {
+    const monthly = (usage[p.name] || {}).last30 || 0;
+    const target = Math.max(LOW_STOCK_THRESHOLD * 2, monthly);
+    return Math.max(1, target - (p.available || 0));
+  };
+  const companyMatch = (p) => stockCompanyFilter === "all" || productCompany(p) === stockCompanyFilter;
+  const availableList = products.filter((p) => (p.available || 0) > 0 && companyMatch(p));
+  const requiredList = products.filter((p) => isRequired(p) && companyMatch(p)).sort((a, b) => (a.available || 0) - (b.available || 0));
+  const nonMovingList = products.filter((p) => isNonMoving(p) && companyMatch(p)).sort((a, b) => (lastUsedOf(a) || "").localeCompare(lastUsedOf(b) || ""));
+  const nonMovingValue = nonMovingList.reduce((s, p) => s + (p.available || 0) * Number(p.costPrice || 0), 0);
+  const viewList = stockView === "required" ? requiredList : stockView === "nonmoving" ? nonMovingList : availableList;
+
   return (
     <div>
       {productsWithDresserAsCompany.length > 0 && (
@@ -5164,6 +5206,26 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
           </div>
         </div>
       )}
+      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+        {[
+          { key: "available", label: "Available", n: availableList.length, color: "#128577" },
+          { key: "required", label: "Required", n: requiredList.length, color: "#E1483C" },
+          { key: "nonmoving", label: "Non-moving", n: nonMovingList.length, color: "#D98D2B" },
+        ].map((v) => (
+          <button key={v.key} onClick={() => setStockView(v.key)}
+            style={{ flex: 1, padding: "10px 4px", borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: "pointer",
+              border: `2px solid ${v.color}`, background: stockView === v.key ? v.color : "#fff", color: stockView === v.key ? "#fff" : v.color }}>
+            {v.label}<div style={{ fontSize: 18 }}>{v.n}</div>
+          </button>
+        ))}
+      </div>
+      {stockView === "required" && (
+        <div style={styles.emptyState2}>Products with {LOW_STOCK_THRESHOLD} or fewer left. "Order" = suggested quantity to buy, based on the last 30 days' use.</div>
+      )}
+      {stockView === "nonmoving" && (
+        <div style={styles.emptyState2}>In stock but not used for more than 3 months. Stock value blocked: <strong>{fmtMoney(nonMovingValue)}</strong></div>
+      )}
+      {stockView === "available" && (<>
       <SectionTitle>Add Product</SectionTitle>
       <div style={{ ...styles.card, padding: 14, marginBottom: 16 }}>
         <div style={styles.addPaymentRow}>
@@ -5181,8 +5243,8 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
         </div>
         <button style={styles.primaryBtn} onClick={addProduct} disabled={!name.trim() || !initCompany.trim()}>Add Product</button>
       </div>
+      </>)}
 
-      <SectionTitle>Inventory ({products.length})</SectionTitle>
       {allStockCompanies.length > 1 && (
         <select style={{ ...styles.input, marginBottom: 12 }} value={stockCompanyFilter} onChange={(e) => setStockCompanyFilter(e.target.value)}>
           <option value="all">All Companies ({products.length})</option>
@@ -5191,16 +5253,9 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
           ))}
         </select>
       )}
-      {products.length === 0 ? <EmptyState text="No products added yet." /> : (
+      {viewList.length === 0 ? <EmptyState text={stockView === "required" ? "Nothing to order right now." : stockView === "nonmoving" ? "No non-moving stock. Everything has been used in the last 3 months." : "No products in stock."} /> : (
         <div style={styles.list}>
-          {products
-            .filter((p) => stockCompanyFilter === "all" || productCompany(p) === stockCompanyFilter)
-            .sort((a, b) => {
-            const aZero = (a.available || 0) <= 0;
-            const bZero = (b.available || 0) <= 0;
-            if (aZero !== bZero) return aZero ? 1 : -1;
-            return 0;
-          }).map((p) => {
+          {viewList.map((p) => {
             const isLow = (p.available || 0) <= LOW_STOCK_THRESHOLD;
             const stockColor = isLow ? "#E1483C" : "#128577";
             const stockPct = Math.min(100, Math.round(((p.available || 0) / Math.max(1, LOW_STOCK_THRESHOLD * 4)) * 100));
@@ -5222,6 +5277,14 @@ function StockTab({ products = [], setProducts, receiveStock, actorName = "Owner
                     <div style={{ fontSize: 12, color: "#8A9A96" }}>{p.used || 0} used</div>
                   </div>
                 </div>
+                {stockView === "required" && (
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#E1483C", marginBottom: 6 }}>Order: {suggestedOrder(p)} · used {(usage[p.name] || {}).last30 || 0} in last 30 days</div>
+                )}
+                {stockView === "nonmoving" && (
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#D98D2B", marginBottom: 6 }}>
+                    {lastUsedOf(p) ? `Last used ${fmtDate(lastUsedOf(p))}` : "Never used"} · value {fmtMoney((p.available || 0) * Number(p.costPrice || 0))}
+                  </div>
+                )}
                 <div style={{ height: 6, borderRadius: 4, background: "#EEF1EC", overflow: "hidden", marginBottom: 10 }}>
                   <div style={{ height: "100%", width: `${stockPct}%`, background: stockColor, borderRadius: 4, transition: "width 0.3s" }} />
                 </div>
