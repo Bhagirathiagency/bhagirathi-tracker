@@ -4381,7 +4381,7 @@ function QuotationForm({ products, initial, quotations, onCancel, onSave }) {
       } : it),
     }));
   };
-  const { subtotal, taxable, gstAmount, total } = quoteTotals(form);
+  const { subtotal, discount, taxable, gstAmount, total } = quoteTotals(form);
 
   return (
     <div>
