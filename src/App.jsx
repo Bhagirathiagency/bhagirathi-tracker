@@ -6647,17 +6647,31 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
   };
 
   const doctorMonthlyStats = useMemo(() => {
+    // Per doctor per month: cases = unique new patients (by application date),
+    // settings = new VAC + reapplies done in that month (canister-only not counted).
     const tally = {};
+    const bucket = (doctorRaw, ym) => {
+      const key = doctorRaw.toLowerCase() + "||" + ym;
+      if (!tally[key]) tally[key] = { doctor: doctorRaw, ym, month: /^\d{4}-\d{2}$/.test(ym) ? fmtMonth(ym) : "Unknown", patientKeys: new Set(), settings: 0, patients: {} };
+      return tally[key];
+    };
     cases.forEach((c) => {
       const doctorRaw = (c.doctorName || "Unknown").trim() || "Unknown";
-      const doctorKeyPart = doctorRaw.toLowerCase();
-      const month = c.applicationDate ? new Date(c.applicationDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "Unknown";
-      const key = doctorKeyPart + "||" + month;
-      if (tally[key] === undefined) tally[key] = { doctor: doctorRaw, month, count: 0, sortDate: c.applicationDate || "", cases: [] };
-      tally[key].count += 1;
-      tally[key].cases.push({ id: c.id, patientName: c.patientName, date: c.applicationDate });
+      const pk = patientKey(c);
+      const appYm = String(c.applicationDate || "").slice(0, 7) || "Unknown";
+      const b0 = bucket(doctorRaw, appYm);
+      b0.patientKeys.add(pk);
+      settingEntries(c).forEach((e) => {
+        const ym = String(e.date || c.applicationDate || "").slice(0, 7) || "Unknown";
+        const b = bucket(doctorRaw, ym);
+        b.settings += 1;
+        if (!b.patients[c.id]) b.patients[c.id] = { id: c.id, patientName: c.patientName, isNew: ym === appYm, settings: 0 };
+        b.patients[c.id].settings += 1;
+      });
     });
-    return Object.values(tally).sort((a, b) => a.doctor.localeCompare(b.doctor) || new Date(b.sortDate) - new Date(a.sortDate));
+    return Object.values(tally)
+      .map((t) => ({ ...t, count: t.patientKeys.size, cases: Object.values(t.patients) }))
+      .sort((a, b) => a.doctor.localeCompare(b.doctor) || b.ym.localeCompare(a.ym));
   }, [cases]);
   const [openDoctorMonth, setOpenDoctorMonth] = useState(null);
 
@@ -7574,12 +7588,12 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
                 <div style={styles.dresserLine} onClick={() => setOpenDoctorMonth(openDoctorMonth === i ? null : i)}>
                   <span style={{ flex: 1, fontWeight: 600 }}>{d.doctor}</span>
                   <span style={styles.mutedSmall}>{d.month}</span>
-                  <span style={{ ...styles.mutedSmall, textDecoration: "underline", cursor: "pointer" }}>{d.count} case{d.count > 1 ? "s" : ""}</span>
+                  <span style={{ ...styles.mutedSmall, textDecoration: "underline", cursor: "pointer" }}>{d.count} case{d.count === 1 ? "" : "s"} · <strong style={{ color: "#8B5CF6" }}>{d.settings} setting{d.settings === 1 ? "" : "s"}</strong></span>
                 </div>
                 {openDoctorMonth === i && d.cases.map((cs) => (
                   <div key={cs.id} style={{ ...styles.dresserLine, paddingLeft: 24 }}>
-                    <span style={{ flex: 1 }}>{cs.patientName}</span>
-                    <span style={styles.mutedSmall}>{fmtDate(cs.date)}</span>
+                    <span style={{ flex: 1 }}>{cs.patientName}{cs.isNew ? " (new)" : ""}</span>
+                    <span style={styles.mutedSmall}>{cs.settings} setting{cs.settings === 1 ? "" : "s"}</span>
                   </div>
                 ))}
               </div>
