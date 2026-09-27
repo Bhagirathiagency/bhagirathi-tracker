@@ -117,6 +117,29 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 const fmtMoney = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
+const thisMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+const fmtMonth = (ym) => new Date(ym + "-01T00:00:00").toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+const shiftMonth = (ym, n) => {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+// Counts dressings per dresser: new VAC application = 1, every reapply / dressing change = +1.
+const buildDresserStats = (cases) => {
+  const tally = {};
+  const cur = thisMonth();
+  cases.forEach((c) => {
+    const entries = (c.dressingChanges || []).length ? c.dressingChanges : [{ dresserName: c.dresserName, date: c.applicationDate }];
+    entries.forEach((e) => {
+      const name = (e.dresserName || "").trim();
+      if (!name) return;
+      if (!tally[name]) tally[name] = { count: 0, monthCount: 0 };
+      tally[name].count += 1;
+      if (String(e.date || "").slice(0, 7) === cur) tally[name].monthCount += 1;
+    });
+  });
+  return Object.entries(tally).map(([name, t]) => ({ name, ...t })).sort((a, b) => b.monthCount - a.monthCount || b.count - a.count);
+};
 const addDays = (dateStr, days) => {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return null; // missing/invalid source date — don't crash, signal it clearly instead
@@ -1514,18 +1537,7 @@ function OwnerShell({ cases, machines, setMachines, products, setProducts, recei
   const overdueCount = cases.filter((c) => overdueDays(c) > 0).length;
   const dueSoonCount = cases.filter((c) => (c.status === "active" || c.status === "reapplied") && nextDueDate(c) <= addDays(todayISO(), 1)).length;
 
-  const dresserStats = useMemo(() => {
-    const tally = {};
-    cases.forEach((c) => {
-      const entries = (c.dressingChanges || []).length ? c.dressingChanges : [{ dresserName: c.dresserName }];
-      entries.forEach((e) => {
-        const name = (e.dresserName || "").trim();
-        if (!name) return;
-        tally[name] = (tally[name] || 0) + 1;
-      });
-    });
-    return Object.entries(tally).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
-  }, [cases]);
+  const dresserStats = useMemo(() => buildDresserStats(cases), [cases]);
 
   const lowStock = products.filter((p) => (p.available || 0) < LOW_STOCK_THRESHOLD);
 
@@ -1948,18 +1960,7 @@ function AccountantShell({ business, cases, products, dressers, machines, quotat
     return sum + Math.max(0, Number(c.totalAmount || 0) - paid);
   }, 0), [cases]);
   const overdueCount = cases.filter((c) => overdueDays(c) > 0).length;
-  const dresserStats = useMemo(() => {
-    const tally = {};
-    cases.forEach((c) => {
-      const entries = (c.dressingChanges || []).length ? c.dressingChanges : [{ dresserName: c.dresserName }];
-      entries.forEach((e) => {
-        const name = (e.dresserName || "").trim();
-        if (!name) return;
-        tally[name] = (tally[name] || 0) + 1;
-      });
-    });
-    return Object.entries(tally).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
-  }, [cases]);
+  const dresserStats = useMemo(() => buildDresserStats(cases), [cases]);
   const lowStock = products.filter((p) => (p.available || 0) < LOW_STOCK_THRESHOLD);
 
   return (
@@ -2199,6 +2200,9 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
     });
     return list.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [cases, name]);
+  const [reportMonth, setReportMonth] = useState(thisMonth());
+  const myMonthChanges = useMemo(() => myChanges.filter((e) => String(e.date || "").slice(0, 7) === reportMonth), [myChanges, reportMonth]);
+  const myThisMonthCount = useMemo(() => myChanges.filter((e) => String(e.date || "").slice(0, 7) === thisMonth()).length, [myChanges]);
 
   const myOutstandingTotal = useMemo(() => cases
     .filter((c) => (c.dresserName || "").trim().toLowerCase() === name.trim().toLowerCase())
@@ -2317,8 +2321,8 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             <div style={styles.statLabel}>Outstanding on your cases</div>
           </button>
           <button onClick={() => goToDresserSection("dresser-your-reporting")} style={{ ...styles.statCard, borderColor: "#D9720A33" }}>
-            <div style={{ ...styles.statValue, color: "#D9720A" }}>{myChanges.length}</div>
-            <div style={styles.statLabel}>Dressings logged (all-time)</div>
+            <div style={{ ...styles.statValue, color: "#D9720A" }}>{myThisMonthCount}</div>
+            <div style={styles.statLabel}>Dressings this month · {myChanges.length} total</div>
           </button>
           <button onClick={() => goToDresserSection("dresser-cash-with-me")} style={{ ...styles.statCard, borderColor: myCashPendingTotal > 0 ? "#E1483C33" : "#12857733" }}>
             <div style={{ ...styles.statValue, color: myCashPendingTotal > 0 ? "#E1483C" : "#128577" }}>{fmtMoney(myCashPendingTotal)}</div>
@@ -2680,10 +2684,16 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
           <div>
             <button style={{ ...styles.linkBtn, marginBottom: 10 }} onClick={() => setActiveDresserSection(null)}>&larr; Back to Menu</button>
         <CollapsibleSection id="dresser-your-reporting" title={t("yourReporting")}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <button style={styles.smallBtn} onClick={() => setReportMonth((m) => shiftMonth(m, -1))}>‹</button>
+            <span style={{ flex: 1, textAlign: "center", fontWeight: 700 }}>{fmtMonth(reportMonth)}</span>
+            <button style={{ ...styles.smallBtn, opacity: reportMonth >= thisMonth() ? 0.4 : 1 }} disabled={reportMonth >= thisMonth()} onClick={() => setReportMonth((m) => shiftMonth(m, 1))}>›</button>
+          </div>
           <div style={styles.cardGrid}>
             <div style={{ ...styles.statCard, borderColor: "#D9720A33" }} onClick={() => setMyReportView(myReportView === "changes" ? null : "changes")}>
-              <div style={{ ...styles.statValue, color: "#D9720A" }}>{myChanges.length}</div>
-              <div style={styles.statLabel}>Total dressings logged (tap for details)</div>
+              <div style={{ ...styles.statValue, color: "#D9720A" }}>{myMonthChanges.length}</div>
+              <div style={styles.statLabel}>Dressings done in {fmtMonth(reportMonth)} (tap for details)</div>
+              <div style={styles.mutedSmall}>All time: {myChanges.length}</div>
             </div>
             <div style={{ ...styles.statCard, borderColor: myOutstandingTotal > 0 ? "#E1483C33" : "#D9720A33" }} onClick={() => setMyReportView(myReportView === "outstanding" ? null : "outstanding")}>
               <div style={{ ...styles.statValue, color: myOutstandingTotal > 0 ? "#E1483C" : "#D9720A" }}>{fmtMoney(myOutstandingTotal)}</div>
@@ -2691,12 +2701,12 @@ function DresserShell({ name, cases, machines, products, setProducts, receiveSto
             </div>
           </div>
           {myReportView === "changes" && (
-            myChanges.length === 0 ? <EmptyState text="Your dressing changes will show up here." /> : (
+            myMonthChanges.length === 0 ? <EmptyState text="No dressings in this month." /> : (
               <div style={styles.card}>
-                {myChanges.slice(0, 15).map((e) => (
-                  <div key={e.id} style={styles.dresserLine}>
+                {myMonthChanges.map((e, i) => (
+                  <div key={e.id || i} style={styles.dresserLine}>
                     <span style={{ flex: 1 }}>{e.patientName}</span>
-                    <span style={styles.mutedSmall}>{fmtDate(e.date)}</span>
+                    <span style={styles.mutedSmall}>{e.note === "Initial application" ? "New VAC" : "Reapply"} · {fmtDate(e.date)}</span>
                   </div>
                 ))}
               </div>
@@ -3471,14 +3481,15 @@ function HomeTab({ cases, machines, products, expenses = [], dresserStats, dress
         </div>
       </Widget>
 
-      <Widget title="Dresser Workload" icon="dressers" color="#118AB2" subtext="Top 8 by dressings logged" empty={dresserWorkloadTop.length === 0 ? "No dressing changes logged yet." : null}>
-        <ResponsiveContainer width="100%" height={Math.max(120, dresserWorkloadTop.length * 34)}>
+      <Widget title="Dresser Workload" icon="dressers" color="#118AB2" subtext={`Dressings in ${fmtMonth(thisMonth())} vs all time`} empty={dresserWorkloadTop.length === 0 ? "No dressing changes logged yet." : null}>
+        <ResponsiveContainer width="100%" height={Math.max(120, dresserWorkloadTop.length * 48)}>
           <BarChart data={dresserWorkloadTop} layout="vertical" margin={{ left: 10, right: 20 }}>
             <CartesianGrid stroke="#EEF1EC" horizontal={false} />
             <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
             <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
             <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: "none", boxShadow: "0 8px 24px rgba(24,35,34,0.14)" }} />
-            <Bar dataKey="count" name="Dressings" fill="#118AB2" radius={[0, 8, 8, 0]} />
+            <Bar dataKey="monthCount" name="This month" fill="#D9720A" radius={[0, 8, 8, 0]} />
+            <Bar dataKey="count" name="All time" fill="#118AB2" radius={[0, 8, 8, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </Widget>
@@ -3599,13 +3610,14 @@ function Dashboard({ cases, machines, outstandingTotal, activeCount, machinesInU
       {dresserStats.length > 0 && (
         <CollapsibleSection title="Dresser Workload">
           <div style={{ ...styles.card, padding: "16px 8px 8px" }}>
-            <ResponsiveContainer width="100%" height={Math.max(120, dresserStats.length * 34)}>
+            <ResponsiveContainer width="100%" height={Math.max(120, dresserStats.length * 48)}>
               <BarChart data={dresserStats} layout="vertical" margin={{ left: 10, right: 20 }}>
                 <CartesianGrid stroke="#EEF1EC" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
                 <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
                 <Tooltip formatter={(v) => `${v} dressing${v > 1 ? "s" : ""}`} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
-                <Bar dataKey="count" name="Dressings" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="monthCount" name="This month" fill="#D9720A" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="count" name="All time" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -7419,13 +7431,14 @@ function ReportsTab({ cases, products, dresserStats, dressers, outstandingTotal,
       <CollapsibleSection title="Dresser Workload">
         {dresserStats.length === 0 ? <EmptyState text="No dressing changes logged yet." /> : (
           <div style={{ ...styles.card, padding: "16px 8px 8px" }}>
-            <ResponsiveContainer width="100%" height={Math.max(120, dresserStats.length * 34)}>
+            <ResponsiveContainer width="100%" height={Math.max(120, dresserStats.length * 48)}>
               <BarChart data={dresserStats} layout="vertical" margin={{ left: 10, right: 20 }}>
                 <CartesianGrid stroke="#EEF1EC" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10, fill: "#8A9A96" }} allowDecimals={false} />
                 <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: "#182322" }} />
                 <Tooltip formatter={(v) => `${v} dressing${v > 1 ? "s" : ""}`} contentStyle={{ fontSize: 12, borderRadius: 10, border: "1px solid #E3E7E2" }} />
-                <Bar dataKey="count" name="Dressings" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="monthCount" name="This month" fill="#D9720A" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="count" name="All time" fill="#3B5BA5" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
