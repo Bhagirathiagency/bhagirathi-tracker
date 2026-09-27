@@ -5721,7 +5721,8 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
 
 // ---------------- Reports (Owner) ----------------
 function CollapsibleSection({ title, defaultOpen, right, children, id }) {
-  const [open, setOpen] = useState(!!defaultOpen);
+  // Sections are always open (no dropdown) for a simpler mobile app.
+  const open = true;
   const [busy, setBusy] = useState(false);
   const contentRef = useRef(null);
 
@@ -5743,8 +5744,8 @@ function CollapsibleSection({ title, defaultOpen, right, children, id }) {
 
   return (
     <div style={{ marginBottom: 4 }} id={id}>
-      <div onClick={() => setOpen((o) => !o)} data-collapsible-header={id ? `${id}-header` : undefined}
-        style={{ ...styles.sectionTitle, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div data-collapsible-header={id ? `${id}-header` : undefined}
+        style={{ ...styles.sectionTitle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>{title}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {right}
@@ -5760,7 +5761,6 @@ function CollapsibleSection({ title, defaultOpen, right, children, id }) {
               </span>
             </>
           )}
-          <span style={{ fontSize: 10 }}>{open ? "▲" : "▼"}</span>
         </span>
       </div>
       {open && <div ref={contentRef}>{children}</div>}
@@ -5798,14 +5798,12 @@ function pnlPeriodLabel(key, granularity) {
 }
 
 function CollapsibleSubcard({ title, children }) {
-  const [open, setOpen] = useState(false);
   return (
     <div style={styles.card}>
-      <div style={styles.cardTop} onClick={() => setOpen((o) => !o)}>
+      <div style={styles.cardTop}>
         <div style={{ flex: 1 }}><div style={styles.cardTitle}>{title}</div></div>
-        <span style={{ fontSize: 11, color: "#8A9A96" }}>{open ? "▲ hide" : "▼ details"}</span>
       </div>
-      {open && <div style={{ padding: "0 14px 14px" }}>{children}</div>}
+      <div style={{ padding: "0 14px 14px" }}>{children}</div>
     </div>
   );
 }
