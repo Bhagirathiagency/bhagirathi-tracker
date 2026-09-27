@@ -5812,9 +5812,38 @@ function DressersTab({ dressers, addDresser, removeDresser, dresserPins, setDres
 }
 
 // ---------------- Reports (Owner) ----------------
+// One-section-at-a-time navigation: a screen's sections show as a menu of big buttons;
+// tapping one shows ONLY that section (with a Back button). If a screen has just one
+// section, it opens directly. Sections nested inside an open section just show their content.
+const sectionStore = (() => {
+  let openId = null;
+  const mounted = new Set();
+  const subs = new Set();
+  let version = 0;
+  const emit = () => { version += 1; subs.forEach((f) => f()); };
+  return {
+    subscribe: (f) => { subs.add(f); return () => subs.delete(f); },
+    snapshot: () => version,
+    getOpen: () => openId,
+    count: () => mounted.size,
+    open: (id) => { openId = id; emit(); },
+    add: (id) => { mounted.add(id); emit(); },
+    remove: (id) => { mounted.delete(id); if (openId === id) openId = null; emit(); },
+  };
+})();
+const SectionNestContext = React.createContext(false);
+
 function CollapsibleSection({ title, defaultOpen, right, children, id }) {
-  // Sections are always open (no dropdown) for a simpler mobile app.
-  const open = true;
+  const nested = React.useContext(SectionNestContext);
+  const myId = useRef(null);
+  if (!myId.current) myId.current = uid();
+  React.useSyncExternalStore(sectionStore.subscribe, sectionStore.snapshot);
+  useEffect(() => {
+    if (nested) return undefined;
+    const me = myId.current;
+    sectionStore.add(me);
+    return () => sectionStore.remove(me);
+  }, [nested]);
   const [busy, setBusy] = useState(false);
   const contentRef = useRef(null);
 
@@ -5824,7 +5853,7 @@ function CollapsibleSection({ title, defaultOpen, right, children, id }) {
     setBusy(true);
     try {
       const blob = await quotePdfBlob(contentRef.current);
-      const filename = `${title.replace(/[^a-z0-9]+/gi, "-")}.pdf`;
+      const filename = `${String(title).replace(/[^a-z0-9]+/gi, "-")}.pdf`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; a.download = filename; a.click();
@@ -5834,28 +5863,48 @@ function CollapsibleSection({ title, defaultOpen, right, children, id }) {
     } finally { setBusy(false); }
   };
 
+  const openId = sectionStore.getOpen();
+  const onlyOne = sectionStore.count() <= 1;
+  const isOpen = nested || onlyOne || openId === myId.current;
+
+  // Another section is open: hide this one completely.
+  if (!isOpen && openId) return null;
+
+  // Menu mode: show a big tappable button.
+  if (!isOpen) {
+    return (
+      <button id={id} onClick={() => { sectionStore.open(myId.current); setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 30); }}
+        style={{ ...styles.card, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+          padding: "14px 16px", marginBottom: 8, cursor: "pointer", textAlign: "left", fontSize: 15, fontWeight: 700, color: "#182322", border: "1px solid #E3E7E2" }}>
+        <span style={{ flex: 1 }}>{title}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>{right}<span style={{ color: "#8A9A96", fontSize: 18 }}>›</span></span>
+      </button>
+    );
+  }
+
   return (
     <div style={{ marginBottom: 4 }} id={id}>
+      {!nested && !onlyOne && (
+        <button style={{ ...styles.linkBtn, marginBottom: 6 }} onClick={() => sectionStore.open(null)}>&larr; Back</button>
+      )}
       <div data-collapsible-header={id ? `${id}-header` : undefined}
         style={{ ...styles.sectionTitle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>{title}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {right}
-          {open && (
-            <>
-              <span onClick={(e) => { e.stopPropagation(); window.print(); }} title="Print this report"
-                style={{ display: "flex", alignItems: "center", color: "#5B6864", cursor: "pointer" }}>
-                <Icon name="print" size={15} />
-              </span>
-              <span onClick={download} title="Download this report as PDF"
-                style={{ display: "flex", alignItems: "center", color: busy ? "#8A9A96" : "#D9720A", cursor: busy ? "default" : "pointer" }}>
-                <Icon name="download" size={15} />
-              </span>
-            </>
-          )}
+          <span onClick={(e) => { e.stopPropagation(); window.print(); }} title="Print this report"
+            style={{ display: "flex", alignItems: "center", color: "#5B6864", cursor: "pointer" }}>
+            <Icon name="print" size={15} />
+          </span>
+          <span onClick={download} title="Download this report as PDF"
+            style={{ display: "flex", alignItems: "center", color: busy ? "#8A9A96" : "#D9720A", cursor: busy ? "default" : "pointer" }}>
+            <Icon name="download" size={15} />
+          </span>
         </span>
       </div>
-      {open && <div ref={contentRef}>{children}</div>}
+      <SectionNestContext.Provider value={true}>
+        <div ref={contentRef}>{children}</div>
+      </SectionNestContext.Provider>
     </div>
   );
 }
